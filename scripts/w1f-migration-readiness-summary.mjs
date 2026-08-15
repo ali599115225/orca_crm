@@ -1,5 +1,7 @@
 import fs from "node:fs";
+import path from "node:path";
 import crypto from "node:crypto";
+import { spawnSync } from "node:child_process";
 import pg from "pg";
 
 const { Client } = pg;
@@ -27,17 +29,98 @@ const W1_UNIQUE_INDEXES = [
   "uq_finance_provider_offers_case_provider_reference",
 ];
 
+const HISTORICAL_NON_TRANSACTIONAL_MIGRATION =
+  "20260721020000_g3_rbac_constraints_indexes";
+const HISTORICAL_NON_TRANSACTIONAL_PATH = path.join(
+  "prisma",
+  "migrations",
+  HISTORICAL_NON_TRANSACTIONAL_MIGRATION,
+  "migration.sql",
+);
+const HISTORICAL_FAILURE_MARKERS = [
+  "P3018",
+  `Migration name: ${HISTORICAL_NON_TRANSACTIONAL_MIGRATION}`,
+  "CREATE INDEX CONCURRENTLY cannot run inside a transaction block",
+];
+
 function requiredEnv(name) {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`W1F_REQUIRED_ENV_MISSING:${name}`);
   return value;
 }
 
+function assertIsolatedDatabaseUrl(rawUrl, label) {
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error(`W1F_INVALID_DATABASE_URL:${label}`);
+  }
+
+  if (!['postgresql:', 'postgres:'].includes(parsed.protocol)) {
+    throw new Error(`W1F_NON_POSTGRES_DATABASE_URL:${label}`);
+  }
+  if (!['127.0.0.1', 'localhost'].includes(parsed.hostname)) {
+    throw new Error(`W1F_NON_LOCAL_DATABASE_FORBIDDEN:${label}`);
+  }
+  if (parsed.port && parsed.port !== '5432') {
+    throw new Error(`W1F_UNEXPECTED_DATABASE_PORT:${label}`);
+  }
+
+  const database = parsed.pathname.replace(/^\//, '');
+  if (!database.startsWith('orca_w1f_')) {
+    throw new Error(`W1F_NON_REHEARSAL_DATABASE_FORBIDDEN:${label}`);
+  }
+
+  return rawUrl;
+}
+
 function digest(value) {
   return crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
+function ensureDirectory(directory) {
+  fs.mkdirSync(directory, { recursive: true });
+}
+
+function writeText(filePath, content) {
+  ensureDirectory(path.dirname(filePath));
+  fs.writeFileSync(filePath, content, "utf8");
+}
+
+function runCommand(command, args, { cwd, env, outputPath, allowFailure = false } = {}) {
+  const result = spawnSync(command, args, {
+    cwd,
+    env: env ?? process.env,
+    encoding: "utf8",
+    shell: false,
+  });
+
+  if (result.error) throw result.error;
+
+  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+  if (outputPath) writeText(outputPath, output);
+
+  const status = result.status ?? 1;
+  if (!allowFailure && status !== 0) {
+    throw new Error(
+      `W1F_COMMAND_FAILED:${command}:${args.slice(0, 3).join(" ")}:exit=${status}\n${output.slice(-4000)}`,
+    );
+  }
+
+  return { status, output };
+}
+
+function prismaEnv(databaseUrl) {
+  return {
+    ...process.env,
+    DATABASE_URL: databaseUrl,
+    DIRECT_URL: databaseUrl,
+  };
+}
+
 async function withClient(url, operation) {
+  assertIsolatedDatabaseUrl(url, "pg-client");
   const client = new Client({ connectionString: url });
   await client.connect();
   try {
@@ -112,17 +195,201 @@ async function legacyFingerprint(url, { excludeW1 = false } = {}) {
   });
 }
 
+async function fullReplay() {
+  const replayUrl = assertIsolatedDatabaseUrl(
+    requiredEnv("W1F_REPLAY_URL"),
+    "full-replay",
+  );
+  const headDir = path.resolve(requiredEnv("W1F_HEAD_DIR"));
+  const evidenceDir = path.resolve(requiredEnv("W1F_EVIDENCE_DIR"));
+  ensureDirectory(evidenceDir);
+
+  const env = prismaEnv(replayUrl);
+  const initial = runCommand(
+    "npx",
+    ["prisma", "migrate", "deploy"],
+    {
+      cwd: headDir,
+      env,
+      outputPath: path.join(evidenceDir, "full-replay-deploy-initial.txt"),
+      allowFailure: true,
+    },
+  );
+
+  const historicalException = {
+    migration: HISTORICAL_NON_TRANSACTIONAL_MIGRATION,
+    detected: false,
+    manuallyExecutedOutsideTransaction: false,
+    resolvedApplied: false,
+  };
+
+  if (initial.status !== 0) {
+    const exactHistoricalFailure = HISTORICAL_FAILURE_MARKERS.every((marker) =>
+      initial.output.includes(marker),
+    );
+    if (!exactHistoricalFailure) {
+      throw new Error(
+        `W1F_UNEXPECTED_FULL_REPLAY_FAILURE\n${initial.output.slice(-5000)}`,
+      );
+    }
+
+    historicalException.detected = true;
+    const migrationPath = path.join(
+      headDir,
+      HISTORICAL_NON_TRANSACTIONAL_PATH,
+    );
+    if (!fs.existsSync(migrationPath)) {
+      throw new Error("W1F_HISTORICAL_MIGRATION_FILE_MISSING");
+    }
+
+    runCommand(
+      "psql",
+      [replayUrl, "-v", "ON_ERROR_STOP=1", "-f", migrationPath],
+      {
+        cwd: headDir,
+        outputPath: path.join(
+          evidenceDir,
+          "full-replay-historical-nontransactional-apply.txt",
+        ),
+      },
+    );
+    historicalException.manuallyExecutedOutsideTransaction = true;
+
+    runCommand(
+      "npx",
+      [
+        "prisma",
+        "migrate",
+        "resolve",
+        "--applied",
+        HISTORICAL_NON_TRANSACTIONAL_MIGRATION,
+      ],
+      {
+        cwd: headDir,
+        env,
+        outputPath: path.join(evidenceDir, "full-replay-historical-resolve.txt"),
+      },
+    );
+    historicalException.resolvedApplied = true;
+
+    runCommand(
+      "npx",
+      ["prisma", "migrate", "deploy"],
+      {
+        cwd: headDir,
+        env,
+        outputPath: path.join(evidenceDir, "full-replay-deploy-resumed.txt"),
+      },
+    );
+  }
+
+  runCommand(
+    "npx",
+    ["prisma", "migrate", "status"],
+    {
+      cwd: headDir,
+      env,
+      outputPath: path.join(evidenceDir, "full-replay-status.txt"),
+    },
+  );
+
+  runCommand(
+    "npx",
+    [
+      "prisma",
+      "migrate",
+      "diff",
+      "--exit-code",
+      "--from-config-datasource",
+      "--to-schema",
+      "prisma",
+    ],
+    {
+      cwd: headDir,
+      env,
+      outputPath: path.join(evidenceDir, "full-replay-drift.txt"),
+    },
+  );
+
+  writeText(
+    path.join(evidenceDir, "full-replay-historical-exception.json"),
+    `${JSON.stringify(historicalException, null, 2)}\n`,
+  );
+}
+
+async function materializePreW1a() {
+  const headDir = path.resolve(requiredEnv("W1F_HEAD_DIR"));
+  const preW1aSchema = path.resolve(requiredEnv("W1F_PRE_W1A_SCHEMA"));
+  const output = path.resolve(requiredEnv("W1F_OUTPUT"));
+
+  if (!fs.existsSync(preW1aSchema)) {
+    throw new Error("W1F_PRE_W1A_SCHEMA_MISSING");
+  }
+
+  runCommand(
+    "npx",
+    [
+      "prisma",
+      "migrate",
+      "diff",
+      "--from-empty",
+      "--to-schema",
+      preW1aSchema,
+      "--script",
+      "--output",
+      output,
+    ],
+    { cwd: headDir },
+  );
+}
+
+async function targetedDrift() {
+  const upgradeUrl = assertIsolatedDatabaseUrl(
+    requiredEnv("W1F_UPGRADE_URL"),
+    "targeted-upgrade",
+  );
+  const headDir = path.resolve(requiredEnv("W1F_HEAD_DIR"));
+  const output = path.resolve(requiredEnv("W1F_OUTPUT"));
+
+  runCommand(
+    "npx",
+    [
+      "prisma",
+      "migrate",
+      "diff",
+      "--exit-code",
+      "--from-config-datasource",
+      "--to-schema",
+      "prisma",
+    ],
+    {
+      cwd: headDir,
+      env: prismaEnv(upgradeUrl),
+      outputPath: output,
+    },
+  );
+}
+
 async function captureLegacy() {
-  const url = requiredEnv("DATABASE_URL");
+  const url = assertIsolatedDatabaseUrl(
+    requiredEnv("DATABASE_URL"),
+    "capture-legacy",
+  );
   const output = requiredEnv("W1F_OUTPUT");
   const result = await legacyFingerprint(url);
-  fs.writeFileSync(output, `${JSON.stringify(result, null, 2)}\n`, "utf8");
+  writeText(output, `${JSON.stringify(result, null, 2)}\n`);
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }
 
 async function summarize() {
-  const replayUrl = requiredEnv("W1F_REPLAY_URL");
-  const upgradeUrl = requiredEnv("W1F_UPGRADE_URL");
+  const replayUrl = assertIsolatedDatabaseUrl(
+    requiredEnv("W1F_REPLAY_URL"),
+    "summary-replay",
+  );
+  const upgradeUrl = assertIsolatedDatabaseUrl(
+    requiredEnv("W1F_UPGRADE_URL"),
+    "summary-upgrade",
+  );
   const beforePath = requiredEnv("W1F_LEGACY_BEFORE_PATH");
   const output = requiredEnv("W1F_OUTPUT");
   const preW1aSha = requiredEnv("W1F_PRE_W1A_SHA");
@@ -217,17 +484,25 @@ async function summarize() {
     },
   };
 
-  fs.writeFileSync(output, `${JSON.stringify(summary, null, 2)}\n`, "utf8");
+  writeText(output, `${JSON.stringify(summary, null, 2)}\n`);
   process.stdout.write(`${JSON.stringify(summary)}\n`);
 
   if (summary.verdict !== "PASS") process.exit(1);
 }
 
 const command = process.argv[2];
-if (command === "capture-legacy") {
+if (command === "full-replay") {
+  await fullReplay();
+} else if (command === "materialize-prew1a") {
+  await materializePreW1a();
+} else if (command === "targeted-drift") {
+  await targetedDrift();
+} else if (command === "capture-legacy") {
   await captureLegacy();
 } else if (command === "summarize") {
   await summarize();
 } else {
-  throw new Error("W1F_COMMAND_REQUIRED:capture-legacy|summarize");
+  throw new Error(
+    "W1F_COMMAND_REQUIRED:full-replay|materialize-prew1a|targeted-drift|capture-legacy|summarize",
+  );
 }
