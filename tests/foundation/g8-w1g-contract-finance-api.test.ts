@@ -133,9 +133,30 @@ describe("W1G guarded Contract / Finance API foundation", () => {
     expect(limitStart).toBeGreaterThan(optionalJsonStart);
     expect(BOUNDARY.slice(optionalJsonStart, limitStart)).toContain("if (value === null)");
     expect(BOUNDARY).toContain("Number.isFinite(value)");
-    expect(BOUNDARY).toContain("Number.isInteger(value)");
     expect(BOUNDARY).toContain("Number.isSafeInteger(value)");
     expect(GATE).toContain("Top-level `null` is rejected for W1G JSON document fields");
+  });
+
+  it("validates UUID references and rejects negative finance values before W1E", () => {
+    expect(BOUNDARY).toContain("W1G_UUID_PATTERN");
+    expect(BOUNDARY).toContain("requiredW1gUuidValue");
+    expect(BOUNDARY).toContain("optionalW1gUuid");
+    expect(BOUNDARY).toContain("optionalW1gNonNegativeDecimalInput");
+    expect(BOUNDARY).toContain("value < 0");
+    expect(BOUNDARY).toContain("optionalW1gPositiveInteger");
+    expect(BOUNDARY).toContain("Number(value) <= 0");
+    expect(FINANCE_COLLECTION).toContain('optionalW1gUuid(body, "leadId")');
+    expect(FINANCE_COLLECTION).toContain('optionalW1gUuid(body, "unitId")');
+    expect(FINANCE_COLLECTION).toContain('optionalW1gUuid(body, "contractId")');
+    expect(FINANCE_COLLECTION).toContain("optionalW1gNonNegativeDecimalInput");
+    expect(FINANCE_COLLECTION).toContain('optionalW1gPositiveInteger(body, "termMonths")');
+    expect(FINANCE_DETAIL).toContain("requiredW1gUuidValue(id)");
+    expect(DRAFT_COLLECTION).toContain('requiredW1gUuid(body, "templateId")');
+    expect(DRAFT_COLLECTION).toContain('requiredW1gUuid(body, "templateVersionId")');
+    expect(DRAFT_COLLECTION).toContain('optionalW1gUuid(body, "financeCaseId")');
+    expect(DRAFT_DETAIL).toContain("requiredW1gUuidValue(id)");
+    expect(GATE).toContain("UUID-shaped W1 references are validated before the facade call");
+    expect(GATE).toContain("Finance scalar inputs exposed by W1G reject negative values");
   });
 
   it("bounds list requests through W1E read models", () => {
@@ -144,9 +165,10 @@ describe("W1G guarded Contract / Finance API foundation", () => {
     expect(GATE).toContain("Query list limits are bounded by the existing W1E read model service");
   });
 
-  it("maps authorization and domain failures without leaking internal errors", () => {
+  it("maps authorization, domain, and unique-conflict failures without leaking internals", () => {
     expect(BOUNDARY).toContain("error instanceof W1eAuthorizationError");
     expect(BOUNDARY).toContain('error.code === "W1E_UNAUTHORIZED" ? 401 : 403');
+    expect(BOUNDARY).toContain('code === "P2002"');
     expect(BOUNDARY).toContain('code.includes("NOT_FOUND")');
     expect(BOUNDARY).toContain('code.includes("CONFLICT")');
     expect(BOUNDARY).toContain('{ error: "INTERNAL_ERROR" }');
