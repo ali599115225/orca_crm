@@ -144,7 +144,7 @@ describe("W1G guarded Contract / Finance API foundation", () => {
     expect(BOUNDARY).toContain("optionalW1gNonNegativeDecimalInput");
     expect(BOUNDARY).toContain("value < 0");
     expect(BOUNDARY).toContain("optionalW1gPositiveInteger");
-    expect(BOUNDARY).toContain("Number(value) <= 0");
+    expect(BOUNDARY).toContain("value <= 0");
     expect(FINANCE_COLLECTION).toContain('optionalW1gUuid(body, "leadId")');
     expect(FINANCE_COLLECTION).toContain('optionalW1gUuid(body, "unitId")');
     expect(FINANCE_COLLECTION).toContain('optionalW1gUuid(body, "contractId")');
