@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { w1eGetContractDraft } from "@/lib/domain/contract-finance/application-facade";
 import {
   beginW1gRequest,
+  requiredW1gUuidValue,
   w1gApiErrorResponse,
 } from "@/lib/domain/contract-finance/api-boundary";
 
@@ -14,7 +15,10 @@ export async function GET(
 
   try {
     const { id } = await context.params;
-    const draft = await w1eGetContractDraft(boundary.session, id);
+    const draft = await w1eGetContractDraft(
+      boundary.session,
+      requiredW1gUuidValue(id),
+    );
     if (!draft) {
       return NextResponse.json(
         { error: "NOT_FOUND" },
