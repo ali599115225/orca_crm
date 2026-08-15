@@ -12,6 +12,7 @@ import {
   requiredW1gJson,
   requiredW1gString,
   requiredW1gUuid,
+  requiredW1gUuidValue,
   w1gApiErrorResponse,
 } from "@/lib/domain/contract-finance/api-boundary";
 
