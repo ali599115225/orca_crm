@@ -205,6 +205,7 @@ export async function assembleCanonicalContractSnapshot(
               unit: {
                 select: {
                   id: true,
+                  tenantId: true,
                   projectId: true,
                   unitNumber: true,
                   floorPosition: true,
@@ -220,6 +221,7 @@ export async function assembleCanonicalContractSnapshot(
               paymentPlan: {
                 select: {
                   id: true,
+                  tenantId: true,
                   contractId: true,
                   template: true,
                   status: true,
@@ -239,6 +241,16 @@ export async function assembleCanonicalContractSnapshot(
       if (draft.contractId && !contract) {
         throw new W1CanonicalSnapshotAssemblyError(
           "W1_CANONICAL_SNAPSHOT_CONTRACT_NOT_FOUND_FOR_TENANT",
+        );
+      }
+      if (contract?.unit.tenantId !== undefined && contract.unit.tenantId !== input.tenantId) {
+        throw new W1CanonicalSnapshotAssemblyError(
+          "W1_CANONICAL_SNAPSHOT_PROPERTY_TENANT_MISMATCH",
+        );
+      }
+      if (contract?.paymentPlan && contract.paymentPlan.tenantId !== input.tenantId) {
+        throw new W1CanonicalSnapshotAssemblyError(
+          "W1_CANONICAL_SNAPSHOT_PAYMENT_PLAN_TENANT_MISMATCH",
         );
       }
 
