@@ -146,7 +146,6 @@ export class W1eAuthorizationError extends Error {
 export type W1eActor = Readonly<{
   tenantId: string;
   userId: string;
-  role: string;
 }>;
 
 function normalizeSession(value: unknown): SessionPayload | null {
@@ -189,8 +188,8 @@ export function w1eRoleAllowsPermission(
 
 /**
  * W1E deliberately performs current database-role revalidation and has no
- * platform-owner/super-admin bypass. Tenant and actor identity returned here
- * are the only identities the application facade may pass to W1 domain writes.
+ * platform-owner/super-admin bypass. The session role claim is never returned
+ * to the application facade; only tenant and actor identity survive this gate.
  */
 export async function authorizeW1eActor(
   value: unknown,
@@ -212,6 +211,5 @@ export async function authorizeW1eActor(
   return {
     tenantId: session.tenantId,
     userId: session.userId,
-    role: session.role,
   };
 }
