@@ -371,7 +371,7 @@ export async function assembleCanonicalContractSnapshot(
             financeCaseId: draft.financeCaseId,
             status: draft.status,
             createdAt: draft.createdAt.toISOString(),
-            approvedStateRecordedAt: draft.updatedAt.toISOString(),
+            updatedAt: draft.updatedAt.toISOString(),
           },
           template: {
             id: draft.template.id,
