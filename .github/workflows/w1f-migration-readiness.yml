@@ -52,6 +52,7 @@ jobs:
       - name: Checkout exact candidate
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           path: head
           fetch-depth: 0
 
@@ -76,10 +77,12 @@ jobs:
           mkdir -p evidence
           test "$(git -C prew1a rev-parse HEAD)" = "$PRE_W1A_SHA"
           candidate="$(git -C head rev-parse HEAD)"
+          event_head="${{ github.event.pull_request.head.sha || github.sha }}"
+          test "$candidate" = "$event_head"
           postgres_version="$(psql "$POSTGRES_ADMIN_URL" -tAc 'SHOW server_version_num' | xargs)"
           test "$postgres_version" -ge 160000 -a "$postgres_version" -lt 170000
-          printf 'pre_w1a_sha=%s\nhead_sha=%s\nnode=%s\npostgres=%s\n' \
-            "$PRE_W1A_SHA" "$candidate" "$(node --version)" \
+          printf 'pre_w1a_sha=%s\nhead_sha=%s\nevent_head_sha=%s\nnode=%s\npostgres=%s\n' \
+            "$PRE_W1A_SHA" "$candidate" "$event_head" "$(node --version)" \
             "$(psql "$POSTGRES_ADMIN_URL" -tAc 'SHOW server_version' | xargs)" \
             | tee evidence/environment.txt
 
@@ -95,14 +98,19 @@ jobs:
           const w1a = fs.readFileSync('head/prisma/migrations/20260815001500_w1_contract_finance_foundation/migration.sql', 'utf8');
           const w1d = fs.readFileSync('head/prisma/migrations/20260815004500_w1d_snapshot_offer_integrity/migration.sql', 'utf8');
           const stripComments = value => value.replace(/--.*$/gm, '');
-          const forbidden = /\b(?:ALTER|DROP|INSERT|UPDATE|DELETE|TRUNCATE)\b/i;
-          if (forbidden.test(stripComments(w1a))) throw new Error('W1F_W1A_NOT_ADDITIVE');
-          if (forbidden.test(stripComments(w1d))) throw new Error('W1F_W1D_NOT_ADDITIVE');
-          const tableCount = (stripComments(w1a).match(/\bCREATE\s+TABLE\b/gi) || []).length;
-          const uniqueIndexCount = (stripComments(w1d).match(/\bCREATE\s+UNIQUE\s+INDEX\b/gi) || []).length;
+          const statements = value => stripComments(value).split(';').map(statement => statement.trim()).filter(Boolean);
+          const w1aStatements = statements(w1a);
+          const w1dStatements = statements(w1d);
+          const invalidW1a = w1aStatements.filter(statement => !/^CREATE\s+(?:TABLE|INDEX)\b/i.test(statement));
+          const invalidW1d = w1dStatements.filter(statement => !/^CREATE\s+UNIQUE\s+INDEX\b/i.test(statement));
+          if (invalidW1a.length) throw new Error(`W1F_W1A_NON_ADDITIVE_STATEMENT:${invalidW1a[0].slice(0,120)}`);
+          if (invalidW1d.length) throw new Error(`W1F_W1D_NON_ADDITIVE_STATEMENT:${invalidW1d[0].slice(0,120)}`);
+          const tableCount = w1aStatements.filter(statement => /^CREATE\s+TABLE\b/i.test(statement)).length;
+          const indexCount = w1aStatements.filter(statement => /^CREATE\s+INDEX\b/i.test(statement)).length;
+          const uniqueIndexCount = w1dStatements.filter(statement => /^CREATE\s+UNIQUE\s+INDEX\b/i.test(statement)).length;
           if (tableCount !== 10) throw new Error(`W1F_W1A_TABLE_COUNT:${tableCount}`);
           if (uniqueIndexCount !== 2) throw new Error(`W1F_W1D_UNIQUE_INDEX_COUNT:${uniqueIndexCount}`);
-          fs.writeFileSync('evidence/static-artifacts.json', JSON.stringify({tableCount, uniqueIndexCount, verdict:'PASS'}, null, 2) + '\n');
+          fs.writeFileSync('evidence/static-artifacts.json', JSON.stringify({tableCount, indexCount, uniqueIndexCount, verdict:'PASS'}, null, 2) + '\n');
           NODE
 
       - name: Create isolated rehearsal databases
