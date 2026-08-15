@@ -141,6 +141,7 @@ describe("W1H guarded Contract Studio command endpoints", () => {
     expect(REQUEST_APPROVAL).toContain("rejectW1hContractCallerSystemFields(body)");
     expect(DECIDE_APPROVAL).toContain("rejectW1hContractCallerSystemFields(body)");
     expect(ISSUE_SNAPSHOT).toContain("rejectW1hContractCallerSystemFields(body)");
+    expect(GATE).toContain("may not be supplied by request payloads");
   });
 
   it("validates route IDs, approval request evidence, and the approval decision enum", () => {
@@ -152,6 +153,17 @@ describe("W1H guarded Contract Studio command endpoints", () => {
     expect(REQUEST_APPROVAL).toContain('optionalW1gJson(body, "evidenceJson")');
     expect(COMMAND_BOUNDARY).toContain('value !== "APPROVED" && value !== "REJECTED"');
     expect(DECIDE_APPROVAL).toContain("requiredW1hApprovalDecision(body)");
+  });
+
+  it("rejects every non-empty finalization body before W1E", () => {
+    expect(COMMAND_BOUNDARY).toContain("export async function assertW1hEmptyCommandBody");
+    expect(COMMAND_BOUNDARY).toContain("const raw = await request.text()");
+    expect(COMMAND_BOUNDARY).toContain("raw.trim().length > 0");
+    const emptyBodyIndex = FINALIZE_APPROVAL.indexOf("await assertW1hEmptyCommandBody(request)");
+    const facadeIndex = FINALIZE_APPROVAL.indexOf("await w1eFinalizeContractDraftApproval(");
+    expect(emptyBodyIndex).toBeGreaterThanOrEqual(0);
+    expect(facadeIndex).toBeGreaterThan(emptyBodyIndex);
+    expect(GATE).toContain("Finalization rejects every non-empty request body");
   });
 
   it("leaves approval-state legality and finalization entirely to W1D", () => {
