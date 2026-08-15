@@ -22,6 +22,7 @@ const W1_TABLES = [
 const W1_MIGRATIONS = [
   "20260815001500_w1_contract_finance_foundation",
   "20260815004500_w1d_snapshot_offer_integrity",
+  "20260815010000_w1_schema_alignment",
 ];
 
 const W1_UNIQUE_INDEXES = [
@@ -43,6 +44,11 @@ const HISTORICAL_FAILURE_MARKERS = [
   "CREATE INDEX CONCURRENTLY cannot run inside a transaction block",
 ];
 
+const ALLOWED_REPLAY_DRIFT_CLASSIFICATIONS = new Set([
+  "ZERO_DRIFT",
+  "HISTORICAL_LEGACY_DRIFT_ONLY",
+]);
+
 function requiredEnv(name) {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`W1F_REQUIRED_ENV_MISSING:${name}`);
@@ -57,18 +63,18 @@ function assertIsolatedDatabaseUrl(rawUrl, label) {
     throw new Error(`W1F_INVALID_DATABASE_URL:${label}`);
   }
 
-  if (!['postgresql:', 'postgres:'].includes(parsed.protocol)) {
+  if (!["postgresql:", "postgres:"].includes(parsed.protocol)) {
     throw new Error(`W1F_NON_POSTGRES_DATABASE_URL:${label}`);
   }
-  if (!['127.0.0.1', 'localhost'].includes(parsed.hostname)) {
+  if (!["127.0.0.1", "localhost"].includes(parsed.hostname)) {
     throw new Error(`W1F_NON_LOCAL_DATABASE_FORBIDDEN:${label}`);
   }
-  if (parsed.port && parsed.port !== '5432') {
+  if (parsed.port && parsed.port !== "5432") {
     throw new Error(`W1F_UNEXPECTED_DATABASE_PORT:${label}`);
   }
 
-  const database = parsed.pathname.replace(/^\//, '');
-  if (!database.startsWith('orca_w1f_')) {
+  const database = parsed.pathname.replace(/^\//, "");
+  if (!database.startsWith("orca_w1f_")) {
     throw new Error(`W1F_NON_REHEARSAL_DATABASE_FORBIDDEN:${label}`);
   }
 
@@ -116,6 +122,38 @@ function prismaEnv(databaseUrl) {
     ...process.env,
     DATABASE_URL: databaseUrl,
     DIRECT_URL: databaseUrl,
+  };
+}
+
+function classifyFullReplayDrift(result) {
+  if (result.status === 0) {
+    return {
+      classification: "ZERO_DRIFT",
+      exitCode: 0,
+      w1Touched: false,
+      w1Touches: [],
+    };
+  }
+
+  if (result.status !== 2) {
+    throw new Error(`W1F_UNEXPECTED_REPLAY_DRIFT_EXIT:${result.status}`);
+  }
+
+  const w1Touches = [...W1_TABLES, ...W1_UNIQUE_INDEXES].filter((name) =>
+    result.output.includes(`\`${name}\``) ||
+    result.output.includes(`"${name}"`) ||
+    result.output.includes(name),
+  );
+
+  if (w1Touches.length > 0) {
+    throw new Error(`W1F_W1_DRIFT_DETECTED:${w1Touches.join(",")}`);
+  }
+
+  return {
+    classification: "HISTORICAL_LEGACY_DRIFT_ONLY",
+    exitCode: 2,
+    w1Touched: false,
+    w1Touches: [],
   };
 }
 
@@ -205,16 +243,12 @@ async function fullReplay() {
   ensureDirectory(evidenceDir);
 
   const env = prismaEnv(replayUrl);
-  const initial = runCommand(
-    "npx",
-    ["prisma", "migrate", "deploy"],
-    {
-      cwd: headDir,
-      env,
-      outputPath: path.join(evidenceDir, "full-replay-deploy-initial.txt"),
-      allowFailure: true,
-    },
-  );
+  const initial = runCommand("npx", ["prisma", "migrate", "deploy"], {
+    cwd: headDir,
+    env,
+    outputPath: path.join(evidenceDir, "full-replay-deploy-initial.txt"),
+    allowFailure: true,
+  });
 
   const historicalException = {
     migration: HISTORICAL_NON_TRANSACTIONAL_MIGRATION,
@@ -234,25 +268,18 @@ async function fullReplay() {
     }
 
     historicalException.detected = true;
-    const migrationPath = path.join(
-      headDir,
-      HISTORICAL_NON_TRANSACTIONAL_PATH,
-    );
+    const migrationPath = path.join(headDir, HISTORICAL_NON_TRANSACTIONAL_PATH);
     if (!fs.existsSync(migrationPath)) {
       throw new Error("W1F_HISTORICAL_MIGRATION_FILE_MISSING");
     }
 
-    runCommand(
-      "psql",
-      [replayUrl, "-v", "ON_ERROR_STOP=1", "-f", migrationPath],
-      {
-        cwd: headDir,
-        outputPath: path.join(
-          evidenceDir,
-          "full-replay-historical-nontransactional-apply.txt",
-        ),
-      },
-    );
+    runCommand("psql", [replayUrl, "-v", "ON_ERROR_STOP=1", "-f", migrationPath], {
+      cwd: headDir,
+      outputPath: path.join(
+        evidenceDir,
+        "full-replay-historical-nontransactional-apply.txt",
+      ),
+    });
     historicalException.manuallyExecutedOutsideTransaction = true;
 
     runCommand(
@@ -272,28 +299,20 @@ async function fullReplay() {
     );
     historicalException.resolvedApplied = true;
 
-    runCommand(
-      "npx",
-      ["prisma", "migrate", "deploy"],
-      {
-        cwd: headDir,
-        env,
-        outputPath: path.join(evidenceDir, "full-replay-deploy-resumed.txt"),
-      },
-    );
-  }
-
-  runCommand(
-    "npx",
-    ["prisma", "migrate", "status"],
-    {
+    runCommand("npx", ["prisma", "migrate", "deploy"], {
       cwd: headDir,
       env,
-      outputPath: path.join(evidenceDir, "full-replay-status.txt"),
-    },
-  );
+      outputPath: path.join(evidenceDir, "full-replay-deploy-resumed.txt"),
+    });
+  }
 
-  runCommand(
+  runCommand("npx", ["prisma", "migrate", "status"], {
+    cwd: headDir,
+    env,
+    outputPath: path.join(evidenceDir, "full-replay-status.txt"),
+  });
+
+  const driftResult = runCommand(
     "npx",
     [
       "prisma",
@@ -308,12 +327,19 @@ async function fullReplay() {
       cwd: headDir,
       env,
       outputPath: path.join(evidenceDir, "full-replay-drift.txt"),
+      allowFailure: true,
     },
   );
+
+  const driftClassification = classifyFullReplayDrift(driftResult);
 
   writeText(
     path.join(evidenceDir, "full-replay-historical-exception.json"),
     `${JSON.stringify(historicalException, null, 2)}\n`,
+  );
+  writeText(
+    path.join(evidenceDir, "full-replay-drift-classification.json"),
+    `${JSON.stringify(driftClassification, null, 2)}\n`,
   );
 }
 
@@ -391,11 +417,13 @@ async function summarize() {
     "summary-upgrade",
   );
   const beforePath = requiredEnv("W1F_LEGACY_BEFORE_PATH");
+  const replayDriftPath = requiredEnv("W1F_REPLAY_DRIFT_CLASSIFICATION_PATH");
   const output = requiredEnv("W1F_OUTPUT");
   const preW1aSha = requiredEnv("W1F_PRE_W1A_SHA");
   const headSha = requiredEnv("W1F_HEAD_SHA");
 
   const before = JSON.parse(fs.readFileSync(beforePath, "utf8"));
+  const replayDrift = JSON.parse(fs.readFileSync(replayDriftPath, "utf8"));
   const afterLegacy = await legacyFingerprint(upgradeUrl, { excludeW1: true });
 
   const targeted = await withClient(upgradeUrl, async (client) => {
@@ -452,9 +480,14 @@ async function summarize() {
     targeted.uniqueIndexes.length === W1_UNIQUE_INDEXES.length &&
     targeted.uniqueIndexes.every((row) => /CREATE UNIQUE INDEX/i.test(row.indexdef));
 
+  const replayDriftAccepted =
+    ALLOWED_REPLAY_DRIFT_CLASSIFICATIONS.has(replayDrift.classification) &&
+    replayDrift.w1Touched === false;
+
   const replayComplete =
     replayMigrations.length === W1_MIGRATIONS.length &&
-    replayMigrations.every((row) => row.finished === true && row.not_rolled_back === true);
+    replayMigrations.every((row) => row.finished === true && row.not_rolled_back === true) &&
+    replayDriftAccepted;
 
   const summary = {
     verdict:
@@ -476,10 +509,13 @@ async function summarize() {
       actualUniqueIndexes: targeted.uniqueIndexes,
       indexesComplete,
       addedTableCount: W1_TABLES.length,
+      zeroDriftRequired: true,
     },
     replay: {
       expectedMigrations: W1_MIGRATIONS,
       actualMigrations: replayMigrations,
+      drift: replayDrift,
+      driftAccepted: replayDriftAccepted,
       complete: replayComplete,
     },
   };
