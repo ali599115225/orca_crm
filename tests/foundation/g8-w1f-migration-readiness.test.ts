@@ -15,6 +15,16 @@ const GATE = readFileSync(
   join(ROOT, "docs", "product-extension", "W1F_MIGRATION_READINESS_GATE.md"),
   "utf8",
 );
+const HISTORICAL_MIGRATION = readFileSync(
+  join(
+    ROOT,
+    "prisma",
+    "migrations",
+    "20260721020000_g3_rbac_constraints_indexes",
+    "migration.sql",
+  ),
+  "utf8",
+);
 const W1A_MIGRATION = readFileSync(
   join(
     ROOT,
@@ -86,7 +96,26 @@ describe("W1F isolated migration readiness", () => {
     expect(W1A_MIGRATION).toContain("ON UPDATE CASCADE");
   });
 
-  it("uses only isolated localhost PostgreSQL 16 databases", () => {
+  it("classifies the exact historical non-transactional G3 migration instead of rewriting it", () => {
+    expect(HISTORICAL_MIGRATION).toContain("REVIEW-ONLY");
+    expect(HISTORICAL_MIGRATION).toContain(
+      "CREATE INDEX CONCURRENTLY cannot run inside a transaction block",
+    );
+    expect(HISTORICAL_MIGRATION).toContain(
+      "release runner must execute this file without wrapping it in BEGIN/COMMIT",
+    );
+    expect(SUMMARY_SCRIPT).toContain(
+      '"20260721020000_g3_rbac_constraints_indexes"',
+    );
+    expect(SUMMARY_SCRIPT).toContain('"P3018"');
+    expect(SUMMARY_SCRIPT).toContain(
+      '"CREATE INDEX CONCURRENTLY cannot run inside a transaction block"',
+    );
+    expect(SUMMARY_SCRIPT).toContain("W1F_UNEXPECTED_FULL_REPLAY_FAILURE");
+    expect(GATE).toContain("pre-existing historical replay constraint");
+  });
+
+  it("uses only isolated localhost PostgreSQL 16 databases and rejects non-local URLs in code", () => {
     expect(WORKFLOW).toContain("image: postgres:16");
     expect(WORKFLOW).toContain("127.0.0.1:5432/orca_w1f_admin");
     expect(WORKFLOW).toContain("orca_w1f_replay");
@@ -95,19 +124,47 @@ describe("W1F isolated migration readiness", () => {
     expect(WORKFLOW).not.toContain("neon.tech");
     expect(WORKFLOW).not.toContain("supabase.co");
     expect(WORKFLOW).not.toContain("vercel.com");
+
+    expect(SUMMARY_SCRIPT).toContain("assertIsolatedDatabaseUrl");
+    expect(SUMMARY_SCRIPT).toContain("W1F_NON_LOCAL_DATABASE_FORBIDDEN");
+    expect(SUMMARY_SCRIPT).toContain("W1F_NON_REHEARSAL_DATABASE_FORBIDDEN");
+    expect(SUMMARY_SCRIPT).toContain("database.startsWith('orca_w1f_')");
   });
 
-  it("rehearses deploy, status, and Prisma 7 drift checks without destructive commands", () => {
-    expect(WORKFLOW).toContain("npx prisma migrate deploy");
-    expect(WORKFLOW).toContain("npx prisma migrate status");
-    expect(WORKFLOW).toContain("--from-config-datasource --to-schema prisma");
-    expect(WORKFLOW).toContain("--exit-code");
+  it("keeps migration execution out of the workflow and inside the localhost-guarded verifier", () => {
+    expect(WORKFLOW).not.toMatch(/\bprisma\s+migrate\s+(?:deploy|status|resolve|diff)\b/);
+    expect(WORKFLOW).toContain(
+      "node head/scripts/w1f-migration-readiness-summary.mjs full-replay",
+    );
+    expect(WORKFLOW).toContain(
+      "node head/scripts/w1f-migration-readiness-summary.mjs materialize-prew1a",
+    );
+    expect(WORKFLOW).toContain(
+      "node head/scripts/w1f-migration-readiness-summary.mjs targeted-drift",
+    );
+
+    expect(SUMMARY_SCRIPT).toContain('["prisma", "migrate", "deploy"]');
+    expect(SUMMARY_SCRIPT).toContain('["prisma", "migrate", "status"]');
+    expect(SUMMARY_SCRIPT).toContain('"resolve",\n        "--applied"');
+    expect(SUMMARY_SCRIPT).toContain('"--from-config-datasource"');
+    expect(SUMMARY_SCRIPT).toContain('"--exit-code"');
 
     expect(WORKFLOW).not.toMatch(/prisma\s+migrate\s+dev\b/);
     expect(WORKFLOW).not.toMatch(/prisma\s+migrate\s+reset\b/);
     expect(WORKFLOW).not.toMatch(/prisma\s+db\s+push\b/);
     expect(WORKFLOW).not.toMatch(/prisma\s+db\s+seed\b/);
     expect(WORKFLOW).not.toMatch(/\bnpx\s+vercel\b/);
+  });
+
+  it("permits only the exact historical replay recovery and then resumes migration verification", () => {
+    expect(SUMMARY_SCRIPT).toContain("HISTORICAL_FAILURE_MARKERS.every");
+    expect(SUMMARY_SCRIPT).toContain("exactHistoricalFailure");
+    expect(SUMMARY_SCRIPT).toContain('"psql"');
+    expect(SUMMARY_SCRIPT).toContain('"ON_ERROR_STOP=1"');
+    expect(SUMMARY_SCRIPT).toContain("historicalException.resolvedApplied = true");
+    expect(SUMMARY_SCRIPT).toContain("full-replay-deploy-resumed.txt");
+    expect(SUMMARY_SCRIPT).toContain("full-replay-status.txt");
+    expect(SUMMARY_SCRIPT).toContain("full-replay-drift.txt");
   });
 
   it("materializes the exact pre-W1A schema before targeted W1 SQL application", () => {
@@ -117,9 +174,12 @@ describe("W1F isolated migration readiness", () => {
     expect(applyStart).toBeGreaterThan(materializeStart);
 
     const materialize = WORKFLOW.slice(materializeStart, applyStart);
-    expect(materialize).toContain("--from-empty");
-    expect(materialize).toContain("--to-schema ../prew1a/prisma/schema.prisma");
+    expect(materialize).toContain("W1F_PRE_W1A_SCHEMA=prew1a/prisma/schema.prisma");
     expect(materialize).toContain("capture-legacy");
+
+    expect(SUMMARY_SCRIPT).toContain('"--from-empty"');
+    expect(SUMMARY_SCRIPT).toContain('"--to-schema"');
+    expect(SUMMARY_SCRIPT).toContain("preW1aSchema");
 
     const apply = WORKFLOW.slice(applyStart);
     expect(apply).toContain('psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 -f "head/$W1A_MIGRATION"');
@@ -150,6 +210,7 @@ describe("W1F isolated migration readiness", () => {
     expect(GATE).toContain("no production/customer database access");
     expect(GATE).toContain("no route/server action/UI");
     expect(GATE).toContain("no deploy");
+    expect(GATE).toContain("G3 production-workflow protection is not changed or bypassed");
     expect(WORKFLOW).not.toContain("api/health");
     expect(WORKFLOW).not.toContain("deployment");
     expect(WORKFLOW).not.toContain("provider activation");
