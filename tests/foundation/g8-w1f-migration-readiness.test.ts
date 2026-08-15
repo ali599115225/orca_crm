@@ -37,12 +37,24 @@ const W1D_MIGRATION = readFileSync(
 );
 
 const stripSqlComments = (value: string) => value.replace(/--.*$/gm, "");
+const sqlStatements = (value: string) =>
+  stripSqlComments(value)
+    .split(";")
+    .map((statement) => statement.trim())
+    .filter(Boolean);
 
 describe("W1F isolated migration readiness", () => {
-  it("pins exact pre-W1A and exact W1 migration identities", () => {
+  it("pins exact PR head, pre-W1A ref, and W1 migration identities", () => {
+    expect(WORKFLOW).toContain(
+      "ref: ${{ github.event.pull_request.head.sha || github.sha }}",
+    );
     expect(WORKFLOW).toContain(
       "PRE_W1A_SHA: 50266d2122c966d0fa48f0d1b789e6ed5916b68c",
     );
+    expect(WORKFLOW).toContain(
+      'event_head="${{ github.event.pull_request.head.sha || github.sha }}"',
+    );
+    expect(WORKFLOW).toContain('test "$candidate" = "$event_head"');
     expect(WORKFLOW).toContain(
       "20260815001500_w1_contract_finance_foundation/migration.sql",
     );
@@ -52,15 +64,26 @@ describe("W1F isolated migration readiness", () => {
     expect(GATE).toContain("Base: `dc51a4ce0ef2f6b8f47535cbe511dc82101c5dcc`");
   });
 
-  it("keeps W1A and W1D additive and frozen", () => {
-    const w1a = stripSqlComments(W1A_MIGRATION);
-    const w1d = stripSqlComments(W1D_MIGRATION);
-    const forbidden = /\b(?:ALTER|DROP|INSERT|UPDATE|DELETE|TRUNCATE)\b/i;
+  it("keeps W1A and W1D additive by statement class without rejecting ON UPDATE clauses", () => {
+    const w1aStatements = sqlStatements(W1A_MIGRATION);
+    const w1dStatements = sqlStatements(W1D_MIGRATION);
 
-    expect(w1a).not.toMatch(forbidden);
-    expect(w1d).not.toMatch(forbidden);
-    expect(w1a.match(/\bCREATE\s+TABLE\b/gi) ?? []).toHaveLength(10);
-    expect(w1d.match(/\bCREATE\s+UNIQUE\s+INDEX\b/gi) ?? []).toHaveLength(2);
+    expect(w1aStatements.length).toBeGreaterThan(10);
+    expect(
+      w1aStatements.every((statement) =>
+        /^CREATE\s+(?:TABLE|INDEX)\b/i.test(statement),
+      ),
+    ).toBe(true);
+    expect(
+      w1dStatements.every((statement) =>
+        /^CREATE\s+UNIQUE\s+INDEX\b/i.test(statement),
+      ),
+    ).toBe(true);
+    expect(
+      w1aStatements.filter((statement) => /^CREATE\s+TABLE\b/i.test(statement)),
+    ).toHaveLength(10);
+    expect(w1dStatements).toHaveLength(2);
+    expect(W1A_MIGRATION).toContain("ON UPDATE CASCADE");
   });
 
   it("uses only isolated localhost PostgreSQL 16 databases", () => {
