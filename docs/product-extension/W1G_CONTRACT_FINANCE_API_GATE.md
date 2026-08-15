@@ -60,15 +60,16 @@ No route imports Prisma or a W1 domain write service directly. No route mutates 
 
 Adding four guarded route files legitimately changes the generated repository contract inventory. W1G does not weaken the G4/G5 scanners or their P0/P1 requirements.
 
-The W1G contract test contains explicit references to all four new API route contracts so G4 records current test evidence for each surface. The frozen G5 executable baseline is reconciled only for the deterministic inventory totals introduced by these four routes:
+The W1G contract test contains explicit references to all four new API route contracts so G4 records current test evidence for each surface. The frozen G4/G5 executable baselines are reconciled only for the deterministic inventory totals introduced by these four routes:
 
 - total G4 contracts: `363 -> 367`;
 - total API routes / API auth evidence entries: `129 -> 133`;
 - unproven contracts remain `33`;
 - no P0 security-critical, P1 mutation, or P1 sensitive-read contract may remain unproven;
-- `AUTH_EVIDENCE_NOT_DETECTED` remains zero.
+- `AUTH_EVIDENCE_NOT_DETECTED` remains zero;
+- malformed contracts, duplicate contract IDs, and invalid permission keys remain zero.
 
-No G4/G5 scanner source, priority rule, authentication marker rule, or runtime-risk rule is modified.
+The durable historical architecture markdown counts are not rewritten in W1G; only generated-current inventory expectations are reconciled. No G4/G5 scanner source, normalization/reconciliation logic, priority rule, authentication marker rule, or runtime-risk rule is modified.
 
 ## Allowed paths
 
@@ -78,7 +79,8 @@ No G4/G5 scanner source, priority rule, authentication marker rule, or runtime-r
 - `app/api/v1/contract-finance/contract-drafts/route.ts`
 - `app/api/v1/contract-finance/contract-drafts/[id]/route.ts`
 - `tests/foundation/g8-w1g-contract-finance-api.test.ts`
-- `tests/foundation/g5-security-quality.test.ts` — inventory total reconciliation only; no scanner/control weakening
+- `tests/foundation/g5-security-quality.test.ts` — generated inventory total reconciliation only; no scanner/control weakening
+- `tests/foundation/g4-page-operational-contracts.test.ts` — generated current inventory/API count reconciliation only; historical architecture records unchanged
 - this gate document
 
 ## Explicit exclusions
@@ -93,8 +95,8 @@ No G4/G5 scanner source, priority rule, authentication marker rule, or runtime-r
 - no provider-offer/authority/FinanceCase-transition endpoint;
 - no Transaction Spine financial mutation;
 - no change to W1E permission mappings or EXEC-003 historical assignments;
-- no change to G4/G5 scanner implementation or risk-priority logic.
+- no change to G4/G5 scanner implementation, normalization/reconciliation logic, or risk-priority logic.
 
 ## Closure
 
-W1G closes only when the PR remains within the eight-file allowlist, G5/G8 contract tests prove direct evidence, double fail-closed gating, facade-only routing, zero unproven P0/P1 surfaces, and zero missing API auth evidence; full ORCA CI through Build passes on the exact final head; independent review finds no Critical/Major issue; and no production migration/deploy/provider activation occurs.
+W1G closes only when the PR remains within the nine-file allowlist, G4/G5/G8 contract tests prove direct evidence, double fail-closed gating, facade-only routing, zero unproven P0/P1 surfaces, zero missing API auth evidence, and zero malformed/duplicate/invalid-permission inventory findings; full ORCA CI through Build passes on the exact final head; independent review finds no Critical/Major issue; and no production migration/deploy/provider activation occurs.
