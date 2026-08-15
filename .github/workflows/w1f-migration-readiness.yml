@@ -78,12 +78,13 @@ jobs:
           set -euo pipefail
           mkdir -p evidence
           test "$(git -C prew1a rev-parse HEAD)" = "$PRE_W1A_SHA"
+          test ! -e prew1a/prisma/w1-contract-finance.prisma
           candidate="$(git -C head rev-parse HEAD)"
           event_head="${{ github.event.pull_request.head.sha || github.sha }}"
           test "$candidate" = "$event_head"
           postgres_version="$(psql "$POSTGRES_ADMIN_URL" -tAc 'SHOW server_version_num' | xargs)"
           test "$postgres_version" -ge 160000 -a "$postgres_version" -lt 170000
-          printf 'pre_w1a_sha=%s\nhead_sha=%s\nevent_head_sha=%s\nnode=%s\npostgres=%s\n' \
+          printf 'pre_w1a_sha=%s\nhead_sha=%s\nevent_head_sha=%s\npre_w1a_w1_file_absent=true\nnode=%s\npostgres=%s\n' \
             "$PRE_W1A_SHA" "$candidate" "$event_head" "$(node --version)" \
             "$(psql "$POSTGRES_ADMIN_URL" -tAc 'SHOW server_version' | xargs)" \
             | tee evidence/environment.txt
@@ -154,11 +155,15 @@ jobs:
           W1F_EVIDENCE_DIR=evidence \
             node head/scripts/w1f-migration-readiness-summary.mjs full-replay
 
-      - name: Materialize exact pre-W1A supported schema
+      - name: Materialize current non-W1 supported schema
         shell: bash
         run: |
           set -euo pipefail
           UPGRADE_URL='postgresql://postgres:postgres@127.0.0.1:5432/orca_w1f_upgrade?sslmode=disable'
+          cat head/prisma/schema.prisma head/prisma/rbac.prisma > evidence/current-non-w1-schema.prisma
+          test -s evidence/current-non-w1-schema.prisma
+          ! grep -Fq 'model ContractTemplate' evidence/current-non-w1-schema.prisma
+          ! grep -Fq 'model FinanceCase' evidence/current-non-w1-schema.prisma
           attempt=1
           while [ "$attempt" -le 5 ]; do
             set +e
@@ -166,13 +171,13 @@ jobs:
               DATABASE_URL="$UPGRADE_URL" \
               DIRECT_URL="$UPGRADE_URL" \
               W1F_HEAD_DIR=head \
-              W1F_PRE_W1A_SCHEMA=prew1a/prisma/schema.prisma \
-              W1F_OUTPUT=evidence/pre-w1a-schema.sql \
+              W1F_PRE_W1A_SCHEMA=evidence/current-non-w1-schema.prisma \
+              W1F_OUTPUT=evidence/current-non-w1-schema.sql \
                 node head/scripts/w1f-migration-readiness-summary.mjs materialize-prew1a 2>&1
             )"
             materialize_code=$?
             set -e
-            printf '%s\n' "$materialize_output" > "evidence/pre-w1a-materialize-attempt-${attempt}.txt"
+            printf '%s\n' "$materialize_output" > "evidence/current-non-w1-materialize-attempt-${attempt}.txt"
             if [ "$materialize_code" -eq 0 ]; then
               break
             fi
@@ -187,22 +192,23 @@ jobs:
             attempt=$((attempt + 1))
             sleep 1
           done
-          printf '{"attempts":%s,"verdict":"PASS"}\n' "$attempt" > evidence/pre-w1a-materialize-retry-summary.json
-          cp evidence/pre-w1a-schema.sql evidence/pre-w1a-schema.raw.txt
+          printf '{"attempts":%s,"verdict":"PASS"}\n' "$attempt" > evidence/current-non-w1-materialize-retry-summary.json
+          cp evidence/current-non-w1-schema.sql evidence/current-non-w1-schema.raw.txt
           node <<'NODE'
           const fs = require('node:fs');
-          const file = 'evidence/pre-w1a-schema.sql';
+          const file = 'evidence/current-non-w1-schema.sql';
           const raw = fs.readFileSync(file, 'utf8');
           const marker = '-- CreateSchema';
           const start = raw.indexOf(marker);
-          if (start < 0) throw new Error('W1F_PRE_W1A_SQL_MARKER_MISSING');
+          if (start < 0) throw new Error('W1F_NON_W1_SQL_MARKER_MISSING');
           const sql = raw.slice(start);
-          if (!/\bCREATE\s+TABLE\b/i.test(sql)) throw new Error('W1F_PRE_W1A_SQL_TABLES_MISSING');
-          if (/^◇\s/m.test(sql)) throw new Error('W1F_PRE_W1A_SQL_PREAMBLE_NOT_STRIPPED');
+          if (!/\bCREATE\s+TABLE\b/i.test(sql)) throw new Error('W1F_NON_W1_SQL_TABLES_MISSING');
+          if (/^◇\s/m.test(sql)) throw new Error('W1F_NON_W1_SQL_PREAMBLE_NOT_STRIPPED');
+          if (/"contract_templates"|"finance_cases"/i.test(sql)) throw new Error('W1F_NON_W1_SQL_CONTAINS_W1_OBJECT');
           fs.writeFileSync(file, sql, 'utf8');
           NODE
-          psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 -f evidence/pre-w1a-schema.sql \
-            > evidence/pre-w1a-apply.txt
+          psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 -f evidence/current-non-w1-schema.sql \
+            > evidence/current-non-w1-apply.txt
           DATABASE_URL="$UPGRADE_URL" \
             W1F_OUTPUT=evidence/legacy-before.json \
             node head/scripts/w1f-migration-readiness-summary.mjs capture-legacy \
