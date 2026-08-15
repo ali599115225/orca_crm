@@ -7,10 +7,11 @@ import {
   beginW1gRequest,
   optionalW1gJson,
   optionalW1gListLimit,
-  optionalW1gString,
+  optionalW1gUuid,
   readW1gJsonObject,
   requiredW1gJson,
   requiredW1gString,
+  requiredW1gUuid,
   w1gApiErrorResponse,
 } from "@/lib/domain/contract-finance/api-boundary";
 
@@ -26,8 +27,8 @@ export async function GET(request: NextRequest) {
 
     const drafts = await w1eListContractDrafts(boundary.session, {
       status,
-      financeCaseId,
-      contractId,
+      financeCaseId: financeCaseId ? requiredW1gUuidValue(financeCaseId) : undefined,
+      contractId: contractId ? requiredW1gUuidValue(contractId) : undefined,
       limit,
     });
 
@@ -47,10 +48,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await readW1gJsonObject(request);
     const draft = await w1eCreateContractDraft(boundary.session, {
-      templateId: requiredW1gString(body, "templateId"),
-      templateVersionId: requiredW1gString(body, "templateVersionId"),
-      contractId: optionalW1gString(body, "contractId"),
-      financeCaseId: optionalW1gString(body, "financeCaseId"),
+      templateId: requiredW1gUuid(body, "templateId"),
+      templateVersionId: requiredW1gUuid(body, "templateVersionId"),
+      contractId: optionalW1gUuid(body, "contractId"),
+      financeCaseId: optionalW1gUuid(body, "financeCaseId"),
       title: requiredW1gString(body, "title"),
       contentJson: requiredW1gJson(body, "contentJson"),
       dataBindingsJson: requiredW1gJson(body, "dataBindingsJson"),
