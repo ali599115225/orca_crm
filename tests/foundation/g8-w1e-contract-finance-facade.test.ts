@@ -79,13 +79,13 @@ describe("W1E contract / finance permission + application facade", () => {
     expect(w1eRoleAllowsPermission("SALES_MANAGER", "finance-case.authority-record")).toBe(true);
   });
 
-  it("requires database-backed authorization with no super-admin bypass", () => {
+  it("requires database-backed authorization with no elevated bypass", () => {
     expect(PERMISSION_SOURCE).toContain("await hasDatabaseRole(");
     expect(PERMISSION_SOURCE).toContain("W1E_UNAUTHORIZED");
     expect(PERMISSION_SOURCE).toContain("W1E_FORBIDDEN");
     expect(PERMISSION_SOURCE).not.toContain("isSuperAdmin(");
+    expect(PERMISSION_SOURCE).not.toContain("isConfiguredSuperAdmin");
     expect(PERMISSION_SOURCE).not.toContain("assertServerActionRole(");
-    expect(PERMISSION_SOURCE).not.toContain("platform-owner");
   });
 
   it("binds every facade operation to authorization and AsyncLocal tenant context", () => {
