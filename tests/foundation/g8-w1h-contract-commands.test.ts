@@ -1,0 +1,206 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const ROOT = process.cwd();
+const GATE = readFileSync(
+  join(ROOT, "docs", "product-extension", "W1H_CONTRACT_COMMANDS_GATE.md"),
+  "utf8",
+);
+const COMMAND_BOUNDARY = readFileSync(
+  join(ROOT, "lib", "domain", "contract-finance", "contract-command-boundary.ts"),
+  "utf8",
+);
+const PERMISSIONS = readFileSync(
+  join(ROOT, "lib", "auth", "w1e-contract-finance-permissions.ts"),
+  "utf8",
+);
+const CONTRACT_SERVICE = readFileSync(
+  join(ROOT, "lib", "domain", "contract-finance", "contract-draft-service.ts"),
+  "utf8",
+);
+const SNAPSHOT_SERVICE = readFileSync(
+  join(ROOT, "lib", "domain", "contract-finance", "contract-snapshot-service.ts"),
+  "utf8",
+);
+const REQUEST_APPROVAL = readFileSync(
+  join(ROOT, "app", "api", "v1", "contract-finance", "contract-drafts", "[id]", "approvals", "route.ts"),
+  "utf8",
+);
+const DECIDE_APPROVAL = readFileSync(
+  join(ROOT, "app", "api", "v1", "contract-finance", "contract-approvals", "[approvalId]", "decision", "route.ts"),
+  "utf8",
+);
+const FINALIZE_APPROVAL = readFileSync(
+  join(ROOT, "app", "api", "v1", "contract-finance", "contract-drafts", "[id]", "finalize-approval", "route.ts"),
+  "utf8",
+);
+const SNAPSHOT_ROUTE_PATH = join(
+  ROOT,
+  "app",
+  "api",
+  "v1",
+  "contract-finance",
+  "contract-drafts",
+  "[id]",
+  "snapshots",
+  "issue",
+  "route.ts",
+);
+
+const ROUTES = [REQUEST_APPROVAL, DECIDE_APPROVAL, FINALIZE_APPROVAL];
+const G4_API_ROUTE_EVIDENCE = [
+  "/api/v1/contract-finance/contract-drafts/[id]/approvals",
+  "/api/v1/contract-finance/contract-approvals/[approvalId]/decision",
+  "/api/v1/contract-finance/contract-drafts/[id]/finalize-approval",
+] as const;
+
+describe("W1H guarded Contract Studio approval commands", () => {
+  it("registers direct G4 evidence for all three approval routes", () => {
+    expect(G4_API_ROUTE_EVIDENCE).toHaveLength(3);
+    for (const route of G4_API_ROUTE_EVIDENCE) {
+      const gateRoute = route
+        .replace("/[id]", "/:id")
+        .replace("/[approvalId]", "/:approvalId");
+      expect(GATE).toContain(gateRoute);
+    }
+  });
+
+  it("adds a Contract Studio command flag above the W1G base gate", () => {
+    expect(COMMAND_BOUNDARY).toContain('process.env.ORCA_CONTRACT_STUDIO_COMMANDS_ENABLED === "true"');
+    const commandGate = COMMAND_BOUNDARY.indexOf("if (!isW1hContractCommandsEnabled())");
+    const baseGate = COMMAND_BOUNDARY.indexOf("return await beginW1gRequest(request)");
+    expect(commandGate).toBeGreaterThanOrEqual(0);
+    expect(baseGate).toBeGreaterThan(commandGate);
+    expect(GATE).toContain("ORCA_CONTRACT_FINANCE_API_ENABLED=true");
+    expect(GATE).toContain("ORCA_CONTRACT_FINANCE_SCHEMA_READY=true");
+    expect(GATE).toContain("ORCA_CONTRACT_STUDIO_COMMANDS_ENABLED=true");
+  });
+
+  it("routes only to the three frozen W1E Contract approval operations", () => {
+    expect(REQUEST_APPROVAL).toContain("w1eRequestContractApproval");
+    expect(DECIDE_APPROVAL).toContain("w1eDecideContractApproval");
+    expect(FINALIZE_APPROVAL).toContain("w1eFinalizeContractDraftApproval");
+
+    const combined = ROUTES.join("\n");
+    for (const excluded of [
+      "w1eIssueApprovedContractSnapshot",
+      "w1eTransitionFinanceCase",
+      "w1eRecordFinanceAuthorityEvidence",
+      "w1eRecordProviderOffer",
+      "w1eSelectProviderOffer",
+      "signContract",
+      "configurePaymentPlan",
+    ]) {
+      expect(combined).not.toContain(excluded);
+    }
+  });
+
+  it("never imports Prisma or direct ContractDraft/Snapshot write services from routes", () => {
+    for (const source of ROUTES) {
+      expect(source).not.toContain("@/lib/prisma");
+      expect(source).not.toContain('from "@prisma/client"');
+      expect(source).not.toContain("contract-draft-service");
+      expect(source).not.toContain("contract-snapshot-service");
+      expect(source).not.toMatch(/\bprisma\./);
+    }
+  });
+
+  it("preserves existing W1E author/admin approval role separation", () => {
+    expect(PERMISSIONS).toMatch(/const AUTHOR_ROLES = \[\s*"ADMIN",\s*"SALES_MANAGER",\s*"SALES_EMPLOYEE",\s*\]/m);
+    expect(PERMISSIONS).toMatch(/const CONTRACT_APPROVER_ROLES = \[\s*"ADMIN",\s*\]/m);
+    expect(PERMISSIONS).toContain('"contract-studio.approval-request"');
+    expect(PERMISSIONS).toContain("allowedRoles: AUTHOR_ROLES");
+
+    for (const key of [
+      '"contract-studio.approval-decide"',
+      '"contract-studio.approval-finalize"',
+    ]) {
+      const start = PERMISSIONS.indexOf(`${key}: {`);
+      expect(start).toBeGreaterThanOrEqual(0);
+      expect(PERMISSIONS.slice(start, start + 320)).toContain("allowedRoles: CONTRACT_APPROVER_ROLES");
+    }
+    expect(GATE).toContain("No Legal/Finance role is invented in this slice");
+  });
+
+  it("rejects caller-controlled identity, linkage, approval snapshot, and issued-state fields", () => {
+    for (const field of [
+      "tenantId",
+      "role",
+      "requestedBy",
+      "decidedBy",
+      "approvedBy",
+      "createdBy",
+      "contractId",
+      "approvalSnapshot",
+      "snapshotType",
+      "signedAt",
+      "draftId",
+      "approvalId",
+    ]) {
+      expect(COMMAND_BOUNDARY).toContain(`"${field}"`);
+    }
+    expect(REQUEST_APPROVAL).toContain("rejectW1hContractCallerSystemFields(body)");
+    expect(DECIDE_APPROVAL).toContain("rejectW1hContractCallerSystemFields(body)");
+    expect(GATE).toContain("may not be supplied by request payloads");
+  });
+
+  it("validates route IDs, approval request evidence, and the approval decision enum", () => {
+    for (const source of ROUTES) {
+      expect(source).toContain("requiredW1gUuidValue");
+    }
+    expect(REQUEST_APPROVAL).toContain('requiredW1gString(body, "riskTier")');
+    expect(REQUEST_APPROVAL).toContain('optionalW1gString(body, "reason")');
+    expect(REQUEST_APPROVAL).toContain('optionalW1gJson(body, "evidenceJson")');
+    expect(COMMAND_BOUNDARY).toContain('value !== "APPROVED" && value !== "REJECTED"');
+    expect(DECIDE_APPROVAL).toContain("requiredW1hApprovalDecision(body)");
+  });
+
+  it("rejects every non-empty finalization body before W1E", () => {
+    expect(COMMAND_BOUNDARY).toContain("export async function assertW1hEmptyCommandBody");
+    expect(COMMAND_BOUNDARY).toContain("const raw = await request.text()");
+    expect(COMMAND_BOUNDARY).toContain("raw.trim().length > 0");
+    const emptyBodyIndex = FINALIZE_APPROVAL.indexOf("await assertW1hEmptyCommandBody(request)");
+    const facadeIndex = FINALIZE_APPROVAL.indexOf("await w1eFinalizeContractDraftApproval(");
+    expect(emptyBodyIndex).toBeGreaterThanOrEqual(0);
+    expect(facadeIndex).toBeGreaterThan(emptyBodyIndex);
+    expect(GATE).toContain("Finalization rejects every non-empty request body");
+  });
+
+  it("leaves approval-state legality and finalization entirely to W1D", () => {
+    expect(CONTRACT_SERVICE).toContain('draft.status !== "DRAFT" && draft.status !== "APPROVAL_PENDING"');
+    expect(CONTRACT_SERVICE).toContain('approval.status !== "PENDING" || approval.draft.status !== "APPROVAL_PENDING"');
+    expect(CONTRACT_SERVICE).toContain('input.decision === "REJECTED"');
+    expect(CONTRACT_SERVICE).toContain('draft.status !== "APPROVAL_PENDING"');
+    expect(CONTRACT_SERVICE).toContain("draft.approvals.length === 0");
+    expect(CONTRACT_SERVICE).toContain('approval.status !== "APPROVED"');
+    expect(GATE).toContain("W1D remains authoritative for allowed draft state");
+  });
+
+  it("keeps snapshot issuance internal until a canonical compiler exists", () => {
+    expect(existsSync(SNAPSHOT_ROUTE_PATH)).toBe(false);
+    expect(SNAPSHOT_SERVICE).toContain("issueApprovedContractSnapshot");
+    expect(SNAPSHOT_SERVICE).toContain("computeContractSnapshotDigest");
+    expect(SNAPSHOT_SERVICE).toContain("input.renderedContent");
+    expect(SNAPSHOT_SERVICE).toContain("input.structuredFacts");
+    expect(SNAPSHOT_SERVICE).toContain("input.clauseSnapshot");
+    expect(SNAPSHOT_SERVICE).toContain("input.paymentPlanSnapshot");
+    expect(GATE).toContain("does not expose it as a network command");
+    expect(GATE).toContain("deterministic server-side compiler/assembler");
+    expect(GATE).toContain("must not be able to choose rendered legal content or canonical financial facts");
+  });
+
+  it("does not add signature, provider network, deploy, or Transaction Spine financial writes", () => {
+    const combined = [COMMAND_BOUNDARY, ...ROUTES].join("\n");
+    expect(combined).not.toContain("fetch(");
+    expect(combined).not.toContain("axios");
+    expect(combined).not.toContain("EJAR_API");
+    expect(combined).not.toContain("signContract");
+    expect(combined).not.toMatch(/paymentPlan\.(?:create|update|delete|upsert)/);
+    expect(combined).not.toMatch(/installment\.(?:create|update|delete|upsert)/);
+    expect(combined).not.toMatch(/invoice\.(?:create|update|delete|upsert)/);
+    expect(GATE).toContain("no environment activation or Vercel deploy");
+    expect(GATE).toContain("no PDF renderer/signature/execution endpoint");
+    expect(GATE).toContain("no UI");
+  });
+});
