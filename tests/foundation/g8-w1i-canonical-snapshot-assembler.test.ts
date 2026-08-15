@@ -71,9 +71,13 @@ describe("W1I canonical snapshot assembler", () => {
     expect(ASSEMBLER_SOURCE).toContain('orderBy: [{ requestedAt: "asc" }, { id: "asc" }]');
   });
 
-  it("fails closed on broken cross-source linkage or ambiguous selected financing", () => {
+  it("fails closed on broken cross-source linkage, legacy tenant drift, or ambiguous financing", () => {
     expect(ASSEMBLER_SOURCE).toContain("W1_CANONICAL_SNAPSHOT_CONTRACT_NOT_FOUND_FOR_TENANT");
     expect(ASSEMBLER_SOURCE).toContain("W1_CANONICAL_SNAPSHOT_FINANCE_CONTRACT_MISMATCH");
+    expect(ASSEMBLER_SOURCE).toContain("W1_CANONICAL_SNAPSHOT_PROPERTY_TENANT_MISMATCH");
+    expect(ASSEMBLER_SOURCE).toContain("W1_CANONICAL_SNAPSHOT_PAYMENT_PLAN_TENANT_MISMATCH");
+    expect(ASSEMBLER_SOURCE).toContain("contract.unit.tenantId !== input.tenantId");
+    expect(ASSEMBLER_SOURCE).toContain("contract.paymentPlan.tenantId !== input.tenantId");
     expect(ASSEMBLER_SOURCE).toContain("W1_CANONICAL_SNAPSHOT_MULTIPLE_SELECTED_PROVIDER_OFFERS");
     expect(ASSEMBLER_SOURCE).toContain('where: { recordStatus: "SELECTED" }');
     expect(ASSEMBLER_SOURCE).toContain("take: 2");
