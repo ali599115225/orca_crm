@@ -199,7 +199,7 @@ describe("W1H guarded Contract Studio approval commands", () => {
     expect(combined).not.toMatch(/paymentPlan\.(?:create|update|delete|upsert)/);
     expect(combined).not.toMatch(/installment\.(?:create|update|delete|upsert)/);
     expect(combined).not.toMatch(/invoice\.(?:create|update|delete|upsert)/);
-    expect(GATE).toContain("no Vercel deploy");
+    expect(GATE).toContain("no environment activation or Vercel deploy");
     expect(GATE).toContain("no PDF renderer/signature/execution endpoint");
     expect(GATE).toContain("no UI");
   });
