@@ -10,14 +10,27 @@ const ASSEMBLER_SOURCE = readFileSync(
 const W1_SCHEMA = readFileSync(join(ROOT, "prisma", "w1-contract-finance.prisma"), "utf8");
 const LEGACY_SCHEMA = readFileSync(join(ROOT, "prisma", "schema.prisma"), "utf8");
 
+function sourceBlock(start: string, end: string): string {
+  const startIndex = ASSEMBLER_SOURCE.indexOf(start);
+  const endIndex = ASSEMBLER_SOURCE.indexOf(end, startIndex);
+  expect(startIndex).toBeGreaterThanOrEqual(0);
+  expect(endIndex).toBeGreaterThan(startIndex);
+  return ASSEMBLER_SOURCE.slice(startIndex, endIndex);
+}
+
 describe("W1I canonical snapshot assembler", () => {
   it("uses only tenant + approved draft identity as caller input", () => {
-    expect(ASSEMBLER_SOURCE).toContain("export type CanonicalContractSnapshotAssemblyInput = {");
-    expect(ASSEMBLER_SOURCE).toContain("tenantId: string;");
-    expect(ASSEMBLER_SOURCE).toContain("draftId: string;");
-    expect(ASSEMBLER_SOURCE).not.toMatch(/CanonicalContractSnapshotAssemblyInput[\s\S]*?renderedContent:/);
-    expect(ASSEMBLER_SOURCE).not.toMatch(/CanonicalContractSnapshotAssemblyInput[\s\S]*?structuredFacts:/);
-    expect(ASSEMBLER_SOURCE).not.toMatch(/CanonicalContractSnapshotAssemblyInput[\s\S]*?paymentPlanSnapshot:/);
+    const inputType = sourceBlock(
+      "export type CanonicalContractSnapshotAssemblyInput = {",
+      "export type CanonicalContractSnapshotAssembly = {",
+    );
+
+    expect(inputType).toContain("tenantId: string;");
+    expect(inputType).toContain("draftId: string;");
+    expect(inputType).not.toContain("renderedContent");
+    expect(inputType).not.toContain("structuredFacts");
+    expect(inputType).not.toContain("paymentPlanSnapshot");
+    expect(inputType).not.toContain("approvalSnapshot");
   });
 
   it("loads the approved draft and every persisted canonical source server-side", () => {
