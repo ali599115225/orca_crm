@@ -36,6 +36,7 @@ Both are absent/false by default. W1G does not set either variable in repository
 - Request JSON cannot supply `tenantId`, actor/user identity, approval identity, or any authorization role.
 - Query list limits are bounded by the existing W1E read model service.
 - Malformed JSON and invalid scalar shapes fail with `400` before the facade call.
+- Top-level `null` is rejected for W1G JSON document fields before the facade call; valid nested JSON null values are not rewritten by W1G.
 - W1E unauthorized/forbidden failures map to `401`/`403`; domain not-found failures map to `404`; conflicts map to `409`; unexpected failures map to a generic `500` without internal stack/error leakage.
 
 ## W1G routes
@@ -99,4 +100,4 @@ The durable historical architecture markdown counts are not rewritten in W1G; on
 
 ## Closure
 
-W1G closes only when the PR remains within the nine-file allowlist, G4/G5/G8 contract tests prove direct evidence, double fail-closed gating, facade-only routing, zero unproven P0/P1 surfaces, zero missing API auth evidence, and zero malformed/duplicate/invalid-permission inventory findings; full ORCA CI through Build passes on the exact final head; independent review finds no Critical/Major issue; and no production migration/deploy/provider activation occurs.
+W1G closes only when the PR remains within the nine-file allowlist, G4/G5/G8 contract tests prove direct evidence, double fail-closed gating, facade-only routing, strict JSON document boundary, zero unproven P0/P1 surfaces, zero missing API auth evidence, and zero malformed/duplicate/invalid-permission inventory findings; full ORCA CI through Build passes on the exact final head; independent review finds no Critical/Major issue; and no production migration/deploy/provider activation occurs.
