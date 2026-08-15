@@ -34,10 +34,12 @@ Both are absent/false by default. W1G does not set either variable in repository
 - `requireAuth()` establishes the signed session without a database role lookup.
 - W1E facade performs current database-role revalidation, tenant binding, AsyncLocal tenant context, and delegation to W1B–W1D domain services.
 - Request JSON cannot supply `tenantId`, actor/user identity, approval identity, or any authorization role.
+- UUID-shaped W1 references are validated before the facade call, including path IDs and FinanceCase / ContractDraft relation IDs exposed by W1G.
+- Finance scalar inputs exposed by W1G reject negative values; `termMonths`, when supplied, must be a positive safe integer. This is input integrity only and does not hard-code lender policy, DSR policy, or a commercial maximum term.
 - Query list limits are bounded by the existing W1E read model service.
 - Malformed JSON and invalid scalar shapes fail with `400` before the facade call.
 - Top-level `null` is rejected for W1G JSON document fields before the facade call; valid nested JSON null values are not rewritten by W1G.
-- W1E unauthorized/forbidden failures map to `401`/`403`; domain not-found failures map to `404`; conflicts map to `409`; unexpected failures map to a generic `500` without internal stack/error leakage.
+- W1E unauthorized/forbidden failures map to `401`/`403`; domain not-found failures map to `404`; known unique conflicts map to `409`; unexpected failures map to a generic `500` without internal stack/error leakage.
 
 ## W1G routes
 
@@ -95,9 +97,10 @@ The durable historical architecture markdown counts are not rewritten in W1G; on
 - no approval-decision/finalization/snapshot-issue endpoint;
 - no provider-offer/authority/FinanceCase-transition endpoint;
 - no Transaction Spine financial mutation;
+- no lender-specific validation or provider-policy hard-coding;
 - no change to W1E permission mappings or EXEC-003 historical assignments;
 - no change to G4/G5 scanner implementation, normalization/reconciliation logic, or risk-priority logic.
 
 ## Closure
 
-W1G closes only when the PR remains within the nine-file allowlist, G4/G5/G8 contract tests prove direct evidence, double fail-closed gating, facade-only routing, strict JSON document boundary, zero unproven P0/P1 surfaces, zero missing API auth evidence, and zero malformed/duplicate/invalid-permission inventory findings; full ORCA CI through Build passes on the exact final head; independent review finds no Critical/Major issue; and no production migration/deploy/provider activation occurs.
+W1G closes only when the PR remains within the nine-file allowlist, G4/G5/G8 contract tests prove direct evidence, double fail-closed gating, facade-only routing, strict UUID/JSON/basic finance input integrity, zero unproven P0/P1 surfaces, zero missing API auth evidence, and zero malformed/duplicate/invalid-permission inventory findings; full ORCA CI through Build passes on the exact final head; independent review finds no Critical/Major issue; and no production migration/deploy/provider activation occurs.
