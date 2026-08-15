@@ -37,7 +37,7 @@ export async function POST(
 
     return NextResponse.json(
       { data: snapshot },
-      { status: 201, headers: { "Cache-Control": "no-store" } },
+      { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
     return w1gApiErrorResponse(error);
