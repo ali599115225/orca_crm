@@ -4,7 +4,10 @@ import {
   requiredW1gUuidValue,
   w1gApiErrorResponse,
 } from "@/lib/domain/contract-finance/api-boundary";
-import { beginW1hContractCommandRequest } from "@/lib/domain/contract-finance/contract-command-boundary";
+import {
+  assertW1hEmptyCommandBody,
+  beginW1hContractCommandRequest,
+} from "@/lib/domain/contract-finance/contract-command-boundary";
 
 export async function POST(
   request: NextRequest,
@@ -14,6 +17,7 @@ export async function POST(
   if (boundary instanceof NextResponse) return boundary;
 
   try {
+    await assertW1hEmptyCommandBody(request);
     const { id } = await context.params;
     const draft = await w1eFinalizeContractDraftApproval(
       boundary.session,
