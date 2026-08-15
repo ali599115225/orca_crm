@@ -188,6 +188,19 @@ jobs:
             sleep 1
           done
           printf '{"attempts":%s,"verdict":"PASS"}\n' "$attempt" > evidence/pre-w1a-materialize-retry-summary.json
+          cp evidence/pre-w1a-schema.sql evidence/pre-w1a-schema.raw.txt
+          node <<'NODE'
+          const fs = require('node:fs');
+          const file = 'evidence/pre-w1a-schema.sql';
+          const raw = fs.readFileSync(file, 'utf8');
+          const marker = '-- CreateSchema';
+          const start = raw.indexOf(marker);
+          if (start < 0) throw new Error('W1F_PRE_W1A_SQL_MARKER_MISSING');
+          const sql = raw.slice(start);
+          if (!/\bCREATE\s+TABLE\b/i.test(sql)) throw new Error('W1F_PRE_W1A_SQL_TABLES_MISSING');
+          if (/^◇\s/m.test(sql)) throw new Error('W1F_PRE_W1A_SQL_PREAMBLE_NOT_STRIPPED');
+          fs.writeFileSync(file, sql, 'utf8');
+          NODE
           psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 -f evidence/pre-w1a-schema.sql \
             > evidence/pre-w1a-apply.txt
           DATABASE_URL="$UPGRADE_URL" \
