@@ -9,6 +9,7 @@ import {
   isRentFlexSelectionTransitionAllowed,
   isRentFlexSettlementTransitionAllowed,
   parseRentFlexDateOnly,
+  parseRentFlexScheduleJson,
 } from "@/lib/domain/rental/rent-flex-12-persistence-contract";
 
 const root = process.cwd();
@@ -52,9 +53,11 @@ describe("RF12-P1 persistence contract", () => {
     expect(isRentFlexSelectionTransitionAllowed("CANCELLED", "DRAFT")).toBe(false);
   });
 
-  it("permits settlement progress but keeps terminal states terminal", () => {
+  it("permits settlement recovery while keeping received and cancelled terminal", () => {
     expect(isRentFlexSettlementTransitionAllowed("EXPECTED", "PARTIAL")).toBe(true);
-    expect(isRentFlexSettlementTransitionAllowed("PARTIAL", "RECEIVED")).toBe(true);
+    expect(isRentFlexSettlementTransitionAllowed("PARTIAL", "FAILED")).toBe(true);
+    expect(isRentFlexSettlementTransitionAllowed("FAILED", "EXPECTED")).toBe(true);
+    expect(isRentFlexSettlementTransitionAllowed("FAILED", "RECEIVED")).toBe(true);
     expect(isRentFlexSettlementTransitionAllowed("RECEIVED", "PARTIAL")).toBe(false);
     expect(isRentFlexSettlementTransitionAllowed("CANCELLED", "EXPECTED")).toBe(false);
   });
@@ -67,6 +70,24 @@ describe("RF12-P1 persistence contract", () => {
         status: "PARTIAL",
       }),
     ).toEqual({ expectedAmount: 75_000, receivedAmount: 25_000 });
+
+    expect(
+      assertRentFlexSettlementAmounts({
+        expectedAmount: 75_000,
+        receivedAmount: null,
+        status: "FAILED",
+      }),
+    ).toEqual({ expectedAmount: 75_000, receivedAmount: null });
+
+    expect(() =>
+      assertRentFlexSettlementAmounts({
+        expectedAmount: 75_000,
+        receivedAmount: 1,
+        status: "FAILED",
+      }),
+    ).toThrowError(
+      new RentFlexP1Error("RENT_FLEX_P1_NONPAYMENT_STATUS_MUST_NOT_CARRY_RECEIPT"),
+    );
 
     expect(() =>
       assertRentFlexSettlementAmounts({
@@ -98,6 +119,14 @@ describe("RF12-P1 persistence contract", () => {
       dueDate: `2026-${String(index + 1).padStart(2, "0")}-01`,
       amountSar: 1000,
     }));
+    expect(parseRentFlexScheduleJson(schedule)).toEqual(schedule);
+    expect(() =>
+      parseRentFlexScheduleJson([
+        ...schedule.slice(0, 11),
+        { ...schedule[11], installmentNumber: 99 },
+      ]),
+    ).toThrowError(new RentFlexP1Error("RENT_FLEX_P1_SCHEDULE_SHAPE_INVALID"));
+
     const first = digestRentFlexSchedule(
       "DIRECT_MONTHLY_EJAR",
       12_000,
@@ -136,7 +165,7 @@ describe("RF12-P1 persistence contract", () => {
     expect(schema).not.toContain("Invoice");
   });
 
-  it("keeps all RF12-P1 commands tenant-guarded, audited, and non-accounting", () => {
+  it("keeps all RF12-P1 commands tenant-guarded, audited, integrity-checked, and non-accounting", () => {
     const service = source("lib/domain/rental/rent-flex-12-service.ts");
     for (const command of [
       "configureRentFlexForUnit",
@@ -153,7 +182,8 @@ describe("RF12-P1 persistence contract", () => {
     }
     expect(service).toContain("requireTenantContext()");
     expect(service).toContain("selectProviderOffer(");
-    expect(service).toContain("tx.auditLog.create(");
+    expect(service).toContain("db.auditLog.create(");
+    expect(service).toContain("parseRentFlexScheduleJson(");
     expect(service).not.toContain("tx.invoice.create(");
     expect(service).not.toContain("tx.paymentTransaction.create(");
     expect(service).not.toContain("postInvoiceEntry(");

@@ -48,11 +48,8 @@ export function isRentFlexSettlementTransitionAllowed(
   to: RentFlexSettlementStatus,
 ): boolean {
   if (from === to) return true;
-  if (from === "EXPECTED") {
-    return ["PARTIAL", "RECEIVED", "FAILED", "CANCELLED"].includes(to);
-  }
-  if (from === "PARTIAL") {
-    return ["PARTIAL", "RECEIVED", "FAILED", "CANCELLED"].includes(to);
+  if (from === "EXPECTED" || from === "PARTIAL" || from === "FAILED") {
+    return ["EXPECTED", "PARTIAL", "RECEIVED", "FAILED", "CANCELLED"].includes(to);
   }
   return false;
 }
@@ -62,7 +59,11 @@ export function normalizeRentFlexMoney(
   code: string,
   allowZero = false,
 ): number {
-  if (!Number.isFinite(value) || (allowZero ? value < 0 : value <= 0) || value > 1_000_000_000) {
+  if (
+    !Number.isFinite(value) ||
+    (allowZero ? value < 0 : value <= 0) ||
+    value > 1_000_000_000
+  ) {
     throw new RentFlexP1Error(code);
   }
   return Math.round(value * 100) / 100;
@@ -173,8 +174,12 @@ export function assertRentFlexSettlementAmounts(input: {
     throw new RentFlexP1Error("RENT_FLEX_P1_SETTLEMENT_EXCEEDS_EXPECTED");
   }
 
-  if (input.status === "EXPECTED" && receivedAmount !== null && receivedAmount !== 0) {
-    throw new RentFlexP1Error("RENT_FLEX_P1_EXPECTED_SETTLEMENT_MUST_BE_UNPAID");
+  if (
+    (input.status === "EXPECTED" || input.status === "FAILED" || input.status === "CANCELLED") &&
+    receivedAmount !== null &&
+    receivedAmount !== 0
+  ) {
+    throw new RentFlexP1Error("RENT_FLEX_P1_NONPAYMENT_STATUS_MUST_NOT_CARRY_RECEIPT");
   }
   if (
     input.status === "PARTIAL" &&

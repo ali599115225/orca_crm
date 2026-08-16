@@ -21,6 +21,7 @@ import {
   isRentFlexSettlementTransitionAllowed,
   normalizeRentFlexMoney,
   parseRentFlexDateOnly,
+  parseRentFlexScheduleJson,
   type RentFlexSelectionStatus,
   type RentFlexSettlementStatus,
 } from "./rent-flex-12-persistence-contract";
@@ -29,6 +30,9 @@ const RENT_FLEX_MODE_DIRECT: RentFlex12Mode = "DIRECT_MONTHLY_EJAR";
 const RENT_FLEX_MODE_EXTERNAL: RentFlex12Mode = "EXTERNAL_RNPL_12";
 const RENT_FLEX_PURPOSE = "RENT_FLEX_12";
 const RENT_FLEX_TERM_MONTHS = 12;
+
+type AuditWriter = Pick<typeof prisma, "auditLog">;
+type RentFlexReferenceReader = Pick<typeof prisma, "unit" | "lead">;
 
 export type RentFlexMoneyInput = Prisma.Decimal | number | string;
 
@@ -64,7 +68,9 @@ function asSettlementStatus(value: string): RentFlexSettlementStatus {
 }
 
 function asMode(value: string): RentFlex12Mode {
-  if (value === RENT_FLEX_MODE_DIRECT || value === RENT_FLEX_MODE_EXTERNAL) return value;
+  if (value === RENT_FLEX_MODE_DIRECT || value === RENT_FLEX_MODE_EXTERNAL) {
+    return value;
+  }
   throw new RentFlexP1Error("RENT_FLEX_P1_MODE_UNKNOWN");
 }
 
@@ -109,7 +115,7 @@ function quoteDigest(input: {
 }
 
 async function audit(
-  tx: Prisma.TransactionClient,
+  db: AuditWriter,
   input: {
     tenantId: string;
     actorId: string;
@@ -119,7 +125,7 @@ async function audit(
     details: Record<string, unknown>;
   },
 ): Promise<void> {
-  await tx.auditLog.create({
+  await db.auditLog.create({
     data: {
       tenantId: input.tenantId,
       userId: input.actorId,
@@ -132,23 +138,27 @@ async function audit(
 }
 
 async function assertUnitAndOptionalLead(
-  tx: Prisma.TransactionClient,
+  db: RentFlexReferenceReader,
   tenantId: string,
   unitId: string,
   leadId?: string | null,
 ): Promise<void> {
-  const unit = await tx.unit.findFirst({
+  const unit = await db.unit.findFirst({
     where: { id: unitId, tenantId },
     select: { id: true },
   });
-  if (!unit) throw new RentFlexP1Error("RENT_FLEX_P1_UNIT_NOT_FOUND_FOR_TENANT");
+  if (!unit) {
+    throw new RentFlexP1Error("RENT_FLEX_P1_UNIT_NOT_FOUND_FOR_TENANT");
+  }
 
   if (leadId) {
-    const lead = await tx.lead.findFirst({
+    const lead = await db.lead.findFirst({
       where: { id: leadId, tenantId },
       select: { id: true },
     });
-    if (!lead) throw new RentFlexP1Error("RENT_FLEX_P1_LEAD_NOT_FOUND_FOR_TENANT");
+    if (!lead) {
+      throw new RentFlexP1Error("RENT_FLEX_P1_LEAD_NOT_FOUND_FOR_TENANT");
+    }
   }
 }
 
@@ -195,10 +205,16 @@ export async function configureRentFlexForUnit(input: {
       await audit(tx, {
         tenantId: input.tenantId,
         actorId: input.actorId,
-        action: existing ? "RENT_FLEX_UNIT_CONFIG_UPDATED" : "RENT_FLEX_UNIT_CONFIG_CREATED",
+        action: existing
+          ? "RENT_FLEX_UNIT_CONFIG_UPDATED"
+          : "RENT_FLEX_UNIT_CONFIG_CREATED",
         tableName: "rent_flex_unit_configs",
         recordId: record.id,
-        details: { unitId: input.unitId, externalRnplEnabled: input.externalRnplEnabled, status },
+        details: {
+          unitId: input.unitId,
+          externalRnplEnabled: input.externalRnplEnabled,
+          status,
+        },
       });
       return record;
     },
@@ -233,7 +249,12 @@ export async function createDirectMonthlySelection(input: {
 
   return prisma.$transaction(
     async (tx) => {
-      await assertUnitAndOptionalLead(tx, input.tenantId, input.unitId, input.leadId);
+      await assertUnitAndOptionalLead(
+        tx,
+        input.tenantId,
+        input.unitId,
+        input.leadId,
+      );
       const selectedAt = new Date();
       const selection = await tx.rentFlexSelection.create({
         data: {
@@ -258,7 +279,11 @@ export async function createDirectMonthlySelection(input: {
         action: "RENT_FLEX_DIRECT_SELECTION_CREATED",
         tableName: "rent_flex_selections",
         recordId: selection.id,
-        details: { unitId: input.unitId, leadId: input.leadId ?? null, scheduleDigest: digest },
+        details: {
+          unitId: input.unitId,
+          leadId: input.leadId ?? null,
+          scheduleDigest: digest,
+        },
       });
       return selection;
     },
@@ -283,7 +308,12 @@ export async function createExternalRnplSelection(input: {
 
   return prisma.$transaction(
     async (tx) => {
-      await assertUnitAndOptionalLead(tx, input.tenantId, input.unitId, input.leadId);
+      await assertUnitAndOptionalLead(
+        tx,
+        input.tenantId,
+        input.unitId,
+        input.leadId,
+      );
       const selection = await tx.rentFlexSelection.create({
         data: {
           tenantId: input.tenantId,
@@ -325,9 +355,15 @@ export async function attachExternalFinanceCase(input: {
       const selection = await tx.rentFlexSelection.findFirst({
         where: { id: input.selectionId, tenantId: input.tenantId },
       });
-      if (!selection) throw new RentFlexP1Error("RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT");
+      if (!selection) {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT",
+        );
+      }
       if (asMode(selection.mode) !== RENT_FLEX_MODE_EXTERNAL) {
-        throw new RentFlexP1Error("RENT_FLEX_P1_FINANCE_CASE_REQUIRES_EXTERNAL_MODE");
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_FINANCE_CASE_REQUIRES_EXTERNAL_MODE",
+        );
       }
       const status = asSelectionStatus(selection.status);
       if (status === "LOCKED" || status === "CANCELLED") {
@@ -335,7 +371,9 @@ export async function attachExternalFinanceCase(input: {
       }
       if (selection.financeCaseId) {
         if (selection.financeCaseId === input.financeCaseId) return selection;
-        throw new RentFlexP1Error("RENT_FLEX_P1_FINANCE_CASE_ALREADY_ATTACHED");
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_FINANCE_CASE_ALREADY_ATTACHED",
+        );
       }
 
       const financeCase = await tx.financeCase.findFirst({
@@ -349,21 +387,39 @@ export async function attachExternalFinanceCase(input: {
           termMonths: true,
         },
       });
-      if (!financeCase) throw new RentFlexP1Error("RENT_FLEX_P1_FINANCE_CASE_NOT_FOUND_FOR_TENANT");
-      if (financeCase.purpose !== RENT_FLEX_PURPOSE || financeCase.termMonths !== RENT_FLEX_TERM_MONTHS) {
-        throw new RentFlexP1Error("RENT_FLEX_P1_FINANCE_CASE_CONTRACT_INVALID");
+      if (!financeCase) {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_FINANCE_CASE_NOT_FOUND_FOR_TENANT",
+        );
+      }
+      if (
+        financeCase.purpose !== RENT_FLEX_PURPOSE ||
+        financeCase.termMonths !== RENT_FLEX_TERM_MONTHS
+      ) {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_FINANCE_CASE_CONTRACT_INVALID",
+        );
       }
       if (financeCase.unitId !== selection.unitId) {
         throw new RentFlexP1Error("RENT_FLEX_P1_FINANCE_CASE_UNIT_MISMATCH");
       }
-      if (selection.leadId && financeCase.leadId && selection.leadId !== financeCase.leadId) {
+      if (
+        selection.leadId &&
+        financeCase.leadId &&
+        selection.leadId !== financeCase.leadId
+      ) {
         throw new RentFlexP1Error("RENT_FLEX_P1_FINANCE_CASE_LEAD_MISMATCH");
       }
-      if (!financeCase.requestedAmount || !financeCase.requestedAmount.eq(selection.annualRentAmount)) {
+      if (
+        !financeCase.requestedAmount ||
+        !financeCase.requestedAmount.eq(selection.annualRentAmount)
+      ) {
         throw new RentFlexP1Error("RENT_FLEX_P1_FINANCE_CASE_AMOUNT_MISMATCH");
       }
       if (!isRentFlexSelectionTransitionAllowed(status, "SELECTED")) {
-        throw new RentFlexP1Error("RENT_FLEX_P1_SELECTION_TRANSITION_INVALID");
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_SELECTION_TRANSITION_INVALID",
+        );
       }
 
       const selectedAt = selection.selectedAt ?? new Date();
@@ -415,17 +471,32 @@ export async function attachExternalOfferTerms(input: {
       const selection = await tx.rentFlexSelection.findFirst({
         where: { id: input.selectionId, tenantId: input.tenantId },
       });
-      if (!selection) throw new RentFlexP1Error("RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT");
-      if (asMode(selection.mode) !== RENT_FLEX_MODE_EXTERNAL || !selection.financeCaseId) {
-        throw new RentFlexP1Error("RENT_FLEX_P1_EXTERNAL_FINANCE_CASE_REQUIRED");
+      if (!selection) {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT",
+        );
+      }
+      if (
+        asMode(selection.mode) !== RENT_FLEX_MODE_EXTERNAL ||
+        !selection.financeCaseId
+      ) {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_EXTERNAL_FINANCE_CASE_REQUIRED",
+        );
       }
       const status = asSelectionStatus(selection.status);
-      if (status !== "SELECTED") throw new RentFlexP1Error("RENT_FLEX_P1_OFFER_TERMS_STATE_INVALID");
+      if (status !== "SELECTED") {
+        throw new RentFlexP1Error("RENT_FLEX_P1_OFFER_TERMS_STATE_INVALID");
+      }
       if (!ownerSettlement.eq(selection.annualRentAmount)) {
-        throw new RentFlexP1Error("RENT_FLEX_P1_OWNER_SETTLEMENT_MUST_EQUAL_ANNUAL_RENT");
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_OWNER_SETTLEMENT_MUST_EQUAL_ANNUAL_RENT",
+        );
       }
       if (dateOnlyString(selection.firstDueDate) !== input.firstDueDate) {
-        throw new RentFlexP1Error("RENT_FLEX_P1_OFFER_FIRST_DUE_DATE_MISMATCH");
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_OFFER_FIRST_DUE_DATE_MISMATCH",
+        );
       }
 
       const offer = await tx.financeProviderOffer.findFirst({
@@ -442,7 +513,11 @@ export async function attachExternalOfferTerms(input: {
           termMonths: true,
         },
       });
-      if (!offer) throw new RentFlexP1Error("RENT_FLEX_P1_PROVIDER_OFFER_NOT_FOUND_FOR_TENANT");
+      if (!offer) {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_PROVIDER_OFFER_NOT_FOUND_FOR_TENANT",
+        );
+      }
       if (offer.termMonths !== RENT_FLEX_TERM_MONTHS) {
         throw new RentFlexP1Error("RENT_FLEX_P1_PROVIDER_OFFER_TERM_INVALID");
       }
@@ -468,11 +543,16 @@ export async function attachExternalOfferTerms(input: {
       });
 
       const existing = await tx.rentFlexOfferTerms.findFirst({
-        where: { tenantId: input.tenantId, financeProviderOfferId: offer.id },
+        where: {
+          tenantId: input.tenantId,
+          financeProviderOfferId: offer.id,
+        },
       });
       if (existing) {
         if (existing.quoteDigest === digest) return existing;
-        throw new RentFlexP1Error("RENT_FLEX_P1_PROVIDER_OFFER_TERMS_CONFLICT");
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_PROVIDER_OFFER_TERMS_CONFLICT",
+        );
       }
 
       const terms = await tx.rentFlexOfferTerms.create({
@@ -481,9 +561,13 @@ export async function attachExternalOfferTerms(input: {
           financeProviderOfferId: offer.id,
           ownerSettlementAmount: ownerSettlement,
           totalTenantPayable,
-          tenantCostDelta: new Prisma.Decimal(quote.tenantCostDeltaSar.toFixed(2)),
+          tenantCostDelta: new Prisma.Decimal(
+            quote.tenantCostDeltaSar.toFixed(2),
+          ),
           firstDueDate,
-          repaymentScheduleJson: scheduleJson(quote.externalRepaymentSchedule),
+          repaymentScheduleJson: scheduleJson(
+            quote.externalRepaymentSchedule,
+          ),
           quoteDigest: digest,
         },
       });
@@ -493,7 +577,11 @@ export async function attachExternalOfferTerms(input: {
         action: "RENT_FLEX_PROVIDER_TERMS_ATTACHED",
         tableName: "rent_flex_offer_terms",
         recordId: terms.id,
-        details: { selectionId: selection.id, financeProviderOfferId: offer.id, quoteDigest: digest },
+        details: {
+          selectionId: selection.id,
+          financeProviderOfferId: offer.id,
+          quoteDigest: digest,
+        },
       });
       return terms;
     },
@@ -512,27 +600,54 @@ export async function selectExternalRnplOffer(input: {
   const selection = await prisma.rentFlexSelection.findFirst({
     where: { id: input.selectionId, tenantId: input.tenantId },
   });
-  if (!selection) throw new RentFlexP1Error("RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT");
-  if (asMode(selection.mode) !== RENT_FLEX_MODE_EXTERNAL || !selection.financeCaseId) {
+  if (!selection) {
+    throw new RentFlexP1Error("RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT");
+  }
+  if (
+    asMode(selection.mode) !== RENT_FLEX_MODE_EXTERNAL ||
+    !selection.financeCaseId
+  ) {
     throw new RentFlexP1Error("RENT_FLEX_P1_EXTERNAL_FINANCE_CASE_REQUIRED");
   }
   const status = asSelectionStatus(selection.status);
   if (status === "LOCKED") {
-    if (selection.selectedProviderOfferId === input.financeProviderOfferId) return selection;
+    if (selection.selectedProviderOfferId === input.financeProviderOfferId) {
+      return selection;
+    }
     throw new RentFlexP1Error("RENT_FLEX_P1_SELECTION_IMMUTABLE");
   }
-  if (status !== "SELECTED") throw new RentFlexP1Error("RENT_FLEX_P1_OFFER_SELECTION_STATE_INVALID");
+  if (status !== "SELECTED") {
+    throw new RentFlexP1Error("RENT_FLEX_P1_OFFER_SELECTION_STATE_INVALID");
+  }
 
-  const terms = await prisma.rentFlexOfferTerms.findFirst({
-    where: { tenantId: input.tenantId, financeProviderOfferId: input.financeProviderOfferId },
+  const offer = await prisma.financeProviderOffer.findFirst({
+    where: {
+      id: input.financeProviderOfferId,
+      tenantId: input.tenantId,
+      financeCaseId: selection.financeCaseId,
+    },
     select: { id: true },
   });
-  if (!terms) throw new RentFlexP1Error("RENT_FLEX_P1_PROVIDER_OFFER_TERMS_REQUIRED");
+  if (!offer) {
+    throw new RentFlexP1Error(
+      "RENT_FLEX_P1_PROVIDER_OFFER_NOT_FOUND_FOR_TENANT",
+    );
+  }
+  const terms = await prisma.rentFlexOfferTerms.findFirst({
+    where: {
+      tenantId: input.tenantId,
+      financeProviderOfferId: offer.id,
+    },
+    select: { id: true },
+  });
+  if (!terms) {
+    throw new RentFlexP1Error("RENT_FLEX_P1_PROVIDER_OFFER_TERMS_REQUIRED");
+  }
 
   await selectProviderOffer(
     input.tenantId,
     selection.financeCaseId,
-    input.financeProviderOfferId,
+    offer.id,
     input.actorId,
   );
 
@@ -541,24 +656,40 @@ export async function selectExternalRnplOffer(input: {
       const current = await tx.rentFlexSelection.findFirst({
         where: { id: input.selectionId, tenantId: input.tenantId },
       });
-      if (!current) throw new RentFlexP1Error("RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT");
-      if (current.selectedProviderOfferId && current.selectedProviderOfferId !== input.financeProviderOfferId) {
-        throw new RentFlexP1Error("RENT_FLEX_P1_DIFFERENT_PROVIDER_OFFER_ALREADY_SELECTED");
+      if (!current) {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT",
+        );
       }
-      const offer = await tx.financeProviderOffer.findFirst({
+      if (
+        current.selectedProviderOfferId &&
+        current.selectedProviderOfferId !== offer.id
+      ) {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_DIFFERENT_PROVIDER_OFFER_ALREADY_SELECTED",
+        );
+      }
+      const selectedOffer = await tx.financeProviderOffer.findFirst({
         where: {
-          id: input.financeProviderOfferId,
+          id: offer.id,
           tenantId: input.tenantId,
           financeCaseId: current.financeCaseId ?? undefined,
           recordStatus: "SELECTED",
         },
         select: { id: true, providerReference: true },
       });
-      if (!offer) throw new RentFlexP1Error("RENT_FLEX_P1_PROVIDER_OFFER_NOT_SELECTED_IN_W1");
+      if (!selectedOffer) {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_PROVIDER_OFFER_NOT_SELECTED_IN_W1",
+        );
+      }
 
       const updated = await tx.rentFlexSelection.update({
         where: { id: current.id },
-        data: { selectedProviderOfferId: offer.id, updatedBy: input.actorId },
+        data: {
+          selectedProviderOfferId: selectedOffer.id,
+          updatedBy: input.actorId,
+        },
       });
       await audit(tx, {
         tenantId: input.tenantId,
@@ -566,7 +697,10 @@ export async function selectExternalRnplOffer(input: {
         action: "RENT_FLEX_PROVIDER_OFFER_SELECTED",
         tableName: "rent_flex_selections",
         recordId: current.id,
-        details: { financeProviderOfferId: offer.id, providerReference: offer.providerReference },
+        details: {
+          financeProviderOfferId: selectedOffer.id,
+          providerReference: selectedOffer.providerReference,
+        },
       });
       return updated;
     },
@@ -587,21 +721,31 @@ export async function attachRentFlexSelectionToLease(input: {
       const selection = await tx.rentFlexSelection.findFirst({
         where: { id: input.selectionId, tenantId: input.tenantId },
       });
-      if (!selection) throw new RentFlexP1Error("RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT");
+      if (!selection) {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT",
+        );
+      }
       const status = asSelectionStatus(selection.status);
       if (status !== "SELECTED" && status !== "LOCKED") {
-        throw new RentFlexP1Error("RENT_FLEX_P1_LEASE_ATTACHMENT_STATE_INVALID");
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_LEASE_ATTACHMENT_STATE_INVALID",
+        );
       }
       if (selection.rentalLeaseId) {
         if (selection.rentalLeaseId === input.rentalLeaseId) return selection;
-        throw new RentFlexP1Error("RENT_FLEX_P1_SELECTION_ALREADY_ATTACHED_TO_LEASE");
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_SELECTION_ALREADY_ATTACHED_TO_LEASE",
+        );
       }
 
       const lease = await tx.rentalLease.findFirst({
         where: { id: input.rentalLeaseId, tenantId: input.tenantId },
         select: { id: true, unitId: true },
       });
-      if (!lease) throw new RentFlexP1Error("RENT_FLEX_P1_LEASE_NOT_FOUND_FOR_TENANT");
+      if (!lease) {
+        throw new RentFlexP1Error("RENT_FLEX_P1_LEASE_NOT_FOUND_FOR_TENANT");
+      }
       if (lease.unitId && lease.unitId !== selection.unitId) {
         throw new RentFlexP1Error("RENT_FLEX_P1_LEASE_UNIT_MISMATCH");
       }
@@ -613,7 +757,9 @@ export async function attachRentFlexSelectionToLease(input: {
         },
         select: { id: true },
       });
-      if (conflicting) throw new RentFlexP1Error("RENT_FLEX_P1_LEASE_ALREADY_HAS_SELECTION");
+      if (conflicting) {
+        throw new RentFlexP1Error("RENT_FLEX_P1_LEASE_ALREADY_HAS_SELECTION");
+      }
 
       const updated = await tx.rentFlexSelection.update({
         where: { id: selection.id },
@@ -645,11 +791,17 @@ export async function lockRentFlexSelection(input: {
       const selection = await tx.rentFlexSelection.findFirst({
         where: { id: input.selectionId, tenantId: input.tenantId },
       });
-      if (!selection) throw new RentFlexP1Error("RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT");
+      if (!selection) {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT",
+        );
+      }
       const status = asSelectionStatus(selection.status);
       if (status === "LOCKED") return selection;
       if (!isRentFlexSelectionTransitionAllowed(status, "LOCKED")) {
-        throw new RentFlexP1Error("RENT_FLEX_P1_SELECTION_TRANSITION_INVALID");
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_SELECTION_TRANSITION_INVALID",
+        );
       }
 
       const mode = asMode(selection.mode);
@@ -663,18 +815,32 @@ export async function lockRentFlexSelection(input: {
           throw new RentFlexP1Error("RENT_FLEX_P1_DIRECT_LOCK_SHAPE_INVALID");
         }
         const firstDueDate = dateOnlyString(selection.firstDueDate);
-        const plan = buildDirectMonthlyEjarPlan({
+        const storedSchedule = parseRentFlexScheduleJson(
+          selection.companyScheduleJson,
+        );
+        const storedDigest = digestRentFlexSchedule(
+          RENT_FLEX_MODE_DIRECT,
+          Number(selection.annualRentAmount),
+          firstDueDate,
+          storedSchedule,
+        );
+        const expectedPlan = buildDirectMonthlyEjarPlan({
           annualRentSar: Number(selection.annualRentAmount),
           firstDueDate,
         });
         const expectedDigest = digestRentFlexSchedule(
           RENT_FLEX_MODE_DIRECT,
-          plan.annualRentSar,
+          expectedPlan.annualRentSar,
           firstDueDate,
-          plan.schedule,
+          expectedPlan.schedule,
         );
-        if (expectedDigest !== selection.scheduleDigest) {
-          throw new RentFlexP1Error("RENT_FLEX_P1_DIRECT_SCHEDULE_DIGEST_MISMATCH");
+        if (
+          selection.scheduleDigest !== storedDigest ||
+          storedDigest !== expectedDigest
+        ) {
+          throw new RentFlexP1Error(
+            "RENT_FLEX_P1_DIRECT_SCHEDULE_DIGEST_MISMATCH",
+          );
         }
       } else {
         if (
@@ -683,11 +849,18 @@ export async function lockRentFlexSelection(input: {
           !selection.financeCaseId ||
           !selection.selectedProviderOfferId
         ) {
-          throw new RentFlexP1Error("RENT_FLEX_P1_EXTERNAL_LOCK_SHAPE_INVALID");
+          throw new RentFlexP1Error(
+            "RENT_FLEX_P1_EXTERNAL_LOCK_SHAPE_INVALID",
+          );
         }
         const financeCase = await tx.financeCase.findFirst({
           where: { id: selection.financeCaseId, tenantId: input.tenantId },
-          select: { purpose: true, termMonths: true, unitId: true, requestedAmount: true },
+          select: {
+            purpose: true,
+            termMonths: true,
+            unitId: true,
+            requestedAmount: true,
+          },
         });
         if (
           !financeCase ||
@@ -696,30 +869,102 @@ export async function lockRentFlexSelection(input: {
           financeCase.unitId !== selection.unitId ||
           !financeCase.requestedAmount?.eq(selection.annualRentAmount)
         ) {
-          throw new RentFlexP1Error("RENT_FLEX_P1_EXTERNAL_FINANCE_CASE_INVALID_AT_LOCK");
+          throw new RentFlexP1Error(
+            "RENT_FLEX_P1_EXTERNAL_FINANCE_CASE_INVALID_AT_LOCK",
+          );
         }
         const offer = await tx.financeProviderOffer.findFirst({
           where: {
             id: selection.selectedProviderOfferId,
             tenantId: input.tenantId,
-            financeCaseId: financeCase ? selection.financeCaseId : undefined,
+            financeCaseId: selection.financeCaseId,
             recordStatus: "SELECTED",
           },
-          select: { id: true, expiresAt: true },
+          select: {
+            id: true,
+            provider: true,
+            providerReference: true,
+            downPayment: true,
+            termMonths: true,
+            expiresAt: true,
+          },
         });
-        if (!offer) throw new RentFlexP1Error("RENT_FLEX_P1_EXTERNAL_SELECTED_OFFER_INVALID_AT_LOCK");
+        if (!offer || offer.termMonths !== RENT_FLEX_TERM_MONTHS) {
+          throw new RentFlexP1Error(
+            "RENT_FLEX_P1_EXTERNAL_SELECTED_OFFER_INVALID_AT_LOCK",
+          );
+        }
         if (offer.expiresAt && offer.expiresAt.getTime() <= Date.now()) {
-          throw new RentFlexP1Error("RENT_FLEX_P1_EXTERNAL_SELECTED_OFFER_EXPIRED");
+          throw new RentFlexP1Error(
+            "RENT_FLEX_P1_EXTERNAL_SELECTED_OFFER_EXPIRED",
+          );
         }
         const terms = await tx.rentFlexOfferTerms.findFirst({
-          where: { tenantId: input.tenantId, financeProviderOfferId: offer.id },
+          where: {
+            tenantId: input.tenantId,
+            financeProviderOfferId: offer.id,
+          },
         });
+        const firstDueDate = dateOnlyString(selection.firstDueDate);
         if (
           !terms ||
           !terms.ownerSettlementAmount.eq(selection.annualRentAmount) ||
-          dateOnlyString(terms.firstDueDate) !== dateOnlyString(selection.firstDueDate)
+          dateOnlyString(terms.firstDueDate) !== firstDueDate
         ) {
-          throw new RentFlexP1Error("RENT_FLEX_P1_EXTERNAL_OFFER_TERMS_INVALID_AT_LOCK");
+          throw new RentFlexP1Error(
+            "RENT_FLEX_P1_EXTERNAL_OFFER_TERMS_INVALID_AT_LOCK",
+          );
+        }
+
+        const storedSchedule = parseRentFlexScheduleJson(
+          terms.repaymentScheduleJson,
+        );
+        const expectedQuote = buildExternalRnpl12Quote({
+          providerName: offer.provider,
+          annualRentSar: Number(selection.annualRentAmount),
+          totalTenantPayableSar: Number(terms.totalTenantPayable),
+          downPaymentSar: Number(offer.downPayment ?? 0),
+          firstDueDate,
+        });
+        const expectedDelta = new Prisma.Decimal(
+          expectedQuote.tenantCostDeltaSar.toFixed(2),
+        );
+        if (!terms.tenantCostDelta.eq(expectedDelta)) {
+          throw new RentFlexP1Error(
+            "RENT_FLEX_P1_EXTERNAL_OFFER_TERMS_INVALID_AT_LOCK",
+          );
+        }
+        const storedDigest = quoteDigest({
+          tenantId: input.tenantId,
+          selectionId: selection.id,
+          financeProviderOfferId: offer.id,
+          provider: offer.provider,
+          providerReference: offer.providerReference,
+          annualRentSar: Number(selection.annualRentAmount),
+          ownerSettlementAmountSar: Number(terms.ownerSettlementAmount),
+          totalTenantPayableSar: Number(terms.totalTenantPayable),
+          firstDueDate,
+          schedule: storedSchedule,
+        });
+        const expectedDigest = quoteDigest({
+          tenantId: input.tenantId,
+          selectionId: selection.id,
+          financeProviderOfferId: offer.id,
+          provider: offer.provider,
+          providerReference: offer.providerReference,
+          annualRentSar: expectedQuote.annualRentSar,
+          ownerSettlementAmountSar: Number(terms.ownerSettlementAmount),
+          totalTenantPayableSar: expectedQuote.totalTenantPayableSar,
+          firstDueDate,
+          schedule: expectedQuote.externalRepaymentSchedule,
+        });
+        if (
+          terms.quoteDigest !== storedDigest ||
+          storedDigest !== expectedDigest
+        ) {
+          throw new RentFlexP1Error(
+            "RENT_FLEX_P1_EXTERNAL_QUOTE_DIGEST_MISMATCH",
+          );
         }
       }
 
@@ -759,14 +1004,20 @@ export async function recordRentFlexSettlement(input: {
       const selection = await tx.rentFlexSelection.findFirst({
         where: { id: input.selectionId, tenantId: input.tenantId },
       });
-      if (!selection) throw new RentFlexP1Error("RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT");
+      if (!selection) {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT",
+        );
+      }
       if (
         asMode(selection.mode) !== RENT_FLEX_MODE_EXTERNAL ||
         asSelectionStatus(selection.status) !== "LOCKED" ||
         !selection.financeCaseId ||
         !selection.selectedProviderOfferId
       ) {
-        throw new RentFlexP1Error("RENT_FLEX_P1_SETTLEMENT_REQUIRES_LOCKED_EXTERNAL_SELECTION");
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_SETTLEMENT_REQUIRES_LOCKED_EXTERNAL_SELECTION",
+        );
       }
 
       const terms = await tx.rentFlexOfferTerms.findFirst({
@@ -775,7 +1026,9 @@ export async function recordRentFlexSettlement(input: {
           financeProviderOfferId: selection.selectedProviderOfferId,
         },
       });
-      if (!terms) throw new RentFlexP1Error("RENT_FLEX_P1_PROVIDER_OFFER_TERMS_REQUIRED");
+      if (!terms) {
+        throw new RentFlexP1Error("RENT_FLEX_P1_PROVIDER_OFFER_TERMS_REQUIRED");
+      }
 
       const amounts = assertRentFlexSettlementAmounts({
         expectedAmount: Number(terms.ownerSettlementAmount),
@@ -791,12 +1044,17 @@ export async function recordRentFlexSettlement(input: {
           : new Prisma.Decimal(amounts.receivedAmount.toFixed(2));
 
       const existing = await tx.rentFlexSettlement.findFirst({
-        where: { tenantId: input.tenantId, rentFlexSelectionId: selection.id },
+        where: {
+          tenantId: input.tenantId,
+          rentFlexSelectionId: selection.id,
+        },
       });
       if (existing) {
         const currentStatus = asSettlementStatus(existing.status);
         if (!isRentFlexSettlementTransitionAllowed(currentStatus, input.status)) {
-          throw new RentFlexP1Error("RENT_FLEX_P1_SETTLEMENT_TRANSITION_INVALID");
+          throw new RentFlexP1Error(
+            "RENT_FLEX_P1_SETTLEMENT_TRANSITION_INVALID",
+          );
         }
         if (
           currentStatus === input.status &&
@@ -806,16 +1064,29 @@ export async function recordRentFlexSettlement(input: {
         }
       }
 
-      const receivedAt = input.status === "RECEIVED" ? new Date() : existing?.receivedAt ?? null;
+      const receivedAt =
+        input.status === "RECEIVED"
+          ? new Date()
+          : input.status === "EXPECTED" ||
+              input.status === "FAILED" ||
+              input.status === "CANCELLED"
+            ? null
+            : existing?.receivedAt ?? null;
+      const evidenceValue =
+        input.evidenceJson === null
+          ? Prisma.JsonNull
+          : input.evidenceJson ?? undefined;
+
       const settlement = existing
         ? await tx.rentFlexSettlement.update({
             where: { id: existing.id },
             data: {
               receivedAmount: receivedDecimal,
               status: input.status,
-              providerReference: input.providerReference?.trim() || existing.providerReference,
+              providerReference:
+                input.providerReference?.trim() || existing.providerReference,
               receivedAt,
-              evidenceJson: input.evidenceJson === null ? Prisma.JsonNull : input.evidenceJson ?? undefined,
+              evidenceJson: evidenceValue,
               updatedBy: input.actorId,
             },
           })
@@ -826,13 +1097,15 @@ export async function recordRentFlexSettlement(input: {
               financeCaseId: selection.financeCaseId,
               financeProviderOfferId: selection.selectedProviderOfferId,
               rentalLeaseId: selection.rentalLeaseId,
-              expectedAmount: new Prisma.Decimal(amounts.expectedAmount.toFixed(2)),
+              expectedAmount: new Prisma.Decimal(
+                amounts.expectedAmount.toFixed(2),
+              ),
               receivedAmount: receivedDecimal,
               currency: selection.currency,
               status: input.status,
               providerReference: input.providerReference?.trim() || null,
               receivedAt,
-              evidenceJson: input.evidenceJson ?? undefined,
+              evidenceJson: evidenceValue,
               createdBy: input.actorId,
               updatedBy: input.actorId,
             },
