@@ -82,10 +82,20 @@ Selection detail can display:
 - total tenant payable;
 - tenant cost delta;
 - offer expiry;
-- provider authority state;
+- canonical provider-approval state;
 - operational owner/company settlement status.
 
 The UI explicitly distinguishes `عرض مزود` / `Provider offer` from `موافقة مزود مثبتة` / `Provider approval recorded` and does not treat an offer as an approval.
+
+For this badge, the Rent Flex read model does **not** trust `FinanceProviderOffer.authorityStatus` as the canonical approval source. W1 records provider authority on `FinanceCase`. The read model projects `APPROVED` onto the selected offer only when all of the following are true within the tenant boundary:
+
+- the offer is the selection's `selectedProviderOfferId`;
+- `FinanceCase.authorityStatus = APPROVED`;
+- `FinanceCase.authorityProvider` equals the selected offer provider;
+- `FinanceCase.authorityReference` equals the selected offer provider reference;
+- the finance lifecycle has reached `PROVIDER_APPROVED`, `READY_FOR_TRANSACTION`, or `COMPLETED`.
+
+This mirrors the existing W1 provider-approval transition invariant and prevents a provider offer from being presented as an approval merely because offer data exists.
 
 Raw provider or settlement `evidenceJson` remains absent from the UI because RF12-P2 does not expose it in the first read model.
 
@@ -139,6 +149,7 @@ RF12-P3 verification must establish:
 - dark `404/401/403` discovery returns `null` rather than exposing a broken feature shell;
 - property wording does not imply eligibility or approval;
 - direct monthly preview imports the verified RF12 calculator rather than duplicating schedule math;
+- provider approval presentation is projected only from matching canonical W1 `FinanceCase` authority plus approved lifecycle state;
 - the lease UI uses RF12-P2 routes for selection, offer choice, and lock;
 - no lease-binding route is called in P3;
 - no provider/network/accounting/migration/deploy surface is introduced;
