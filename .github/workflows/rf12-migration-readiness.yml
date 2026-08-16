@@ -21,6 +21,9 @@ concurrency:
 
 env:
   PRE_RF12_SHA: 7762b851738b4600d6f87edc7b94140b39fc8d9c
+  PRE_W1A_MIGRATION: prisma/migrations/20260815001500_w1_contract_finance_foundation/migration.sql
+  PRE_W1D_MIGRATION: prisma/migrations/20260815004500_w1d_snapshot_offer_integrity/migration.sql
+  PRE_W1_ALIGNMENT_MIGRATION: prisma/migrations/20260815010000_w1_schema_alignment/migration.sql
   RF12_MIGRATION: prisma/migrations/20260816203000_rent_flex_12_persistence_accounting/migration.sql
   POSTGRES_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_rf12mr_admin?sslmode=disable
   UPGRADE_URL: postgresql://postgres:postgres@127.0.0.1:5432/orca_rf12mr_upgrade?sslmode=disable
@@ -81,6 +84,10 @@ jobs:
           test "$(git -C pre rev-parse HEAD)" = "$PRE_RF12_SHA"
           test ! -e pre/prisma/rent-flex-12.prisma
           test ! -e pre/prisma/rent-flex-12-accounting.prisma
+          test -e pre/prisma/w1-contract-finance.prisma
+          test -e "pre/$PRE_W1A_MIGRATION"
+          test -e "pre/$PRE_W1D_MIGRATION"
+          test -e "pre/$PRE_W1_ALIGNMENT_MIGRATION"
           postgres_version="$(psql "$POSTGRES_ADMIN_URL" -tAc 'SHOW server_version_num' | xargs)"
           test "$postgres_version" -ge 160000 -a "$postgres_version" -lt 170000
           printf 'pre_rf12_sha=%s\nhead_sha=%s\npostgres=%s\n' "$PRE_RF12_SHA" "$candidate" "$(psql "$POSTGRES_ADMIN_URL" -tAc 'SHOW server_version' | xargs)" | tee evidence/environment.txt
@@ -97,12 +104,20 @@ jobs:
       - name: Create isolated upgrade database
         run: createdb -h 127.0.0.1 -U postgres orca_rf12mr_upgrade
 
-      - name: Materialize exact pre-RF12 schema
+      - name: Materialize supported pre-RF12 base schema
         shell: bash
         run: |
           set -euo pipefail
-          RF12MR_PRE_PRISMA_DIR=pre/prisma RF12MR_HEAD_DIR=head RF12MR_COMBINED_SCHEMA=evidence/pre-rf12-schema.prisma RF12MR_OUTPUT=evidence/pre-rf12-schema.sql node head/scripts/rf12-migration-readiness.mjs materialize-pre
-          psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 -f evidence/pre-rf12-schema.sql > evidence/pre-rf12-apply.txt
+          RF12MR_PRE_PRISMA_DIR=pre/prisma RF12MR_HEAD_DIR=head RF12MR_COMBINED_SCHEMA=evidence/pre-rf12-base-schema.prisma RF12MR_OUTPUT=evidence/pre-rf12-base-schema.sql node head/scripts/rf12-migration-readiness.mjs materialize-pre
+          psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 -f evidence/pre-rf12-base-schema.sql > evidence/pre-rf12-base-apply.txt
+
+      - name: Apply exact pre-RF12 W1 schema migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 -f "pre/$PRE_W1A_MIGRATION" > evidence/pre-rf12-w1a-apply.txt
+          psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 -f "pre/$PRE_W1D_MIGRATION" > evidence/pre-rf12-w1d-apply.txt
+          psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 -f "pre/$PRE_W1_ALIGNMENT_MIGRATION" > evidence/pre-rf12-w1-alignment-apply.txt
 
       - name: Capture legacy fingerprint before RF12
         shell: bash
