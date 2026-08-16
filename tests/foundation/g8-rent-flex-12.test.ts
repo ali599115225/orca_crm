@@ -60,6 +60,17 @@ describe("Rent Flex 12", () => {
     expect(plan.schedule[3].dueDate).toBe("2027-04-30");
   });
 
+  it("rejects a 12-part schedule that would cross the four-digit ISO year boundary", () => {
+    expect(() =>
+      buildDirectMonthlyEjarPlan({
+        annualRentSar: 12_000,
+        firstDueDate: "9999-02-01",
+      }),
+    ).toThrowError(
+      expect.objectContaining({ code: "RENT_FLEX_12_DUE_DATE_OUT_OF_RANGE" }),
+    );
+  });
+
   it("keeps an external RNPL tenant schedule outside the company receivable", () => {
     const quote = buildExternalRnpl12Quote({
       providerName: "Provider A",
