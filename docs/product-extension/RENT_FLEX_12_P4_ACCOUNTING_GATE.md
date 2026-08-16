@@ -41,11 +41,16 @@ Before any invoice is created, RF12-P4:
 2. recomputes the digest over the stored schedule;
 3. independently rebuilds the deterministic 12-period plan from annual rent plus first due date;
 4. requires the stored digest, recomputed digest, and deterministic digest to match;
-5. requires the exact halala sum of the 12 subtotals to equal the persisted annual rent.
+5. requires the exact halala sum of the 12 subtotals to equal the persisted annual rent;
+6. validates the lease `vatType` against the existing rental VAT types and requires the stored lease `vatRate` to agree with that type;
+7. calculates every invoice VAT breakdown through the existing `lib/vat/engine.ts` `calculateVat` function rather than reimplementing VAT percentages in Rent Flex;
+8. creates the same local QR fields used by the current rental invoice path (`qrPayload`, `qrCode`, `qrImage`) through `lib/zatca/qr.ts` before the database mutation.
 
-Only the verified locked company schedule becomes invoice source data.
+Only the verified locked company schedule becomes invoice source data. A VAT contract mismatch fails closed before account setup or invoice creation.
 
-For every period RF12-P4 creates one rental invoice using the lease VAT rate and posts its accounting entry through the existing `postInvoiceEntry` transaction-aware posting engine. The 12 invoices and their journal entries are created inside one serializable database transaction.
+For every period RF12-P4 creates one rental invoice using the verified lease VAT contract and posts its accounting entry through the existing `postInvoiceEntry` transaction-aware posting engine. The 12 invoices, local QR artifacts, accounting entries, and Rent Flex invoice links are committed as one serializable database activation. QR creation is local invoice formatting only; RF12-P4 does not submit invoices to ZATCA or call any provider.
+
+The source schedule is re-read inside the write transaction and compared to the precomputed invoice artifacts. If the locked source no longer matches, activation fails closed before reserving invoice numbers.
 
 ## 3. Idempotency identity
 
@@ -62,7 +67,7 @@ Required uniqueness:
 - one mapping per `(tenantId, rentFlexSelectionId, installmentNumber)`;
 - one mapping per `(tenantId, invoiceId)`.
 
-A replay is idempotent only when exactly 12 mappings and exactly 12 referenced invoices match the locked schedule and financial amounts. A partial or inconsistent mapping fails closed instead of filling missing periods by inference.
+A replay is idempotent only when exactly 12 mappings and exactly 12 referenced invoices match the locked schedule, financial amounts, and required local QR fields. A partial or inconsistent mapping fails closed instead of filling missing periods by inference.
 
 Concurrent `P2002` / `P2034` races are reconciled by rereading the complete activation. If another request completed the exact 12-period activation, the later request returns it as idempotent. Otherwise the command retries once and then fails closed.
 
@@ -114,6 +119,7 @@ This slice performs no:
 - deploy;
 - provider API call;
 - Ejar API call;
+- ZATCA submission/API call;
 - callback/webhook activation;
 - production action.
 
@@ -127,12 +133,13 @@ The existing `prisma/rent-flex-12.prisma` P1 domain remains unchanged so its ori
 - exact annual subtotal preservation;
 - stored/deterministic digest validation and tamper rejection;
 - locked direct-only activation;
-- VAT computation consistent with the current rental accounting percentage convention;
+- reuse of the existing rental VAT engine, including zero-rated behavior and VAT-field mismatch rejection;
+- inheritance of current local rental QR fields without ZATCA/provider submission;
 - additive idempotency schema identities;
 - legacy `settle-lease` guard ordering before accounting side effects;
 - ADMIN-only accounting facade;
 - dark direct-invoicing feature gate;
-- facade-only API route;
+- facade-only API route with explicit G4 route evidence;
 - serializable/idempotent transaction evidence;
 - no external RNPL repayment invoicing;
 - no `PaymentPlan`, `Installment`, `PaymentTransaction`, provider-network, migration, deploy, or production behavior.

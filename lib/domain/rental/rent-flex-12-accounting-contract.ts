@@ -1,3 +1,5 @@
+import { calculateVat } from "@/lib/vat/engine";
+import type { VatType } from "@/lib/vat/types";
 import {
   buildDirectMonthlyEjarPlan,
   type RentFlex12Mode,
@@ -10,6 +12,7 @@ import {
 
 const DIRECT_MODE: RentFlex12Mode = "DIRECT_MONTHLY_EJAR";
 const LOCKED_STATUS = "LOCKED";
+const RENTAL_VAT_TYPES = ["STANDARD", "ZERO_RATED", "EXEMPT"] as const;
 
 export class RentFlexP4Error extends Error {
   constructor(public readonly code: string) {
@@ -38,11 +41,23 @@ function toHalalas(value: number, code: string): number {
   return Math.round(value * 100);
 }
 
-function normalizeVatRate(value: number): number {
-  if (!Number.isFinite(value) || value < 0 || value > 100) {
+function normalizeRentalVatContract(
+  vatTypeValue: string,
+  storedVatRateValue: number,
+): VatType {
+  if (!RENTAL_VAT_TYPES.includes(vatTypeValue as (typeof RENTAL_VAT_TYPES)[number])) {
+    throw new RentFlexP4Error("RENT_FLEX_P4_VAT_TYPE_INVALID");
+  }
+  if (!Number.isFinite(storedVatRateValue) || storedVatRateValue < 0 || storedVatRateValue > 100) {
     throw new RentFlexP4Error("RENT_FLEX_P4_VAT_RATE_INVALID");
   }
-  return round2(value);
+
+  const vatType = vatTypeValue as VatType;
+  const expectedRate = calculateVat(1, vatType).vatRate;
+  if (round2(storedVatRateValue) !== round2(expectedRate)) {
+    throw new RentFlexP4Error("RENT_FLEX_P4_LEASE_VAT_CONTRACT_MISMATCH");
+  }
+  return vatType;
 }
 
 export function buildRentFlexDirectInvoiceDrafts(input: {
@@ -52,7 +67,8 @@ export function buildRentFlexDirectInvoiceDrafts(input: {
   firstDueDate: string;
   companyScheduleJson: unknown;
   scheduleDigest: string | null | undefined;
-  vatRate: number;
+  vatType: string;
+  storedVatRate: number;
 }): RentFlexDirectInvoiceDraft[] {
   if (input.mode !== DIRECT_MODE) {
     throw new RentFlexP4Error("RENT_FLEX_P4_DIRECT_MODE_REQUIRED");
@@ -65,7 +81,7 @@ export function buildRentFlexDirectInvoiceDrafts(input: {
   }
 
   parseRentFlexDateOnly(input.firstDueDate);
-  const vatRate = normalizeVatRate(input.vatRate);
+  const vatType = normalizeRentalVatContract(input.vatType, input.storedVatRate);
   const storedSchedule = parseRentFlexScheduleJson(input.companyScheduleJson);
   const annualRentHalalas = toHalalas(
     input.annualRentAmount,
@@ -106,17 +122,14 @@ export function buildRentFlexDirectInvoiceDrafts(input: {
 
   return storedSchedule.map((item) => {
     const subtotal = round2(item.amountSar);
-    // Preserve the current rental accounting convention: vatRate is stored as
-    // a percentage (for example 15.00), so subtotal * rate / 100.
-    const vatAmount = round2((subtotal * vatRate) / 100);
-    const totalAmount = round2(subtotal + vatAmount);
+    const vat = calculateVat(subtotal, vatType);
     return {
       installmentNumber: item.installmentNumber,
       dueDate: item.dueDate,
-      subtotal,
-      vatRate,
-      vatAmount,
-      totalAmount,
+      subtotal: vat.subtotal,
+      vatRate: vat.vatRate,
+      vatAmount: vat.vatAmount,
+      totalAmount: vat.totalAmount,
     };
   });
 }

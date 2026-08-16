@@ -9,6 +9,11 @@ import {
 import { prisma } from "@/lib/prisma";
 import { requireTenantContext } from "@/lib/tenant-context";
 import {
+  buildQrPayload,
+  encodeQrCode,
+  generateQrImage,
+} from "@/lib/zatca/qr";
+import {
   assertRentFlexCommandContext,
   dateOnlyString,
   parseRentFlexDateOnly,
@@ -27,6 +32,24 @@ export type RentFlexLeaseAccountingGuard = Readonly<{
   selectionId: string;
   mode: string;
   status: string;
+}>;
+
+export type RentFlexActivatedInvoice = Readonly<{
+  installmentNumber: number;
+  invoiceId: string;
+  invoiceNumber: number;
+  invoicePrefix: string;
+  dueDate: string;
+  subtotal: number;
+  vatAmount: number;
+  totalAmount: number;
+}>;
+
+type RentFlexDirectInvoiceArtifact = Readonly<{
+  draft: RentFlexDirectInvoiceDraft;
+  qrPayload: string;
+  qrCode: string;
+  qrImage: string;
 }>;
 
 export async function findRentFlexLeaseAccountingGuard(
@@ -64,6 +87,38 @@ function prismaErrorCode(error: unknown): string | null {
     : null;
 }
 
+async function buildInvoiceArtifacts(
+  tenantId: string,
+  drafts: RentFlexDirectInvoiceDraft[],
+): Promise<RentFlexDirectInvoiceArtifact[]> {
+  const tenant = await prisma.tenant.findFirst({
+    where: { id: tenantId },
+    select: { companyName: true, vatNumber: true },
+  });
+  if (!tenant) {
+    throw new RentFlexP4Error("RENT_FLEX_P4_TENANT_NOT_FOUND");
+  }
+
+  return await Promise.all(
+    drafts.map(async (draft) => {
+      const payload = buildQrPayload({
+        sellerName: tenant.companyName,
+        vatNumber: tenant.vatNumber || "",
+        total: draft.totalAmount,
+        vatTotal: draft.vatAmount,
+      });
+      const qrCode = encodeQrCode(payload);
+      const qrImage = await generateQrImage(qrCode);
+      return {
+        draft,
+        qrPayload: JSON.stringify(payload),
+        qrCode,
+        qrImage,
+      };
+    }),
+  );
+}
+
 async function readCompleteActivation(
   tx: Prisma.TransactionClient,
   input: {
@@ -73,7 +128,7 @@ async function readCompleteActivation(
     scheduleDigest: string;
     drafts: RentFlexDirectInvoiceDraft[];
   },
-) {
+): Promise<RentFlexActivatedInvoice[] | null> {
   const links = await tx.rentFlexDirectInvoiceLink.findMany({
     where: {
       tenantId: input.tenantId,
@@ -111,6 +166,9 @@ async function readCompleteActivation(
       vatRate: true,
       vatAmount: true,
       totalAmount: true,
+      qrPayload: true,
+      qrCode: true,
+      qrImage: true,
     },
   });
   if (invoices.length !== DIRECT_INVOICE_COUNT) {
@@ -118,7 +176,7 @@ async function readCompleteActivation(
   }
   const invoiceById = new Map(invoices.map((invoice) => [invoice.id, invoice]));
 
-  const normalizedInvoices = input.drafts.map((draft, index) => {
+  return input.drafts.map((draft, index) => {
     const link = links[index];
     const invoice = invoiceById.get(link.invoiceId);
     if (
@@ -134,7 +192,10 @@ async function readCompleteActivation(
       !moneyEquals(invoice.subtotal, draft.subtotal) ||
       !moneyEquals(invoice.vatRate, draft.vatRate) ||
       !moneyEquals(invoice.vatAmount, draft.vatAmount) ||
-      !moneyEquals(invoice.totalAmount, draft.totalAmount)
+      !moneyEquals(invoice.totalAmount, draft.totalAmount) ||
+      !invoice.qrPayload ||
+      !invoice.qrCode ||
+      !invoice.qrImage
     ) {
       throw new RentFlexP4Error("RENT_FLEX_P4_ACTIVATION_INVOICE_CONFLICT");
     }
@@ -149,8 +210,6 @@ async function readCompleteActivation(
       totalAmount: draft.totalAmount,
     };
   });
-
-  return normalizedInvoices;
 }
 
 async function readActivationState(
@@ -197,6 +256,7 @@ async function readActivationState(
       id: true,
       unitId: true,
       currency: true,
+      vatType: true,
       vatRate: true,
     },
   });
@@ -218,7 +278,8 @@ async function readActivationState(
     firstDueDate,
     companyScheduleJson: selection.companyScheduleJson,
     scheduleDigest: selection.scheduleDigest,
-    vatRate: Number(lease.vatRate),
+    vatType: lease.vatType,
+    storedVatRate: Number(lease.vatRate),
   });
   if (drafts.length !== DIRECT_INVOICE_COUNT || !selection.scheduleDigest) {
     throw new RentFlexP4Error("RENT_FLEX_P4_DIRECT_SCHEDULE_REQUIRED");
@@ -271,6 +332,11 @@ export async function activateRentFlexDirectInvoices(input: {
     };
   }
 
+  const invoiceArtifacts = await buildInvoiceArtifacts(
+    input.tenantId,
+    preflight.drafts,
+  );
+
   await seedChartOfAccounts(input.tenantId);
   const needsVatAccount = preflight.drafts.some((draft) => draft.vatAmount > 0);
   const [receivableAccount, revenueAccount, vatPayableAccount] = await Promise.all([
@@ -308,6 +374,24 @@ export async function activateRentFlexDirectInvoices(input: {
             };
           }
 
+          if (
+            state.drafts.length !== invoiceArtifacts.length ||
+            state.drafts.some((draft, index) => {
+              const artifact = invoiceArtifacts[index];
+              return (
+                !artifact ||
+                artifact.draft.installmentNumber !== draft.installmentNumber ||
+                artifact.draft.dueDate !== draft.dueDate ||
+                artifact.draft.subtotal !== draft.subtotal ||
+                artifact.draft.vatRate !== draft.vatRate ||
+                artifact.draft.vatAmount !== draft.vatAmount ||
+                artifact.draft.totalAmount !== draft.totalAmount
+              );
+            })
+          ) {
+            throw new RentFlexP4Error("RENT_FLEX_P4_ACTIVATION_SOURCE_CHANGED");
+          }
+
           const tenant = await tx.tenant.update({
             where: { id: input.tenantId },
             data: { nextInvoiceNumber: { increment: DIRECT_INVOICE_COUNT } },
@@ -315,14 +399,17 @@ export async function activateRentFlexDirectInvoices(input: {
           });
           const firstInvoiceNumber =
             tenant.nextInvoiceNumber - DIRECT_INVOICE_COUNT;
-          const createdInvoices = [];
+          const createdInvoices: RentFlexActivatedInvoice[] = [];
 
-          for (const draft of state.drafts) {
+          for (const artifact of invoiceArtifacts) {
+            const draft = artifact.draft;
             const invoiceNumber = firstInvoiceNumber + draft.installmentNumber - 1;
             const invoice = await tx.invoice.create({
               data: {
                 tenantId: input.tenantId,
+                type: "RENTAL",
                 leaseId: state.lease.id,
+                contractId: null,
                 invoiceNumber,
                 invoicePrefix: tenant.invoicePrefix || "INV",
                 dueDate: parseRentFlexDateOnly(draft.dueDate),
@@ -330,6 +417,9 @@ export async function activateRentFlexDirectInvoices(input: {
                 vatRate: draft.vatRate,
                 vatAmount: draft.vatAmount,
                 totalAmount: draft.totalAmount,
+                qrPayload: artifact.qrPayload,
+                qrCode: artifact.qrCode,
+                qrImage: artifact.qrImage,
                 status: "unpaid",
               },
             });

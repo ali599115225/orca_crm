@@ -10,9 +10,11 @@ import { digestRentFlexSchedule } from "@/lib/domain/rental/rent-flex-12-persist
 
 const ROOT = process.cwd();
 const read = (...parts: string[]) => readFileSync(join(ROOT, ...parts), "utf8");
+const G4_ROUTE_EVIDENCE = "/api/v1/rent-flex/selections/[id]/activate-direct-invoices";
 
 const SERVICE = read("lib", "domain", "rental", "rent-flex-12-accounting-service.ts");
 const FACADE = read("lib", "domain", "rental", "rent-flex-12-accounting-facade.ts");
+const CONTRACT = read("lib", "domain", "rental", "rent-flex-12-accounting-contract.ts");
 const BOUNDARY = read("lib", "domain", "rental", "rent-flex-12-api-boundary.ts");
 const ROUTE = read(
   "app",
@@ -52,7 +54,8 @@ describe("RF12-P4 accounting guard and direct schedule activation", () => {
       firstDueDate: fixture.firstDueDate,
       companyScheduleJson: fixture.plan.schedule,
       scheduleDigest: fixture.scheduleDigest,
-      vatRate: 15,
+      vatType: "STANDARD",
+      storedVatRate: 15,
     });
 
     expect(drafts).toHaveLength(12);
@@ -73,6 +76,37 @@ describe("RF12-P4 accounting guard and direct schedule activation", () => {
     }
   });
 
+  it("uses the existing rental VAT engine and fails closed on VAT contract mismatch", () => {
+    const fixture = directFixture();
+    const zeroRated = buildRentFlexDirectInvoiceDrafts({
+      mode: "DIRECT_MONTHLY_EJAR",
+      status: "LOCKED",
+      annualRentAmount: fixture.annualRentSar,
+      firstDueDate: fixture.firstDueDate,
+      companyScheduleJson: fixture.plan.schedule,
+      scheduleDigest: fixture.scheduleDigest,
+      vatType: "ZERO_RATED",
+      storedVatRate: 0,
+    });
+    expect(zeroRated.every((draft) => draft.vatRate === 0 && draft.vatAmount === 0)).toBe(true);
+    expect(CONTRACT).toContain('import { calculateVat } from "@/lib/vat/engine"');
+
+    expect(() =>
+      buildRentFlexDirectInvoiceDrafts({
+        mode: "DIRECT_MONTHLY_EJAR",
+        status: "LOCKED",
+        annualRentAmount: fixture.annualRentSar,
+        firstDueDate: fixture.firstDueDate,
+        companyScheduleJson: fixture.plan.schedule,
+        scheduleDigest: fixture.scheduleDigest,
+        vatType: "STANDARD",
+        storedVatRate: 0,
+      }),
+    ).toThrowError(
+      new RentFlexP4Error("RENT_FLEX_P4_LEASE_VAT_CONTRACT_MISMATCH"),
+    );
+  });
+
   it("fails closed on tampering, external mode, or an unlocked selection", () => {
     const fixture = directFixture();
     const tampered = fixture.plan.schedule.map((item, index) =>
@@ -87,7 +121,8 @@ describe("RF12-P4 accounting guard and direct schedule activation", () => {
         firstDueDate: fixture.firstDueDate,
         companyScheduleJson: tampered,
         scheduleDigest: fixture.scheduleDigest,
-        vatRate: 15,
+        vatType: "STANDARD",
+        storedVatRate: 15,
       }),
     ).toThrowError(new RentFlexP4Error("RENT_FLEX_P4_SCHEDULE_DIGEST_MISMATCH"));
 
@@ -99,7 +134,8 @@ describe("RF12-P4 accounting guard and direct schedule activation", () => {
         firstDueDate: fixture.firstDueDate,
         companyScheduleJson: fixture.plan.schedule,
         scheduleDigest: fixture.scheduleDigest,
-        vatRate: 15,
+        vatType: "STANDARD",
+        storedVatRate: 15,
       }),
     ).toThrowError(new RentFlexP4Error("RENT_FLEX_P4_DIRECT_MODE_REQUIRED"));
 
@@ -111,7 +147,8 @@ describe("RF12-P4 accounting guard and direct schedule activation", () => {
         firstDueDate: fixture.firstDueDate,
         companyScheduleJson: fixture.plan.schedule,
         scheduleDigest: fixture.scheduleDigest,
-        vatRate: 15,
+        vatType: "STANDARD",
+        storedVatRate: 15,
       }),
     ).toThrowError(new RentFlexP4Error("RENT_FLEX_P4_LOCKED_SELECTION_REQUIRED"));
   });
@@ -151,6 +188,8 @@ describe("RF12-P4 accounting guard and direct schedule activation", () => {
     expect(SERVICE).toContain('selection.status !== LOCKED_STATUS');
     expect(SERVICE).toContain("companyScheduleJson: selection.companyScheduleJson");
     expect(SERVICE).toContain("scheduleDigest: selection.scheduleDigest");
+    expect(SERVICE).toContain("vatType: lease.vatType");
+    expect(SERVICE).toContain("storedVatRate: Number(lease.vatRate)");
     expect(SERVICE).toContain("Prisma.TransactionIsolationLevel.Serializable");
     expect(SERVICE).toContain("nextInvoiceNumber: { increment: DIRECT_INVOICE_COUNT }");
     expect(SERVICE).toContain("await tx.invoice.create({");
@@ -158,6 +197,18 @@ describe("RF12-P4 accounting guard and direct schedule activation", () => {
     expect(SERVICE).toContain("await tx.rentFlexDirectInvoiceLink.create({");
     expect(SERVICE).toContain('code !== "P2002" && code !== "P2034"');
     expect(SERVICE).toContain("RENT_FLEX_DIRECT_SCHEDULE_ACTIVATED");
+  });
+
+  it("inherits the current local rental QR invoice contract without provider submission", () => {
+    expect(SERVICE).toContain('from "@/lib/zatca/qr"');
+    expect(SERVICE).toContain("buildQrPayload({");
+    expect(SERVICE).toContain("encodeQrCode(payload)");
+    expect(SERVICE).toContain("await generateQrImage(qrCode)");
+    expect(SERVICE).toContain("qrPayload: artifact.qrPayload");
+    expect(SERVICE).toContain("qrCode: artifact.qrCode");
+    expect(SERVICE).toContain("qrImage: artifact.qrImage");
+    expect(SERVICE).not.toContain("publicHttpsJsonRequest");
+    expect(SERVICE).not.toContain("ZATCA_SUBMIT_INVOICE");
   });
 
   it("keeps external RNPL repayments and legacy payment-plan domains out of P4 invoicing", () => {
@@ -183,6 +234,9 @@ describe("RF12-P4 accounting guard and direct schedule activation", () => {
   });
 
   it("exposes one facade-only G4-evidenced direct activation route", () => {
+    expect(G4_ROUTE_EVIDENCE).toBe(
+      "/api/v1/rent-flex/selections/[id]/activate-direct-invoices",
+    );
     expect(GATE).toContain(
       "POST /api/v1/rent-flex/selections/:id/activate-direct-invoices",
     );
