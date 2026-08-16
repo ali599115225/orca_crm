@@ -6,6 +6,7 @@ import {
 } from "@/lib/api-auth-guard";
 import { getSession } from "@/lib/session";
 import PropertiesWorkspace from "@/components/real-estate/properties/PropertiesWorkspace";
+import RentFlexPropertyAvailabilityPanel from "@/components/rent-flex/RentFlexPropertyAvailabilityPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,12 @@ export default async function PropertiesPage() {
     const canWrite = new Set<string>(TENANT_WRITE_ROLES).has(
       String(verified.role || ""),
     );
-    return <PropertiesWorkspace canWrite={canWrite} />;
+    return (
+      <>
+        <RentFlexPropertyAvailabilityPanel canWrite={canWrite} />
+        <PropertiesWorkspace canWrite={canWrite} />
+      </>
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "UNAUTHORIZED") redirect("/login");
