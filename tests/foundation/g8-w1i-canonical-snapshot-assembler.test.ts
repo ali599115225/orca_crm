@@ -1,6 +1,21 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const dbMocks = vi.hoisted(() => ({
+  transaction: vi.fn(),
+  contractDraftFindFirst: vi.fn(),
+  contractFindFirst: vi.fn(),
+}));
+
+vi.mock("server-only", () => ({}));
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    $transaction: dbMocks.transaction,
+  },
+}));
+
+import { assembleCanonicalContractSnapshot } from "@/lib/domain/contract-finance/canonical-snapshot-assembler";
 
 const ROOT = process.cwd();
 const ASSEMBLER_SOURCE = readFileSync(
@@ -18,7 +33,71 @@ function sourceBlock(start: string, end: string): string {
   return ASSEMBLER_SOURCE.slice(startIndex, endIndex);
 }
 
+function approvedDraft(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "draft-a",
+    tenantId: "tenant-a",
+    templateId: "template-a",
+    templateVersionId: "template-version-a",
+    contractId: null,
+    financeCaseId: null,
+    title: "Approved draft",
+    status: "APPROVED",
+    contentJson: {},
+    dataBindingsJson: {},
+    clauseOverridesJson: {},
+    createdAt: new Date("2026-08-16T00:00:00.000Z"),
+    updatedAt: new Date("2026-08-16T00:01:00.000Z"),
+    template: {
+      id: "template-a",
+      code: "SALE",
+      name: "Sale",
+      contractType: "SALE",
+      status: "ACTIVE",
+    },
+    templateVersion: {
+      id: "template-version-a",
+      version: 1,
+      status: "PUBLISHED",
+      structureJson: {},
+      variableSchemaJson: {},
+      publishedAt: new Date("2026-08-15T23:00:00.000Z"),
+    },
+    approvals: [
+      {
+        id: "approval-a",
+        riskTier: "LEGAL",
+        status: "APPROVED",
+        requestedBy: "user-requester",
+        decidedBy: "user-approver",
+        reason: null,
+        evidenceJson: null,
+        requestedAt: new Date("2026-08-15T23:30:00.000Z"),
+        decidedAt: new Date("2026-08-15T23:45:00.000Z"),
+      },
+    ],
+    financeCase: null,
+    ...overrides,
+  };
+}
+
+async function expectAssemblyCode(code: string) {
+  await expect(
+    assembleCanonicalContractSnapshot({ tenantId: "tenant-a", draftId: "draft-a" }),
+  ).rejects.toMatchObject({ code });
+}
+
 describe("W1I canonical snapshot assembler", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbMocks.transaction.mockImplementation(async (operation) =>
+      operation({
+        contractDraft: { findFirst: dbMocks.contractDraftFindFirst },
+        contract: { findFirst: dbMocks.contractFindFirst },
+      }),
+    );
+  });
+
   it("uses only tenant + approved draft identity as caller input", () => {
     const inputType = sourceBlock(
       "export type CanonicalContractSnapshotAssemblyInput = {",
@@ -49,16 +128,16 @@ describe("W1I canonical snapshot assembler", () => {
     expect(ASSEMBLER_SOURCE).toContain("unit: {");
   });
 
-  it("proves the source fields exist on the frozen schemas without adding a migration", () => {
-    expect(W1_SCHEMA).toContain("contentJson         Json");
-    expect(W1_SCHEMA).toContain("dataBindingsJson    Json");
-    expect(W1_SCHEMA).toContain("clauseOverridesJson Json");
-    expect(W1_SCHEMA).toContain("structuredFacts     Json");
-    expect(W1_SCHEMA).toContain("clauseSnapshot      Json");
-    expect(W1_SCHEMA).toContain("paymentPlanSnapshot Json?");
-    expect(W1_SCHEMA).toContain("approvalSnapshot    Json");
-    expect(LEGACY_SCHEMA).toContain("paymentPlan          PaymentPlan?");
-    expect(LEGACY_SCHEMA).toContain("scheduleJson     Json");
+  it("proves the source fields exist on the frozen schemas without depending on alignment", () => {
+    expect(W1_SCHEMA).toMatch(/\bcontentJson\s+Json\b/);
+    expect(W1_SCHEMA).toMatch(/\bdataBindingsJson\s+Json\b/);
+    expect(W1_SCHEMA).toMatch(/\bclauseOverridesJson\s+Json\b/);
+    expect(W1_SCHEMA).toMatch(/\bstructuredFacts\s+Json\b/);
+    expect(W1_SCHEMA).toMatch(/\bclauseSnapshot\s+Json\b/);
+    expect(W1_SCHEMA).toMatch(/\bpaymentPlanSnapshot\s+Json\?/);
+    expect(W1_SCHEMA).toMatch(/\bapprovalSnapshot\s+Json\b/);
+    expect(LEGACY_SCHEMA).toMatch(/\bpaymentPlan\s+PaymentPlan\?/);
+    expect(LEGACY_SCHEMA).toMatch(/\bscheduleJson\s+Json\b/);
   });
 
   it("normalizes money and dates into deterministic digest-safe facts", () => {
@@ -71,14 +150,62 @@ describe("W1I canonical snapshot assembler", () => {
     expect(ASSEMBLER_SOURCE).toContain('orderBy: [{ requestedAt: "asc" }, { id: "asc" }]');
   });
 
-  it("fails closed on broken cross-source linkage, legacy tenant drift, or ambiguous financing", () => {
-    expect(ASSEMBLER_SOURCE).toContain("W1_CANONICAL_SNAPSHOT_CONTRACT_NOT_FOUND_FOR_TENANT");
-    expect(ASSEMBLER_SOURCE).toContain("W1_CANONICAL_SNAPSHOT_FINANCE_CONTRACT_MISMATCH");
-    expect(ASSEMBLER_SOURCE).toContain("W1_CANONICAL_SNAPSHOT_PROPERTY_TENANT_MISMATCH");
-    expect(ASSEMBLER_SOURCE).toContain("W1_CANONICAL_SNAPSHOT_PAYMENT_PLAN_TENANT_MISMATCH");
-    expect(ASSEMBLER_SOURCE).toContain("contract.unit.tenantId !== input.tenantId");
-    expect(ASSEMBLER_SOURCE).toContain("contract.paymentPlan.tenantId !== input.tenantId");
-    expect(ASSEMBLER_SOURCE).toContain("W1_CANONICAL_SNAPSHOT_MULTIPLE_SELECTED_PROVIDER_OFFERS");
+  it("fails closed at runtime for missing or unapproved draft state", async () => {
+    dbMocks.contractDraftFindFirst.mockResolvedValueOnce(null);
+    await expectAssemblyCode("W1_CANONICAL_SNAPSHOT_DRAFT_NOT_FOUND_FOR_TENANT");
+
+    dbMocks.contractDraftFindFirst.mockResolvedValueOnce(approvedDraft({ status: "DRAFT" }));
+    await expectAssemblyCode("W1_CANONICAL_SNAPSHOT_DRAFT_NOT_APPROVED");
+
+    dbMocks.contractDraftFindFirst.mockResolvedValueOnce(approvedDraft({ approvals: [] }));
+    await expectAssemblyCode("W1_CANONICAL_SNAPSHOT_APPROVALS_REQUIRED");
+
+    dbMocks.contractDraftFindFirst.mockResolvedValueOnce(
+      approvedDraft({
+        approvals: [{ ...approvedDraft().approvals[0], status: "PENDING" }],
+      }),
+    );
+    await expectAssemblyCode("W1_CANONICAL_SNAPSHOT_APPROVAL_PENDING_OR_REJECTED");
+  });
+
+  it("fails closed at runtime for ambiguous finance and broken contract linkage", async () => {
+    dbMocks.contractDraftFindFirst.mockResolvedValueOnce(
+      approvedDraft({
+        financeCase: { contractId: null, providerOffers: [{ id: "offer-a" }, { id: "offer-b" }] },
+      }),
+    );
+    await expectAssemblyCode("W1_CANONICAL_SNAPSHOT_MULTIPLE_SELECTED_PROVIDER_OFFERS");
+
+    dbMocks.contractDraftFindFirst.mockResolvedValueOnce(
+      approvedDraft({
+        contractId: "contract-a",
+        financeCase: { contractId: "contract-b", providerOffers: [] },
+      }),
+    );
+    await expectAssemblyCode("W1_CANONICAL_SNAPSHOT_FINANCE_CONTRACT_MISMATCH");
+
+    dbMocks.contractDraftFindFirst.mockResolvedValueOnce(approvedDraft({ contractId: "contract-a" }));
+    dbMocks.contractFindFirst.mockResolvedValueOnce(null);
+    await expectAssemblyCode("W1_CANONICAL_SNAPSHOT_CONTRACT_NOT_FOUND_FOR_TENANT");
+  });
+
+  it("fails closed at runtime when legacy nested rows drift across tenants", async () => {
+    dbMocks.contractDraftFindFirst.mockResolvedValueOnce(approvedDraft({ contractId: "contract-a" }));
+    dbMocks.contractFindFirst.mockResolvedValueOnce({
+      unit: { tenantId: "tenant-b" },
+      paymentPlan: null,
+    });
+    await expectAssemblyCode("W1_CANONICAL_SNAPSHOT_PROPERTY_TENANT_MISMATCH");
+
+    dbMocks.contractDraftFindFirst.mockResolvedValueOnce(approvedDraft({ contractId: "contract-a" }));
+    dbMocks.contractFindFirst.mockResolvedValueOnce({
+      unit: { tenantId: "tenant-a" },
+      paymentPlan: { tenantId: "tenant-b" },
+    });
+    await expectAssemblyCode("W1_CANONICAL_SNAPSHOT_PAYMENT_PLAN_TENANT_MISMATCH");
+  });
+
+  it("retains structural evidence for selected-provider and transaction invariants", () => {
     expect(ASSEMBLER_SOURCE).toContain('where: { recordStatus: "SELECTED" }');
     expect(ASSEMBLER_SOURCE).toContain("take: 2");
     expect(ASSEMBLER_SOURCE).toContain("Prisma.TransactionIsolationLevel.Serializable");
