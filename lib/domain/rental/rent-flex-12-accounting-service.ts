@@ -52,6 +52,11 @@ type RentFlexDirectInvoiceArtifact = Readonly<{
   qrImage: string;
 }>;
 
+type RentFlexAccountingReadClient = Pick<
+  typeof prisma,
+  "rentFlexSelection" | "rentalLease" | "rentFlexDirectInvoiceLink" | "invoice"
+>;
+
 export async function findRentFlexLeaseAccountingGuard(
   tenantId: string,
   rentalLeaseId: string,
@@ -120,7 +125,7 @@ async function buildInvoiceArtifacts(
 }
 
 async function readCompleteActivation(
-  tx: Prisma.TransactionClient,
+  tx: RentFlexAccountingReadClient,
   input: {
     tenantId: string;
     selectionId: string;
@@ -213,7 +218,7 @@ async function readCompleteActivation(
 }
 
 async function readActivationState(
-  tx: Prisma.TransactionClient,
+  tx: RentFlexAccountingReadClient,
   tenantId: string,
   selectionId: string,
 ) {
