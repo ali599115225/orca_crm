@@ -127,14 +127,29 @@ describe("RF12-P2 guarded Rent Flex API wrappers", () => {
   it("validates UUIDs, dates, money, enums, and bounded list limits before the facade", () => {
     expect(BOUNDARY).toContain("RF12_UUID_PATTERN");
     expect(BOUNDARY).toContain("RF12_DATE_PATTERN");
+    expect(BOUNDARY).toContain("RF12_MONEY_PATTERN");
     expect(BOUNDARY).toContain("requiredRentFlexPositiveMoney");
     expect(BOUNDARY).toContain("optionalRentFlexNonNegativeMoney");
+    expect(BOUNDARY).toContain("const normalized = String(value)");
+    expect(BOUNDARY).toContain("return normalized");
     expect(BOUNDARY).toContain("requiredRentFlexEnum");
     expect(BOUNDARY).toContain("value > 100");
     expect(ROUTES[1]).toContain('requiredRentFlexUuid(body, "unitId")');
     expect(ROUTES[1]).toContain('requiredRentFlexDateOnly(body, "firstDueDate")');
     expect(ROUTES[4]).toContain("requiredRentFlexPositiveMoney");
     expect(ROUTES[8]).toContain("optionalRentFlexNonNegativeMoney");
+    expect(GATE).toContain("at most two decimal places for money whether the client sends a JSON string or number");
+  });
+
+  it("bounds settlement evidence JSON before it reaches persistence", () => {
+    expect(BOUNDARY).toContain("RF12_EVIDENCE_JSON_MAX_BYTES = 64 * 1024");
+    expect(BOUNDARY).toContain("RF12_EVIDENCE_JSON_MAX_DEPTH = 8");
+    expect(BOUNDARY).toContain("assertRentFlexJsonValue");
+    expect(BOUNDARY).toContain("Object.getPrototypeOf(value)");
+    expect(BOUNDARY).toContain("item === undefined");
+    expect(BOUNDARY).toContain("new TextEncoder().encode(serialized).byteLength");
+    expect(GATE).toContain("64 KiB UTF-8");
+    expect(GATE).toContain("maximum nesting depth **8**");
   });
 
   it("normalizes read output and does not expose raw external evidence", () => {
