@@ -30,9 +30,7 @@ const { txMock, prismaMock } = vi.hoisted(() => {
     txMock: tx,
     prismaMock: {
       ...tx,
-      $transaction: vi.fn(async (callback: (tx: typeof tx) => unknown) =>
-        callback(tx),
-      ),
+      $transaction: vi.fn(),
     },
   };
 });
