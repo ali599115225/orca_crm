@@ -48,7 +48,7 @@ describe("RF12-P3 contextual property and lease UI", () => {
     expect(PROPERTY_PANEL).toContain("الدفع المرن متاح");
     expect(PROPERTY_PANEL).toContain("لا تعني الأهلية أو القبول لدى أي مزود");
     expect(PROPERTY_PANEL).toContain("externalRnplEnabled");
-    expect(PROPERTY_PANEL).toContain('config.status === "ACTIVE"');
+    expect(PROPERTY_PANEL).toContain('selectedConfig.status === "ACTIVE"');
     expect(GATE).toContain("is **not** tenant eligibility or provider approval");
   });
 
@@ -100,6 +100,28 @@ describe("RF12-P3 contextual property and lease UI", () => {
     expect(READ_MODEL).toContain('authorityStatus: canonicalProviderApproval ? "APPROVED" : null');
     expect(GATE).toContain("does **not** trust `FinanceProviderOffer.authorityStatus`");
     expect(GATE).toContain("does not treat an offer as an approval");
+  });
+
+  it("prevents stale unit-config and selection-detail responses from replacing current UI identity", () => {
+    expect(PROPERTY_PANEL).toContain("configRequestRef");
+    expect(PROPERTY_PANEL).toContain("requestId !== configRequestRef.current");
+    expect(PROPERTY_PANEL).toContain("config?.unitId === selectedUnitId");
+    expect(LEASE_PANEL).toContain("unitConfigRequestRef");
+    expect(LEASE_PANEL).toContain("selectionDetailRequestRef");
+    expect(LEASE_PANEL).toContain("requestId !== unitConfigRequestRef.current");
+    expect(LEASE_PANEL).toContain("requestId !== selectionDetailRequestRef.current");
+    expect(LEASE_PANEL).toContain("unitConfig?.unitId === selectedUnitId");
+    expect(LEASE_PANEL).toContain("selectionDetail?.id === selectedSelectionId");
+    expect(GATE).toContain("older async response from overwriting a newer unit selection");
+    expect(GATE).toContain("older detail response cannot replace a newer selection");
+  });
+
+  it("aligns client money shape with P2 and does not invent zero for absent optional values", () => {
+    expect(LEASE_PANEL).toContain("isPositiveMoneyInput");
+    expect(LEASE_PANEL).toContain('/^\\d+(?:\\.\\d{1,2})?$/');
+    expect(LEASE_PANEL).toContain("numeric <= 1_000_000_000");
+    expect(LEASE_PANEL).toContain('if (value === null || value === undefined || value === "") return "—"');
+    expect(GATE).toContain("Optional monetary values that are absent are displayed as `—`");
   });
 
   it("renders human labels for unit and lease identity instead of technical IDs", () => {
