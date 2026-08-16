@@ -73,9 +73,14 @@ function parseIsoDate(value: string): { year: number; month: number; day: number
 
 function addCalendarMonthsClamped(startDate: string, offsetMonths: number): string {
   const { year, month, day } = parseIsoDate(startDate);
-  const firstOfTargetMonth = new Date(Date.UTC(year, month - 1 + offsetMonths, 1));
-  const targetYear = firstOfTargetMonth.getUTCFullYear();
-  const targetMonth = firstOfTargetMonth.getUTCMonth();
+  const absoluteMonth = year * 12 + (month - 1) + offsetMonths;
+  const targetYear = Math.floor(absoluteMonth / 12);
+  const targetMonth = absoluteMonth % 12;
+
+  if (targetYear > 9999) {
+    throw new RentFlex12Error("RENT_FLEX_12_DUE_DATE_OUT_OF_RANGE");
+  }
+
   const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
   const target = new Date(Date.UTC(targetYear, targetMonth, Math.min(day, lastDay)));
   return target.toISOString().slice(0, 10);
