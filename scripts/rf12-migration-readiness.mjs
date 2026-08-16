@@ -114,10 +114,10 @@ function materializePre() {
   const text = files.map((name) => `// ${name}\n${fs.readFileSync(path.join(preDir,name),"utf8")}`).join("\n\n");
   write(combined, text);
   const result = run("npx", ["prisma","migrate","diff","--from-empty","--to-schema",combined,"--script"], { cwd: headDir });
-  const marker = "-- CreateSchema";
-  const start = result.stdout.indexOf(marker);
-  if (start < 0) throw new Error("RF12MR_PRE_SCHEMA_SQL_MARKER_MISSING");
-  const sql = result.stdout.slice(start);
+  const markerCandidates = ["-- CreateSchema", "-- CreateTable", "CREATE TABLE"];
+  const starts = markerCandidates.map((marker) => result.stdout.indexOf(marker)).filter((value) => value >= 0);
+  if (!starts.length) throw new Error("RF12MR_PRE_SCHEMA_SQL_MARKER_MISSING");
+  const sql = result.stdout.slice(Math.min(...starts));
   if (!/\bCREATE\s+TABLE\b/i.test(sql)) throw new Error("RF12MR_PRE_SCHEMA_SQL_EMPTY");
   write(output, sql);
 }
