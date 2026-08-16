@@ -12,10 +12,12 @@ Introduce one deterministic, server-side, read-only assembler for the persisted 
 
 W1I does **not** implement legal-text rendering. It does not define an interpolation grammar for `contentJson`, `dataBindingsJson`, `structureJson`, or `clauseOverridesJson`.
 
-The only caller-controlled assembler identity is:
+The assembler receives only:
 
 - `tenantId`
 - `draftId`
+
+The `tenantId` parameter is an explicit DB-scope identity, not an independent trust source. Before any DB access, W1I requires ORCA's ambient tenant context and fails closed unless `requireTenantContext().tenantId` matches the supplied `tenantId`. W1E's authorized application facade already establishes that ambient context from the authorized actor via `runWithTenantContext`.
 
 All snapshot facts are loaded from authoritative persisted ORCA state.
 
@@ -35,8 +37,9 @@ For one tenant-owned approved `ContractDraft`, the assembler reads:
 
 The assembler does not infer a missing Contract from FinanceCase linkage and does not fabricate provider authority state. Because the frozen legacy `Contract -> Unit` and `Contract -> PaymentPlan` relations are ID-linked rather than tenant-composite W1 relations, W1I additionally verifies the nested `Unit.tenantId` and `PaymentPlan.tenantId` against the assembler tenant before those facts may enter a canonical snapshot payload.
 
-## Determinism rules
+## Determinism and tenant-boundary rules
 
+- Ambient tenant context must exist before assembly and must match `input.tenantId` before a transaction begins.
 - Reads execute in one `SERIALIZABLE` Prisma transaction.
 - Approval ordering is `requestedAt ASC, id ASC`.
 - At most one selected provider offer is accepted; multiple selected offers fail closed.
@@ -61,6 +64,8 @@ The assembler returns:
 Assembly fails when:
 
 - tenant or draft identity is missing;
+- no ambient ORCA tenant context exists;
+- ambient tenant context does not match the supplied tenant identity;
 - the draft is not found for the tenant;
 - the draft is not `APPROVED`;
 - no approvals exist;
@@ -95,12 +100,13 @@ W1I closes only when:
 
 1. the implementation remains within the three-file allowlist;
 2. G8 proves caller input cannot provide rendered content or canonical snapshot payloads;
-3. G8 proves the persisted source fields exist on the frozen W1 schemas;
-4. G8 proves approved-draft, approval, tenant, legacy nested-tenant linkage, selected-provider, deterministic decimal/date, and read-only invariants;
-5. the focused W1I test passes;
-6. typecheck passes;
-7. full ORCA CI through Build passes on one exact head;
-8. independent review finds no unresolved Critical/Major issue;
-9. no snapshot issuance endpoint, migration, deploy, provider activation, or production action occurs.
+3. G8 proves the supplied tenant identity is bound to ORCA's authenticated ambient tenant context before DB access;
+4. G8 proves the persisted source fields exist on the frozen W1 schemas;
+5. G8 proves approved-draft, approval, tenant, legacy nested-tenant linkage, selected-provider, deterministic decimal/date, and read-only invariants;
+6. the focused W1I test passes;
+7. typecheck passes;
+8. full ORCA CI through Build passes on one exact head;
+9. independent review finds no unresolved Critical/Major issue;
+10. no snapshot issuance endpoint, migration, deploy, provider activation, or production action occurs.
 
 A later slice may wire snapshot issuance only after the approved `contentJson` / template structure has a formally frozen rendering contract. Until then, the W1H network deferral remains intact.
