@@ -224,6 +224,10 @@ export async function getRentFlexSelectionReadModel(
         selection.selectedProviderOfferId === offer.id &&
           financeAuthority &&
           financeAuthority.authorityStatus === "APPROVED" &&
+          financeAuthority.authorityProvider &&
+          financeAuthority.authorityReference &&
+          offer.provider &&
+          offer.providerReference &&
           financeAuthority.authorityProvider === offer.provider &&
           financeAuthority.authorityReference === offer.providerReference &&
           providerApprovalLifecycleStates.has(financeAuthority.internalStatus),
