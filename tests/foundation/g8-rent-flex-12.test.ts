@@ -41,7 +41,12 @@ describe("Rent Flex 12", () => {
     });
 
     expect(sumAmounts(plan.schedule)).toBe(100_000.01);
-    expect(plan.schedule.every((item) => Number.isInteger(item.amountSar * 100))).toBe(true);
+    expect(
+      plan.schedule.every((item) => {
+        const halalas = item.amountSar * 100;
+        return Math.abs(halalas - Math.round(halalas)) < 1e-7;
+      }),
+    ).toBe(true);
   });
 
   it("uses calendar-month recurrence with end-of-month clamping", () => {
@@ -126,6 +131,14 @@ describe("Rent Flex 12", () => {
           annualRentSar: 60_000,
           totalTenantPayableSar: 66_000,
           downPaymentSar: 70_000,
+          firstDueDate: "2026-09-01",
+        }),
+      () =>
+        buildExternalRnpl12Quote({
+          providerName: "Provider A",
+          annualRentSar: 60_000,
+          totalTenantPayableSar: 66_000,
+          downPaymentSar: 66_000,
           firstDueDate: "2026-09-01",
         }),
     ];
