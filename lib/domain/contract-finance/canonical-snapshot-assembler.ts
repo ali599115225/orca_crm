@@ -2,6 +2,7 @@ import "server-only";
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { requireTenantContext } from "@/lib/tenant-context";
 
 export class W1CanonicalSnapshotAssemblyError extends Error {
   constructor(public readonly code: string) {
@@ -44,6 +45,13 @@ export async function assembleCanonicalContractSnapshot(
 ): Promise<CanonicalContractSnapshotAssembly> {
   if (!input.tenantId || !input.draftId) {
     throw new W1CanonicalSnapshotAssemblyError("W1_CANONICAL_SNAPSHOT_IDENTITY_REQUIRED");
+  }
+
+  const tenantContext = requireTenantContext();
+  if (tenantContext.tenantId !== input.tenantId) {
+    throw new W1CanonicalSnapshotAssemblyError(
+      "W1_CANONICAL_SNAPSHOT_TENANT_CONTEXT_MISMATCH",
+    );
   }
 
   return await prisma.$transaction(
@@ -243,7 +251,7 @@ export async function assembleCanonicalContractSnapshot(
           "W1_CANONICAL_SNAPSHOT_CONTRACT_NOT_FOUND_FOR_TENANT",
         );
       }
-      if (contract?.unit.tenantId !== undefined && contract.unit.tenantId !== input.tenantId) {
+      if (contract && contract.unit.tenantId !== input.tenantId) {
         throw new W1CanonicalSnapshotAssemblyError(
           "W1_CANONICAL_SNAPSHOT_PROPERTY_TENANT_MISMATCH",
         );
