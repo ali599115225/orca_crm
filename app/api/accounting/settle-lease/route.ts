@@ -11,6 +11,7 @@ import {
   unauthorizedResponse,
   forbiddenResponse,
 } from '@/lib/api-auth-guard';
+import { findRentFlexLeaseAccountingGuard } from '@/lib/domain/rental/rent-flex-12-accounting-service';
 import {
   ErrorCode,
   publicError,
@@ -99,6 +100,33 @@ export async function POST(request: NextRequest) {
       return errorResponse(
         ErrorCode.NOT_FOUND,
         'settle-lease lease not found'
+      );
+    }
+
+    const rentFlexGuard = await findRentFlexLeaseAccountingGuard(
+      tenantId,
+      leaseId,
+    );
+    if (rentFlexGuard) {
+      await prisma.auditLog.create({
+        data: {
+          tenantId,
+          userId: session.userId,
+          action: 'RENT_FLEX_LEGACY_SETTLEMENT_BLOCKED',
+          tableName: 'rental_leases',
+          recordId: leaseId,
+          details: JSON.stringify({
+            selectionId: rentFlexGuard.selectionId,
+            mode: rentFlexGuard.mode,
+            status: rentFlexGuard.status,
+          }),
+        },
+      });
+      return errorResponse(
+        ErrorCode.CONFLICT,
+        'settle-lease blocked because the lease is attached to Rent Flex',
+        undefined,
+        409
       );
     }
 

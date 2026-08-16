@@ -59,16 +59,25 @@ export function isRentFlex12LeaseBindingApiEnabled(): boolean {
   );
 }
 
+export function isRentFlex12DirectInvoicingApiEnabled(): boolean {
+  return (
+    isRentFlex12LeaseBindingApiEnabled() &&
+    process.env.ORCA_RENT_FLEX_12_DIRECT_INVOICING_ENABLED === "true"
+  );
+}
+
 async function beginRentFlex12Request(
   request: NextRequest,
-  access: "read" | "write" | "lease-binding",
+  access: "read" | "write" | "lease-binding" | "direct-invoicing",
 ): Promise<{ session: SessionPayload } | NextResponse> {
   const enabled =
     access === "read"
       ? isRentFlex12ReadApiEnabled()
       : access === "lease-binding"
         ? isRentFlex12LeaseBindingApiEnabled()
-        : isRentFlex12WriteApiEnabled();
+        : access === "direct-invoicing"
+          ? isRentFlex12DirectInvoicingApiEnabled()
+          : isRentFlex12WriteApiEnabled();
   if (!enabled) {
     return notFoundResponse(request);
   }
@@ -91,6 +100,10 @@ export async function beginRentFlex12WriteRequest(request: NextRequest) {
 
 export async function beginRentFlex12LeaseBindingRequest(request: NextRequest) {
   return await beginRentFlex12Request(request, "lease-binding");
+}
+
+export async function beginRentFlex12DirectInvoicingRequest(request: NextRequest) {
+  return await beginRentFlex12Request(request, "direct-invoicing");
 }
 
 export async function readRentFlex12JsonObject(
