@@ -24,6 +24,8 @@ ORCA code: `DIRECT_MONTHLY_EJAR`.
 
 Saudi proptech providers advertise a model in which the provider settles the annual rent to the owner and the tenant repays the provider over 12 monthly payments. Public provider material reviewed for this gate includes Rize, Sariat, and Bast. Some providers describe a sublease structure and/or external eligibility assessment.
 
+Aqar's February 2026 help material shows the model moving from a stand-alone provider journey into the property-listing journey itself: a residential listing can expose an "Rent Now, Pay Later" option, while the owner/broker receives the amount upfront and the payment/collection process is handled by the external partner. This means ORCA should eventually expose Rent Flex at both the property/listing opportunity boundary and the lease-creation boundary rather than treating it as a finance-screen-only feature.
+
 In this mode, the tenant's 12-provider-payment schedule is **not** automatically an ORCA company receivable. The company/owner settlement and the tenant/provider repayment schedule are separate economic relationships.
 
 ORCA code: `EXTERNAL_RNPL_12`.
@@ -37,6 +39,7 @@ Add a provider-neutral Rent Flex 12 capability that can later support:
 - clear display of annual rent, upfront amount, total tenant payable, and monthly schedule;
 - owner settlement expectation separated from tenant/provider repayment;
 - provider offer expiry/reference/evidence in a later persistence slice;
+- property/listing-level eligibility/activation display before lease creation;
 - safe handoff to an external provider without ORCA representing itself as lender, lessor-by-sublease, credit bureau, or finance authority.
 
 ## Foundation implemented in this slice
@@ -82,9 +85,10 @@ The external repayment schedule must never be inserted into ORCA `PaymentPlan`/`
 
 A later UI/persistence slice should evolve the market idea into an ORCA operational workflow:
 
-1. **Rent Flex selector**
-   - Annual / semi-annual / quarterly / direct monthly;
-   - External RNPL 12.
+1. **Rent Flex entry points**
+   - property/listing: show whether Rent Flex is available/configured before the tenant starts the lease journey;
+   - lease creation: Annual / semi-annual / quarterly / direct monthly / External RNPL 12;
+   - no public promise of provider approval before the external provider confirms it.
 
 2. **Offer comparison panel**
    - provider;
@@ -114,6 +118,10 @@ A later UI/persistence slice should evolve the market idea into an ORCA operatio
 6. **Provider-neutral adapter boundary**
    - no Rize/Sariat/Bast hard-coding in domain logic;
    - adapters may be added only if the customer configures/authorizes that provider.
+
+7. **Conversion and occupancy analytics**
+   - when persistence is later approved, ORCA should measure Rent Flex exposure -> quote request -> provider approval -> lease signed -> owner settled;
+   - the metric must not treat provider approval as an ORCA decision.
 
 ## Explicit exclusions in this foundation
 
@@ -146,6 +154,7 @@ This foundation is accepted when:
 
 - Ejar FAQ and residential lease material: monthly/quarterly/semi-annual/annual payment periods and flexible payment scheduling.
 - REGA/Ejar digital-payment material: residential rent payments use Ejar digital channels for applicable new residential contracts.
+- Aqar help center, 2026-02-25: Rent Now, Pay Later can be activated from an eligible residential listing; owner/broker receives the amount upfront while the partner handles payment/collection.
 - Rize: annual rent can be converted to 12 monthly payments while the owner receives the annual amount upfront; provider site also describes external bank-data access for eligibility through its own partner flow.
 - Sariat: advertises annual owner settlement and 12 monthly tenant payments and describes a sublease structure.
 - Bast: terms describe leasing from the owner and re-leasing to the customer through a sublease contract with 12 payments.
