@@ -61,6 +61,7 @@ describe("RF12 isolated migration readiness", () => {
     expect(capture).toBeGreaterThan(w1);
     expect(apply).toBeGreaterThan(capture);
     expect(verify).toBeGreaterThan(apply);
+    expect(WORKFLOW).toContain('DATABASE_URL="$UPGRADE_URL" DIRECT_URL="$UPGRADE_URL" RF12MR_PRE_PRISMA_DIR=pre/prisma');
     expect(SCRIPT).toContain('const supportedBaseFiles = ["schema.prisma", "rbac.prisma"]');
     expect(SCRIPT).toContain("RF12MR_BASE_SCHEMA_UNEXPECTED_W1_MODEL");
     expect(SCRIPT).toContain("while (attempt <= 5)");
