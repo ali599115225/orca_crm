@@ -1,5 +1,11 @@
 import ContractsPaymentsCenter from '@/components/contracts-payments/ContractsPaymentsCenter';
+import RentFlexLeaseWorkspacePanel from '@/components/rent-flex/RentFlexLeaseWorkspacePanel';
 
 export default function LeasesWorkspacePage() {
-  return <ContractsPaymentsCenter defaultPane="leases" />;
+  return (
+    <>
+      <RentFlexLeaseWorkspacePanel />
+      <ContractsPaymentsCenter defaultPane="leases" />
+    </>
+  );
 }
