@@ -49,7 +49,7 @@ describe("RF12 isolated migration readiness", () => {
     expect(SCRIPT).toContain("RF12MR_NON_REHEARSAL_DATABASE_FORBIDDEN");
   });
 
-  it("materializes pre-RF12, applies the artifact, and requires zero Prisma drift", () => {
+  it("materializes pre-RF12 with bounded schema-engine retry, applies the artifact, and requires zero Prisma drift", () => {
     const materialize = WORKFLOW.indexOf("name: Materialize exact pre-RF12 schema");
     const apply = WORKFLOW.indexOf("name: Apply RF12 migration to isolated database");
     const verify = WORKFLOW.indexOf("name: Verify exact schema drift and legacy preservation");
@@ -57,6 +57,10 @@ describe("RF12 isolated migration readiness", () => {
     expect(apply).toBeGreaterThan(materialize);
     expect(verify).toBeGreaterThan(apply);
     expect(SCRIPT).toContain('"--from-empty"');
+    expect(SCRIPT).toContain("while (attempt <= 5)");
+    expect(SCRIPT).toContain('result.output.includes("Error in Schema engine")');
+    expect(SCRIPT).toContain("RF12MR_PRE_SCHEMA_ENGINE_RETRY_EXHAUSTED");
+    expect(SCRIPT).toContain("pre-rf12-materialize-attempt-${attempt}.txt");
     expect(SCRIPT).toContain('"--from-config-datasource"');
     expect(SCRIPT).toContain('"--to-schema","prisma"');
     expect(SCRIPT).toContain("const zeroDrift = drift.status === 0");
