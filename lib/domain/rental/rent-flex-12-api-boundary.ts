@@ -49,14 +49,23 @@ export function isRentFlex12WriteApiEnabled(): boolean {
   );
 }
 
+export function isRentFlex12LeaseBindingApiEnabled(): boolean {
+  return (
+    isRentFlex12WriteApiEnabled() &&
+    process.env.ORCA_RENT_FLEX_12_ACCOUNTING_GUARD_READY === "true"
+  );
+}
+
 async function beginRentFlex12Request(
   request: NextRequest,
-  access: "read" | "write",
+  access: "read" | "write" | "lease-binding",
 ): Promise<{ session: SessionPayload } | NextResponse> {
   const enabled =
     access === "read"
       ? isRentFlex12ReadApiEnabled()
-      : isRentFlex12WriteApiEnabled();
+      : access === "lease-binding"
+        ? isRentFlex12LeaseBindingApiEnabled()
+        : isRentFlex12WriteApiEnabled();
   if (!enabled) {
     return notFoundResponse(request);
   }
@@ -75,6 +84,10 @@ export async function beginRentFlex12ReadRequest(request: NextRequest) {
 
 export async function beginRentFlex12WriteRequest(request: NextRequest) {
   return await beginRentFlex12Request(request, "write");
+}
+
+export async function beginRentFlex12LeaseBindingRequest(request: NextRequest) {
+  return await beginRentFlex12Request(request, "lease-binding");
 }
 
 export async function readRentFlex12JsonObject(
