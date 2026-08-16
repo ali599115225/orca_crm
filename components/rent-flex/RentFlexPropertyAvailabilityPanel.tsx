@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CircleDollarSign, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import { useApp } from "@/app/context/AppContext";
 import SettingsSelect from "@/components/settings/SettingsSelect";
@@ -40,30 +40,31 @@ export default function RentFlexPropertyAvailabilityPanel({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const configRequestRef = useRef(0);
 
   const loadUnitConfig = useCallback(async (unitId: string) => {
     if (!unitId) return;
+    const requestId = ++configRequestRef.current;
+    setConfig(null);
     setError("");
     try {
       const response = await fetch(`/api/v1/rent-flex/units/${unitId}`, {
         credentials: "include",
         cache: "no-store",
       });
-      if (response.status === 404) {
-        setFeatureAvailable(false);
-        setConfig(null);
-        return;
-      }
-      if (response.status === 401 || response.status === 403) {
+      if (requestId !== configRequestRef.current) return;
+      if (response.status === 404 || response.status === 401 || response.status === 403) {
         setFeatureAvailable(false);
         setConfig(null);
         return;
       }
       const payload = await response.json();
+      if (requestId !== configRequestRef.current) return;
       if (!response.ok) throw new Error(payload?.error || "RENT_FLEX_CONFIG_LOAD_FAILED");
       setFeatureAvailable(true);
-      setConfig(payload?.data ?? null);
+      setConfig(payload?.data?.unitId === unitId ? payload.data : null);
     } catch {
+      if (requestId !== configRequestRef.current) return;
       setFeatureAvailable(true);
       setConfig(null);
       setError(t("تعذر قراءة إعداد الدفع المرن لهذه الوحدة.", "Unable to load Rent Flex availability for this unit."));
@@ -82,33 +83,42 @@ export default function RentFlexPropertyAvailabilityPanel({
       if (!response.ok || !payload?.success) throw new Error("PROPERTY_LOAD_FAILED");
       const nextUnits = (Array.isArray(payload.data) ? payload.data : []) as PropertyUnit[];
       setUnits(nextUnits);
-      const nextId =
-        selectedUnitId && nextUnits.some((unit) => unit.id === selectedUnitId)
-          ? selectedUnitId
-          : nextUnits[0]?.id || "";
-      setSelectedUnitId(nextId);
-      if (nextId) await loadUnitConfig(nextId);
-      else setFeatureAvailable(null);
+      setSelectedUnitId((current) =>
+        current && nextUnits.some((unit) => unit.id === current)
+          ? current
+          : nextUnits[0]?.id || "",
+      );
+      if (!nextUnits.length) setFeatureAvailable(null);
     } catch {
       setUnits([]);
+      setSelectedUnitId("");
       setError(t("تعذر تحميل الوحدات العقارية.", "Unable to load property units."));
     } finally {
       setLoading(false);
     }
-  }, [ar, loadUnitConfig, selectedUnitId]);
+  }, [ar]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   useEffect(() => {
-    if (!selectedUnitId || loading) return;
+    if (!selectedUnitId) {
+      configRequestRef.current += 1;
+      setConfig(null);
+      return;
+    }
     void loadUnitConfig(selectedUnitId);
-  }, [selectedUnitId]);
+  }, [loadUnitConfig, selectedUnitId]);
 
   const selectedUnit = useMemo(
     () => units.find((unit) => unit.id === selectedUnitId) || null,
     [selectedUnitId, units],
+  );
+
+  const selectedConfig = config?.unitId === selectedUnitId ? config : null;
+  const enabled = Boolean(
+    selectedConfig?.externalRnplEnabled && selectedConfig.status === "ACTIVE",
   );
 
   async function toggleAvailability() {
@@ -116,7 +126,7 @@ export default function RentFlexPropertyAvailabilityPanel({
     setBusy(true);
     setError("");
     setNotice("");
-    const nextEnabled = !(config?.externalRnplEnabled && config.status === "ACTIVE");
+    const nextEnabled = !enabled;
     try {
       const response = await fetch(`/api/v1/rent-flex/units/${selectedUnitId}`, {
         method: "PUT",
@@ -132,7 +142,7 @@ export default function RentFlexPropertyAvailabilityPanel({
       }
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error || "UPDATE_FAILED");
-      setConfig(payload?.data ?? null);
+      if (payload?.data?.unitId === selectedUnitId) setConfig(payload.data);
       setNotice(
         nextEnabled
           ? t("تمت إتاحة خيار 12 دفعة على الوحدة.", "The 12-payment option is now available on this unit.")
@@ -153,8 +163,6 @@ export default function RentFlexPropertyAvailabilityPanel({
   if (featureAvailable === false) return null;
   if (loading && featureAvailable === null) return null;
   if (!units.length && !error) return null;
-
-  const enabled = Boolean(config?.externalRnplEnabled && config.status === "ACTIVE");
 
   return (
     <section
