@@ -109,6 +109,19 @@ jobs:
         run: |
           set -euo pipefail
           DATABASE_URL="$UPGRADE_URL" DIRECT_URL="$UPGRADE_URL" RF12MR_PRE_PRISMA_DIR=pre/prisma RF12MR_HEAD_DIR=head RF12MR_COMBINED_SCHEMA=evidence/pre-rf12-base-schema.prisma RF12MR_OUTPUT=evidence/pre-rf12-base-schema.sql node head/scripts/rf12-migration-readiness.mjs materialize-pre
+          cp evidence/pre-rf12-base-schema.sql evidence/pre-rf12-base-schema.raw.txt
+          node <<'NODE'
+          const fs = require('node:fs');
+          const file = 'evidence/pre-rf12-base-schema.sql';
+          const raw = fs.readFileSync(file, 'utf8');
+          const marker = '-- CreateSchema';
+          const start = raw.indexOf(marker);
+          if (start < 0) throw new Error('RF12MR_PRE_BASE_SQL_MARKER_MISSING');
+          const sql = raw.slice(start);
+          if (!/\bCREATE\s+TABLE\b/i.test(sql)) throw new Error('RF12MR_PRE_BASE_SQL_OUTPUT_MISSING');
+          if (/^◇\s/m.test(sql)) throw new Error('RF12MR_PRE_BASE_SQL_PREAMBLE_NOT_STRIPPED');
+          fs.writeFileSync(file, sql, 'utf8');
+          NODE
           psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 -f evidence/pre-rf12-base-schema.sql > evidence/pre-rf12-base-apply.txt
 
       - name: Apply exact pre-RF12 W1 schema migrations
