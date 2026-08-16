@@ -160,7 +160,8 @@ describe("RF12-P2 guarded Rent Flex API wrappers", () => {
     expect(combined).not.toMatch(/paymentPlan\.(?:create|update|delete|upsert)/);
     expect(combined).not.toMatch(/installment\.(?:create|update|delete|upsert)/);
     expect(combined).not.toMatch(/journalEntry\.(?:create|update|delete|upsert)/);
-    expect(GATE).toContain("no provider callback/webhook");
-    expect(GATE).toContain("no deploy or production action");
+    expect(GATE).toContain("RF12-P2 performs no:");
+    expect(GATE).toContain("- provider callback/webhook;");
+    expect(GATE).toContain("- deploy or production action.");
   });
 });
