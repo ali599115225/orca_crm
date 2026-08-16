@@ -44,9 +44,9 @@ describe("G4 — Page and operational contract registry", () => {
     expect(inventory.summary.apisWithoutDetectedMethods).toBe(0);
     expect(inventory.summary.normalizedReExportedApiMethods).toBe(1);
 
-    expect(registry.summary.totalContracts).toBe(383);
+    expect(registry.summary.totalContracts).toBe(384);
     expect(registry.summary.byKind).toEqual({
-      API: 149,
+      API: 150,
       ERROR_STATE: 4,
       LAYOUT: 5,
       LOADING_STATE: 3,
@@ -58,7 +58,7 @@ describe("G4 — Page and operational contract registry", () => {
     expect(registry.summary.duplicateContractIds).toBe(0);
     expect(registry.summary.invalidPermissionKeys).toBe(0);
     expect(registry.summary.malformedContracts).toBe(0);
-    expect(registry.contracts).toHaveLength(383);
+    expect(registry.contracts).toHaveLength(384);
     expect(registry.contracts.every((contract: { coverageStatus: string }) => contract.coverageStatus === "RECORDED")).toBe(true);
   });
 
@@ -66,7 +66,7 @@ describe("G4 — Page and operational contract registry", () => {
     const { registry } = runRegistry();
     const apis = registry.contracts.filter((contract: { kind: string }) => contract.kind === "API");
 
-    expect(apis).toHaveLength(149);
+    expect(apis).toHaveLength(150);
     expect(apis.every((contract: { apiMethods: string[] }) => contract.apiMethods.length > 0)).toBe(true);
 
     const ngenius = apis.find((contract: { route: string }) => contract.route === "/api/v1/installments/[id]/pay/ngenius");
