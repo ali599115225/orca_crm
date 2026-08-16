@@ -57,7 +57,7 @@ describe("RF12-P3 contextual property and lease UI", () => {
     expect(LEASE_PANEL).toContain("استحقاقًا لصالح المؤجر/الشركة");
     expect(LEASE_PANEL).toContain("سداد خارجي لمزود");
     expect(LEASE_PANEL).toContain("أقساط المستأجر للمزود تظل خارج ذمم ORCA");
-    expect(GATE).toContain("external-provider repayments into ORCA receivables");
+    expect(GATE).toContain("turn external-provider repayments into ORCA receivables");
   });
 
   it("supports pre-lease selection, provider-offer choice, and lock through RF12-P2 only", () => {
