@@ -148,6 +148,18 @@ export async function getRentFlexSelectionReadModel(
     throw new RentFlexP1Error("RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT");
   }
 
+  const financeAuthority = selection.financeCaseId
+    ? await prisma.financeCase.findFirst({
+        where: { id: selection.financeCaseId, tenantId },
+        select: {
+          internalStatus: true,
+          authorityStatus: true,
+          authorityProvider: true,
+          authorityReference: true,
+        },
+      })
+    : null;
+
   const offers = selection.financeCaseId
     ? await prisma.financeProviderOffer.findMany({
         where: { tenantId, financeCaseId: selection.financeCaseId },
@@ -157,7 +169,6 @@ export async function getRentFlexSelectionReadModel(
           provider: true,
           productName: true,
           recordStatus: true,
-          authorityStatus: true,
           providerReference: true,
           amount: true,
           downPayment: true,
@@ -197,18 +208,36 @@ export async function getRentFlexSelectionReadModel(
     },
   });
 
+  const providerApprovalLifecycleStates = new Set([
+    "PROVIDER_APPROVED",
+    "READY_FOR_TRANSACTION",
+    "COMPLETED",
+  ]);
+
   return {
     ...selectionSummary(selection),
     companySchedule: selection.companyScheduleJson,
     scheduleDigest: selection.scheduleDigest,
     offers: offers.map((offer) => {
       const rentFlexTerms = termsByOffer.get(offer.id);
+      const canonicalProviderApproval = Boolean(
+        selection.selectedProviderOfferId === offer.id &&
+          financeAuthority &&
+          financeAuthority.authorityStatus === "APPROVED" &&
+          financeAuthority.authorityProvider &&
+          financeAuthority.authorityReference &&
+          offer.provider &&
+          offer.providerReference &&
+          financeAuthority.authorityProvider === offer.provider &&
+          financeAuthority.authorityReference === offer.providerReference &&
+          providerApprovalLifecycleStates.has(financeAuthority.internalStatus),
+      );
       return {
         id: offer.id,
         provider: offer.provider,
         productName: offer.productName,
         recordStatus: offer.recordStatus,
-        authorityStatus: offer.authorityStatus,
+        authorityStatus: canonicalProviderApproval ? "APPROVED" : null,
         providerReference: offer.providerReference,
         amount: decimalString(offer.amount),
         downPayment: decimalString(offer.downPayment),
