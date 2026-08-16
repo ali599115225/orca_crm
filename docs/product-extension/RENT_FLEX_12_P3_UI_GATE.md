@@ -64,7 +64,7 @@ The pre-lease planner exposes:
 - `DIRECT_MONTHLY_EJAR`;
 - `EXTERNAL_RNPL_12` only when the selected unit is configured for external RNPL.
 
-For direct monthly payment it displays a deterministic 12-period preview from the verified `buildDirectMonthlyEjarPlan` calculator, including exact total preservation and calendar-month due dates.
+For direct monthly payment it displays a deterministic 12-period preview from the verified `buildDirectMonthlyEjarPlan` calculator, including exact total preservation and calendar-month due dates. Date-only values are formatted explicitly in UTC so the displayed calendar day cannot shift with the browser time zone.
 
 For external RNPL it explains that provider repayments remain external and do not become ORCA receivables.
 
@@ -89,17 +89,19 @@ Selection detail can display:
 - canonical provider-approval state;
 - operational owner/company settlement status.
 
+Provider offers are sorted by total tenant payable when terms exist. Offers with identical costs, including multiple offers without RF12 terms, use a stable equality result instead of an invalid `Infinity - Infinity` comparator.
+
 The UI explicitly distinguishes `عرض مزود` / `Provider offer` from `موافقة مزود مثبتة` / `Provider approval recorded` and does not treat an offer as an approval.
 
 For this badge, the Rent Flex read model does **not** trust `FinanceProviderOffer.authorityStatus` as the canonical approval source. W1 records provider authority on `FinanceCase`. The read model projects `APPROVED` onto the selected offer only when all of the following are true within the tenant boundary:
 
 - the offer is the selection's `selectedProviderOfferId`;
 - `FinanceCase.authorityStatus = APPROVED`;
-- `FinanceCase.authorityProvider` equals the selected offer provider;
-- `FinanceCase.authorityReference` equals the selected offer provider reference;
+- both `FinanceCase.authorityProvider` and the selected offer provider are present and equal;
+- both `FinanceCase.authorityReference` and the selected offer provider reference are present and equal;
 - the finance lifecycle has reached `PROVIDER_APPROVED`, `READY_FOR_TRANSACTION`, or `COMPLETED`.
 
-This mirrors the existing W1 provider-approval transition invariant and prevents a provider offer from being presented as an approval merely because offer data exists.
+Null or missing provider identity values never count as a successful identity match. This mirrors the existing W1 provider-approval transition invariant and prevents a provider offer from being presented as an approval merely because offer data exists.
 
 Selection detail is also request-identity-bound. An older detail response cannot replace a newer selection, and the detail pane renders only when `selectionDetail.id` equals the currently selected selection id. Unit configuration in the lease planner follows the same stale-response protection.
 
@@ -155,7 +157,9 @@ RF12-P3 verification must establish:
 - dark `404/401/403` discovery returns `null` rather than exposing a broken feature shell;
 - property wording does not imply eligibility or approval;
 - direct monthly preview imports the verified RF12 calculator rather than duplicating schedule math;
-- provider approval presentation is projected only from matching canonical W1 `FinanceCase` authority plus approved lifecycle state;
+- date-only schedule display is time-zone-stable;
+- provider offer sorting cannot return `NaN` when commercial terms are missing;
+- provider approval presentation requires non-null matching canonical W1 `FinanceCase` authority identity plus approved lifecycle state;
 - async unit-config and selection-detail responses cannot overwrite a newer UI selection;
 - missing optional money is not rendered as zero;
 - the lease UI uses RF12-P2 routes for selection, offer choice, and lock;
