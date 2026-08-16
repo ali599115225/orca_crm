@@ -41,10 +41,10 @@ model RentFlexSelection {
 
   @@unique([tenantId, id], map: "uq_rent_flex_selections_tenant_id")
   @@unique([tenantId, rentalLeaseId], map: "uq_rent_flex_selections_tenant_lease")
+  @@unique([tenantId, financeCaseId], map: "uq_rent_flex_selections_tenant_finance_case")
   @@unique([tenantId, selectedProviderOfferId], map: "uq_rent_flex_selections_tenant_selected_offer")
   @@index([tenantId, unitId, status], map: "idx_rent_flex_selections_tenant_unit_status")
   @@index([tenantId, leadId], map: "idx_rent_flex_selections_tenant_lead")
-  @@index([tenantId, financeCaseId], map: "idx_rent_flex_selections_tenant_finance_case")
   @@map("rent_flex_selections")
 }
 
@@ -79,6 +79,7 @@ model RentFlexSettlement {
   currency               String    @default("SAR")
   status                 String    @default("EXPECTED")
   providerReference      String?   @map("provider_reference")
+  // Timestamp at which the full expected settlement was received; partial receipts keep this null.
   receivedAt             DateTime? @map("received_at") @db.Timestamptz
   evidenceJson           Json?     @map("evidence_json")
   createdBy              String    @map("created_by") @db.Uuid

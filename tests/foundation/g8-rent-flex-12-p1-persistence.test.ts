@@ -146,7 +146,7 @@ describe("RF12-P1 persistence contract", () => {
     expect(second).toBe(first);
   });
 
-  it("defines the additive schema without duplicating company receivable domains", () => {
+  it("defines the additive schema with unique tenant-bound operational identities", () => {
     const schema = source("prisma/rent-flex-12.prisma");
     for (const model of [
       "RentFlexUnitConfig",
@@ -158,6 +158,9 @@ describe("RF12-P1 persistence contract", () => {
     }
     expect(schema).toContain(
       '@@unique([tenantId, unitId], map: "uq_rent_flex_unit_configs_tenant_unit")',
+    );
+    expect(schema).toContain(
+      '@@unique([tenantId, financeCaseId], map: "uq_rent_flex_selections_tenant_finance_case")',
     );
     expect(schema).toContain(
       '@@unique([tenantId, financeProviderOfferId], map: "uq_rent_flex_offer_terms_tenant_offer")',
@@ -179,6 +182,41 @@ describe("RF12-P1 persistence contract", () => {
     expect(service).toContain("selectProviderOfferInTransaction(");
     expect(service).toContain("Prisma.TransactionIsolationLevel.Serializable");
     expect(service).not.toContain("await selectProviderOffer(");
+  });
+
+  it("enforces unit configuration, FinanceCase uniqueness, and late lease synchronization", () => {
+    const service = source("lib/domain/rental/rent-flex-12-service.ts");
+    expect(service).toContain("RENT_FLEX_P1_EXTERNAL_RNPL_NOT_ENABLED_FOR_UNIT");
+    expect(service).toContain("externalRnplEnabled: true");
+    expect(service).toContain("RENT_FLEX_P1_FINANCE_CASE_ALREADY_BOUND_TO_SELECTION");
+    expect(service).toContain("tx.rentFlexSettlement.updateMany(");
+    expect(service).toContain("rentalLeaseId: lease.id");
+  });
+
+  it("normalizes direct-selection date errors at the RF12-P1 command boundary", () => {
+    const service = source("lib/domain/rental/rent-flex-12-service.ts");
+    const parseIndex = service.indexOf(
+      "const firstDueDate = parseRentFlexDateOnly(input.firstDueDate);",
+      service.indexOf("function createDirectMonthlySelection"),
+    );
+    const buildIndex = service.indexOf(
+      "const plan = buildDirectMonthlyEjarPlan({",
+      service.indexOf("function createDirectMonthlySelection"),
+    );
+    expect(parseIndex).toBeGreaterThan(-1);
+    expect(buildIndex).toBeGreaterThan(parseIndex);
+  });
+
+  it("defines receivedAt as final-settlement time rather than partial-receipt time", () => {
+    const service = source("lib/domain/rental/rent-flex-12-service.ts");
+    const schema = source("prisma/rent-flex-12.prisma");
+    expect(service).toContain(
+      "`receivedAt` means the timestamp at which the full expected owner/company",
+    );
+    expect(service).toContain('input.status === "RECEIVED"');
+    expect(schema).toContain(
+      "Timestamp at which the full expected settlement was received; partial receipts keep this null.",
+    );
   });
 
   it("keeps all RF12-P1 commands tenant-guarded, audited, integrity-checked, and non-accounting", () => {

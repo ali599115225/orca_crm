@@ -26,31 +26,18 @@ import {
   type RentFlexSettlementStatus,
 } from "./rent-flex-12-persistence-contract";
 
-const RENT_FLEX_MODE_DIRECT: RentFlex12Mode = "DIRECT_MONTHLY_EJAR";
-const RENT_FLEX_MODE_EXTERNAL: RentFlex12Mode = "EXTERNAL_RNPL_12";
+const DIRECT_MODE: RentFlex12Mode = "DIRECT_MONTHLY_EJAR";
+const EXTERNAL_MODE: RentFlex12Mode = "EXTERNAL_RNPL_12";
 const RENT_FLEX_PURPOSE = "RENT_FLEX_12";
 const RENT_FLEX_TERM_MONTHS = 12;
 
 type AuditWriter = Pick<typeof prisma, "auditLog">;
-type RentFlexReferenceReader = Pick<typeof prisma, "unit" | "lead">;
+type ReferenceReader = Pick<typeof prisma, "unit" | "lead">;
 
 export type RentFlexMoneyInput = Prisma.Decimal | number | string;
 
 function requireIdentity(tenantId: string, actorId: string): void {
   assertRentFlexCommandContext(requireTenantContext(), tenantId, actorId);
-}
-
-function inputJson(value: unknown): Prisma.InputJsonValue {
-  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
-}
-
-function moneyDecimal(
-  value: RentFlexMoneyInput,
-  code: string,
-  allowZero = false,
-): Prisma.Decimal {
-  const normalized = normalizeRentFlexMoney(Number(value), code, allowZero);
-  return new Prisma.Decimal(normalized.toFixed(2));
 }
 
 function asSelectionStatus(value: string): RentFlexSelectionStatus {
@@ -68,14 +55,25 @@ function asSettlementStatus(value: string): RentFlexSettlementStatus {
 }
 
 function asMode(value: string): RentFlex12Mode {
-  if (value === RENT_FLEX_MODE_DIRECT || value === RENT_FLEX_MODE_EXTERNAL) {
-    return value;
-  }
+  if (value === DIRECT_MODE || value === EXTERNAL_MODE) return value;
   throw new RentFlexP1Error("RENT_FLEX_P1_MODE_UNKNOWN");
 }
 
+function moneyDecimal(
+  value: RentFlexMoneyInput,
+  code: string,
+  allowZero = false,
+): Prisma.Decimal {
+  const normalized = normalizeRentFlexMoney(Number(value), code, allowZero);
+  return new Prisma.Decimal(normalized.toFixed(2));
+}
+
+function json(value: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
 function scheduleJson(schedule: RentFlex12Installment[]): Prisma.InputJsonValue {
-  return inputJson(
+  return json(
     schedule.map((item) => ({
       installmentNumber: item.installmentNumber,
       dueDate: item.dueDate,
@@ -84,7 +82,7 @@ function scheduleJson(schedule: RentFlex12Installment[]): Prisma.InputJsonValue 
   );
 }
 
-function quoteDigest(input: {
+function digestExternalQuote(input: {
   tenantId: string;
   selectionId: string;
   financeProviderOfferId: string;
@@ -96,22 +94,7 @@ function quoteDigest(input: {
   firstDueDate: string;
   schedule: RentFlex12Installment[];
 }): string {
-  return createHash("sha256")
-    .update(
-      JSON.stringify({
-        tenantId: input.tenantId,
-        selectionId: input.selectionId,
-        financeProviderOfferId: input.financeProviderOfferId,
-        provider: input.provider,
-        providerReference: input.providerReference,
-        annualRentSar: input.annualRentSar,
-        ownerSettlementAmountSar: input.ownerSettlementAmountSar,
-        totalTenantPayableSar: input.totalTenantPayableSar,
-        firstDueDate: input.firstDueDate,
-        schedule: input.schedule,
-      }),
-    )
-    .digest("hex");
+  return createHash("sha256").update(JSON.stringify(input)).digest("hex");
 }
 
 async function audit(
@@ -137,8 +120,8 @@ async function audit(
   });
 }
 
-async function assertUnitAndOptionalLead(
-  db: RentFlexReferenceReader,
+async function assertUnitAndLead(
+  db: ReferenceReader,
   tenantId: string,
   unitId: string,
   leadId?: string | null,
@@ -177,7 +160,7 @@ export async function configureRentFlexForUnit(input: {
 
   return prisma.$transaction(
     async (tx) => {
-      await assertUnitAndOptionalLead(tx, input.tenantId, input.unitId);
+      await assertUnitAndLead(tx, input.tenantId, input.unitId);
       const existing = await tx.rentFlexUnitConfig.findFirst({
         where: { tenantId: input.tenantId, unitId: input.unitId },
       });
@@ -235,13 +218,15 @@ export async function createDirectMonthlySelection(input: {
     input.annualRentAmount,
     "RENT_FLEX_P1_ANNUAL_RENT_INVALID",
   );
+  // RF12-P1 owns the public command boundary, so normalize invalid dates here
+  // before invoking the lower-level deterministic calculator.
+  const firstDueDate = parseRentFlexDateOnly(input.firstDueDate);
   const plan = buildDirectMonthlyEjarPlan({
     annualRentSar: Number(annualRent),
     firstDueDate: input.firstDueDate,
   });
-  const firstDueDate = parseRentFlexDateOnly(input.firstDueDate);
   const digest = digestRentFlexSchedule(
-    RENT_FLEX_MODE_DIRECT,
+    DIRECT_MODE,
     plan.annualRentSar,
     input.firstDueDate,
     plan.schedule,
@@ -249,19 +234,14 @@ export async function createDirectMonthlySelection(input: {
 
   return prisma.$transaction(
     async (tx) => {
-      await assertUnitAndOptionalLead(
-        tx,
-        input.tenantId,
-        input.unitId,
-        input.leadId,
-      );
+      await assertUnitAndLead(tx, input.tenantId, input.unitId, input.leadId);
       const selectedAt = new Date();
       const selection = await tx.rentFlexSelection.create({
         data: {
           tenantId: input.tenantId,
           unitId: input.unitId,
           leadId: input.leadId ?? null,
-          mode: RENT_FLEX_MODE_DIRECT,
+          mode: DIRECT_MODE,
           annualRentAmount: annualRent,
           currency: "SAR",
           firstDueDate,
@@ -308,18 +288,27 @@ export async function createExternalRnplSelection(input: {
 
   return prisma.$transaction(
     async (tx) => {
-      await assertUnitAndOptionalLead(
-        tx,
-        input.tenantId,
-        input.unitId,
-        input.leadId,
-      );
+      await assertUnitAndLead(tx, input.tenantId, input.unitId, input.leadId);
+      const config = await tx.rentFlexUnitConfig.findFirst({
+        where: { tenantId: input.tenantId, unitId: input.unitId },
+        select: { externalRnplEnabled: true, status: true },
+      });
+      if (
+        !config ||
+        config.status !== "ACTIVE" ||
+        !config.externalRnplEnabled
+      ) {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_EXTERNAL_RNPL_NOT_ENABLED_FOR_UNIT",
+        );
+      }
+
       const selection = await tx.rentFlexSelection.create({
         data: {
           tenantId: input.tenantId,
           unitId: input.unitId,
           leadId: input.leadId ?? null,
-          mode: RENT_FLEX_MODE_EXTERNAL,
+          mode: EXTERNAL_MODE,
           annualRentAmount: annualRent,
           currency: "SAR",
           firstDueDate,
@@ -360,7 +349,7 @@ export async function attachExternalFinanceCase(input: {
           "RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT",
         );
       }
-      if (asMode(selection.mode) !== RENT_FLEX_MODE_EXTERNAL) {
+      if (asMode(selection.mode) !== EXTERNAL_MODE) {
         throw new RentFlexP1Error(
           "RENT_FLEX_P1_FINANCE_CASE_REQUIRES_EXTERNAL_MODE",
         );
@@ -373,6 +362,20 @@ export async function attachExternalFinanceCase(input: {
         if (selection.financeCaseId === input.financeCaseId) return selection;
         throw new RentFlexP1Error(
           "RENT_FLEX_P1_FINANCE_CASE_ALREADY_ATTACHED",
+        );
+      }
+
+      const alreadyBound = await tx.rentFlexSelection.findFirst({
+        where: {
+          tenantId: input.tenantId,
+          financeCaseId: input.financeCaseId,
+          NOT: { id: selection.id },
+        },
+        select: { id: true },
+      });
+      if (alreadyBound) {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_FINANCE_CASE_ALREADY_BOUND_TO_SELECTION",
         );
       }
 
@@ -422,13 +425,12 @@ export async function attachExternalFinanceCase(input: {
         );
       }
 
-      const selectedAt = selection.selectedAt ?? new Date();
       const updated = await tx.rentFlexSelection.update({
         where: { id: selection.id },
         data: {
           financeCaseId: financeCase.id,
           status: "SELECTED",
-          selectedAt,
+          selectedAt: selection.selectedAt ?? new Date(),
           updatedBy: input.actorId,
         },
       });
@@ -476,16 +478,12 @@ export async function attachExternalOfferTerms(input: {
           "RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT",
         );
       }
-      if (
-        asMode(selection.mode) !== RENT_FLEX_MODE_EXTERNAL ||
-        !selection.financeCaseId
-      ) {
+      if (asMode(selection.mode) !== EXTERNAL_MODE || !selection.financeCaseId) {
         throw new RentFlexP1Error(
           "RENT_FLEX_P1_EXTERNAL_FINANCE_CASE_REQUIRED",
         );
       }
-      const status = asSelectionStatus(selection.status);
-      if (status !== "SELECTED") {
+      if (asSelectionStatus(selection.status) !== "SELECTED") {
         throw new RentFlexP1Error("RENT_FLEX_P1_OFFER_TERMS_STATE_INVALID");
       }
       if (!ownerSettlement.eq(selection.annualRentAmount)) {
@@ -529,7 +527,7 @@ export async function attachExternalOfferTerms(input: {
         downPaymentSar: Number(offer.downPayment ?? 0),
         firstDueDate: input.firstDueDate,
       });
-      const digest = quoteDigest({
+      const digest = digestExternalQuote({
         tenantId: input.tenantId,
         selectionId: selection.id,
         financeProviderOfferId: offer.id,
@@ -565,9 +563,7 @@ export async function attachExternalOfferTerms(input: {
             quote.tenantCostDeltaSar.toFixed(2),
           ),
           firstDueDate,
-          repaymentScheduleJson: scheduleJson(
-            quote.externalRepaymentSchedule,
-          ),
+          repaymentScheduleJson: scheduleJson(quote.externalRepaymentSchedule),
           quoteDigest: digest,
         },
       });
@@ -607,10 +603,7 @@ export async function selectExternalRnplOffer(input: {
           "RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT",
         );
       }
-      if (
-        asMode(selection.mode) !== RENT_FLEX_MODE_EXTERNAL ||
-        !selection.financeCaseId
-      ) {
+      if (asMode(selection.mode) !== EXTERNAL_MODE || !selection.financeCaseId) {
         throw new RentFlexP1Error(
           "RENT_FLEX_P1_EXTERNAL_FINANCE_CASE_REQUIRED",
         );
@@ -657,9 +650,7 @@ export async function selectExternalRnplOffer(input: {
         select: { id: true },
       });
       if (!terms) {
-        throw new RentFlexP1Error(
-          "RENT_FLEX_P1_PROVIDER_OFFER_TERMS_REQUIRED",
-        );
+        throw new RentFlexP1Error("RENT_FLEX_P1_PROVIDER_OFFER_TERMS_REQUIRED");
       }
 
       const selectedOffer = await selectProviderOfferInTransaction(
@@ -751,6 +742,16 @@ export async function attachRentFlexSelectionToLease(input: {
         where: { id: selection.id },
         data: { rentalLeaseId: lease.id, updatedBy: input.actorId },
       });
+      // A settlement may be recorded after lock and before a lease is created.
+      // Keep the operational settlement identity synchronized once the lease exists.
+      await tx.rentFlexSettlement.updateMany({
+        where: {
+          tenantId: input.tenantId,
+          rentFlexSelectionId: selection.id,
+          rentalLeaseId: null,
+        },
+        data: { rentalLeaseId: lease.id, updatedBy: input.actorId },
+      });
       await audit(tx, {
         tenantId: input.tenantId,
         actorId: input.actorId,
@@ -791,7 +792,7 @@ export async function lockRentFlexSelection(input: {
       }
 
       const mode = asMode(selection.mode);
-      if (mode === RENT_FLEX_MODE_DIRECT) {
+      if (mode === DIRECT_MODE) {
         if (
           !selection.companyScheduleJson ||
           !selection.scheduleDigest ||
@@ -805,7 +806,7 @@ export async function lockRentFlexSelection(input: {
           selection.companyScheduleJson,
         );
         const storedDigest = digestRentFlexSchedule(
-          RENT_FLEX_MODE_DIRECT,
+          DIRECT_MODE,
           Number(selection.annualRentAmount),
           firstDueDate,
           storedSchedule,
@@ -815,7 +816,7 @@ export async function lockRentFlexSelection(input: {
           firstDueDate,
         });
         const expectedDigest = digestRentFlexSchedule(
-          RENT_FLEX_MODE_DIRECT,
+          DIRECT_MODE,
           expectedPlan.annualRentSar,
           firstDueDate,
           expectedPlan.schedule,
@@ -920,7 +921,7 @@ export async function lockRentFlexSelection(input: {
             "RENT_FLEX_P1_EXTERNAL_OFFER_TERMS_INVALID_AT_LOCK",
           );
         }
-        const storedDigest = quoteDigest({
+        const storedDigest = digestExternalQuote({
           tenantId: input.tenantId,
           selectionId: selection.id,
           financeProviderOfferId: offer.id,
@@ -932,7 +933,7 @@ export async function lockRentFlexSelection(input: {
           firstDueDate,
           schedule: storedSchedule,
         });
-        const expectedDigest = quoteDigest({
+        const expectedDigest = digestExternalQuote({
           tenantId: input.tenantId,
           selectionId: selection.id,
           financeProviderOfferId: offer.id,
@@ -996,7 +997,7 @@ export async function recordRentFlexSettlement(input: {
         );
       }
       if (
-        asMode(selection.mode) !== RENT_FLEX_MODE_EXTERNAL ||
+        asMode(selection.mode) !== EXTERNAL_MODE ||
         asSelectionStatus(selection.status) !== "LOCKED" ||
         !selection.financeCaseId ||
         !selection.selectedProviderOfferId
@@ -1042,22 +1043,14 @@ export async function recordRentFlexSettlement(input: {
             "RENT_FLEX_P1_SETTLEMENT_TRANSITION_INVALID",
           );
         }
-        if (
-          currentStatus === input.status &&
-          Number(existing.receivedAmount ?? 0) === Number(receivedDecimal ?? 0)
-        ) {
-          return existing;
-        }
       }
 
+      // `receivedAt` means the timestamp at which the full expected owner/company
+      // settlement was received. PARTIAL amounts intentionally keep this field null.
       const receivedAt =
         input.status === "RECEIVED"
-          ? new Date()
-          : input.status === "EXPECTED" ||
-              input.status === "FAILED" ||
-              input.status === "CANCELLED"
-            ? null
-            : existing?.receivedAt ?? null;
+          ? existing?.receivedAt ?? new Date()
+          : null;
       const evidenceValue =
         input.evidenceJson === null
           ? Prisma.JsonNull

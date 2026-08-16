@@ -23,6 +23,8 @@ The schema intentionally uses tenant-validated scalar UUID references for legacy
 
 No `RentFlexProviderOffer` model exists. External provider cases/offers remain under W1 `FinanceCase` / `FinanceProviderOffer`.
 
+Tenant-scoped uniqueness prevents one RentalLease, FinanceCase, or selected provider offer from being bound to conflicting Rent Flex selections.
+
 ### Domain command service
 
 `lib/domain/rental/rent-flex-12-service.ts` implements:
@@ -46,26 +48,32 @@ Material state changes write to the existing `AuditLog` table.
 ### Direct monthly Ejar-compatible mode
 
 - mode is `DIRECT_MONTHLY_EJAR`;
+- the RF12-P1 command boundary validates `firstDueDate` before invoking the lower-level calculator, so invalid command dates use the RF12-P1 error contract;
 - the verified Rent Flex 12 calculator generates exactly 12 company/owner receivable periods;
 - annual totals are preserved to halala precision;
 - the company schedule and SHA-256 digest are stored on the selection;
 - no W1 finance case or provider offer may be attached to the direct mode;
-- lock fails closed if the deterministic schedule identity no longer matches.
+- lock parses the stored schedule JSON and recomputes both stored and expected digests before accepting the immutable state.
 
 ### External RNPL mode
 
 - mode is `EXTERNAL_RNPL_12`;
+- a new external selection is allowed only when the same-tenant `RentFlexUnitConfig` is `ACTIVE` and `externalRnplEnabled = true`;
 - selection begins as `DRAFT`;
 - selection becomes `SELECTED` only after a same-tenant W1 FinanceCase is attached;
+- one FinanceCase may bind to only one Rent Flex selection within a tenant;
 - the FinanceCase must have purpose `RENT_FLEX_12`, term 12 months, matching unit, and matching requested annual amount;
-- provider offers are selected through the existing W1 `selectProviderOffer` command instead of duplicating W1 rules;
+- provider offers are selected through the existing W1 `selectProviderOfferInTransaction` helper, executed inside the Rent Flex Serializable transaction, so W1 offer selection and Rent Flex selection update commit or roll back together;
 - RNPL-specific owner settlement, total tenant payable, cost delta, first due date, exact 12-payment external schedule, and quote digest are stored in `RentFlexOfferTerms`;
+- lock parses the persisted external repayment schedule and recomputes the quote identity from the selected W1 offer and stored terms;
 - external repayment schedule is informational provider repayment data only;
 - external repayment schedule never creates an ORCA invoice, PaymentPlan, Installment, PaymentTransaction, or ledger entry in RF12-P1.
 
 ### Lease binding
 
 A selection may be attached only to a same-tenant RentalLease. If the lease has a unit identity it must match the selection unit. A lease cannot have two Rent Flex selections.
+
+Lease creation may occur after an external selection is locked and after its operational settlement record exists. When a lease is attached later, the same transaction propagates the lease identity to an existing Rent Flex settlement whose `rentalLeaseId` is still null.
 
 `RentalLease.rentAmount` is not modified or reinterpreted.
 
@@ -87,9 +95,13 @@ Settlement amounts obey:
 
 - `EXPECTED`: no paid amount;
 - `PARTIAL`: amount is greater than zero and below expected;
+- `FAILED`: no received amount is recorded and retry/recovery may return to a valid non-terminal state;
 - `RECEIVED`: amount equals expected exactly;
 - amount cannot exceed expected;
-- `RECEIVED` and `CANCELLED` are terminal in this slice.
+- `RECEIVED` and `CANCELLED` are terminal;
+- a recorded partial receipt cannot be rewritten into `FAILED` or `CANCELLED`, preserving received-money evidence.
+
+`receivedAt` is specifically the timestamp at which the **full expected settlement** is received. It remains null while settlement status is `PARTIAL`; partial amount changes do not redefine that field as a generic last-payment timestamp.
 
 No accounting mutation occurs from this record.
 
@@ -98,11 +110,15 @@ No accounting mutation occurs from this record.
 `tests/foundation/g8-rent-flex-12-p1-persistence.test.ts` verifies:
 
 - tenant/actor context mismatch fails closed;
-- lifecycle transition boundaries;
-- settlement amount invariants;
+- selection lifecycle boundaries;
+- settlement recovery and amount invariants;
 - strict date-only parsing and deterministic digests;
 - all four additive models exist;
-- no duplicate RentFlex provider-offer model is introduced;
+- unit, FinanceCase, provider-offer, and lease identity constraints are represented;
+- no duplicate Rent Flex provider-offer model is introduced;
+- W1 provider selection is reused atomically inside the Rent Flex Serializable transaction;
+- external RNPL requires an active/enabled unit configuration;
+- late lease attachment synchronizes an existing settlement identity;
 - service source contains tenant guard + audit boundary;
 - service source contains no invoice/payment/accounting/network creation path.
 
