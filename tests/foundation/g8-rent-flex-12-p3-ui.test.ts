@@ -84,13 +84,17 @@ describe("RF12-P3 contextual property and lease UI", () => {
     expect(GATE).toContain("RF12-P4 — Legacy Accounting Guard + Lease Binding");
   });
 
-  it("distinguishes an offer from approval using canonical W1 FinanceCase authority", () => {
+  it("distinguishes an offer from approval using concrete canonical W1 FinanceCase authority", () => {
     expect(LEASE_PANEL).toContain("عرض مزود");
     expect(LEASE_PANEL).toContain("موافقة مزود مثبتة");
     expect(LEASE_PANEL).toContain("ليست موافقة مثبتة");
     expect(LEASE_PANEL).toContain('authorityStatus).toUpperCase() === "APPROVED"');
     expect(READ_MODEL).toContain("prisma.financeCase.findFirst");
     expect(READ_MODEL).toContain('financeAuthority.authorityStatus === "APPROVED"');
+    expect(READ_MODEL).toContain("financeAuthority.authorityProvider &&");
+    expect(READ_MODEL).toContain("financeAuthority.authorityReference &&");
+    expect(READ_MODEL).toContain("offer.provider &&");
+    expect(READ_MODEL).toContain("offer.providerReference &&");
     expect(READ_MODEL).toContain("financeAuthority.authorityProvider === offer.provider");
     expect(READ_MODEL).toContain("financeAuthority.authorityReference === offer.providerReference");
     expect(READ_MODEL).toContain("selection.selectedProviderOfferId === offer.id");
@@ -99,7 +103,16 @@ describe("RF12-P3 contextual property and lease UI", () => {
     expect(READ_MODEL).toContain('"COMPLETED"');
     expect(READ_MODEL).toContain('authorityStatus: canonicalProviderApproval ? "APPROVED" : null');
     expect(GATE).toContain("does **not** trust `FinanceProviderOffer.authorityStatus`");
-    expect(GATE).toContain("does not treat an offer as an approval");
+    expect(GATE).toContain("Null or missing provider identity values never count as a successful identity match");
+  });
+
+  it("keeps date-only rendering and offer sorting deterministic", () => {
+    expect(LEASE_PANEL).toContain('timeZone: "UTC"');
+    expect(LEASE_PANEL).toContain("if (leftCost === rightCost) return 0");
+    expect(LEASE_PANEL).toContain("return leftCost < rightCost ? -1 : 1");
+    expect(LEASE_PANEL).not.toContain("return leftCost - rightCost");
+    expect(GATE).toContain("Date-only values are formatted explicitly in UTC");
+    expect(GATE).toContain("stable equality result instead of an invalid `Infinity - Infinity` comparator");
   });
 
   it("prevents stale unit-config and selection-detail responses from replacing current UI identity", () => {
