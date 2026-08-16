@@ -6,6 +6,7 @@ const dbMocks = vi.hoisted(() => ({
   transaction: vi.fn(),
   contractDraftFindFirst: vi.fn(),
   contractFindFirst: vi.fn(),
+  requireTenantContext: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -13,6 +14,9 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: dbMocks.transaction,
   },
+}));
+vi.mock("@/lib/tenant-context", () => ({
+  requireTenantContext: dbMocks.requireTenantContext,
 }));
 
 import { assembleCanonicalContractSnapshot } from "@/lib/domain/contract-finance/canonical-snapshot-assembler";
@@ -90,6 +94,7 @@ async function expectAssemblyCode(code: string) {
 describe("W1I canonical snapshot assembler", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    dbMocks.requireTenantContext.mockReturnValue({ tenantId: "tenant-a", userId: "user-a" });
     dbMocks.transaction.mockImplementation(async (operation) =>
       operation({
         contractDraft: { findFirst: dbMocks.contractDraftFindFirst },
@@ -110,6 +115,13 @@ describe("W1I canonical snapshot assembler", () => {
     expect(inputType).not.toContain("structuredFacts");
     expect(inputType).not.toContain("paymentPlanSnapshot");
     expect(inputType).not.toContain("approvalSnapshot");
+  });
+
+  it("binds caller identity to the authenticated ambient tenant before DB access", async () => {
+    dbMocks.requireTenantContext.mockReturnValueOnce({ tenantId: "tenant-b", userId: "user-b" });
+
+    await expectAssemblyCode("W1_CANONICAL_SNAPSHOT_TENANT_CONTEXT_MISMATCH");
+    expect(dbMocks.transaction).not.toHaveBeenCalled();
   });
 
   it("loads the approved draft and every persisted canonical source server-side", () => {
