@@ -78,12 +78,18 @@ RF12-P2 validates before the facade call:
 - strict `YYYY-MM-DD` dates;
 - positive annual/offer money values;
 - non-negative optional received amounts;
+- at most two decimal places for money whether the client sends a JSON string or number;
+- JSON-number money is normalized to a decimal string before it reaches the domain layer, avoiding binary-float propagation;
 - known mode/status enums;
 - list limits from 1 through 100;
 - non-empty provider references when supplied;
-- JSON document shape for request bodies.
+- JSON document shape for request bodies;
+- settlement `evidenceJson` is bounded to at most **64 KiB UTF-8** after serialization and maximum nesting depth **8**;
+- `evidenceJson` accepts only standard serializable JSON values/arrays/plain objects and rejects cycles, non-finite numbers, non-plain objects, and undefined/non-JSON values.
 
 Malformed JSON or forbidden identity fields return a generic `400`. Authorization failures map to `401/403`. Tenant/domain not-found maps to `404`. Known conflicts/state mismatches/unique conflicts map to `409`. Unexpected failures return a generic `500` without stack leakage.
+
+The evidence bounds are local to the Rent Flex settlement-evidence field. RF12-P2 does not silently change a repository-wide HTTP body-size policy.
 
 ## Domain reuse
 
@@ -125,6 +131,8 @@ Because the legacy `settle-lease` guard is intentionally not implemented in RF12
 - existing RBAC permission reuse;
 - no caller-supplied tenant/actor identity;
 - strict UUID/date/money/enum/list validation;
+- money precision is consistent across JSON string/number forms;
+- evidence JSON has explicit size/depth/type bounds;
 - normalized read model without raw provider evidence;
 - no provider/network/accounting/deploy/migration surface.
 
