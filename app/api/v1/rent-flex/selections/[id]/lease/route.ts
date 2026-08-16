@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { rf12AttachLease } from "@/lib/domain/rental/rent-flex-12-application-facade";
 import {
-  beginRentFlex12WriteRequest,
+  beginRentFlex12LeaseBindingRequest,
   readRentFlex12JsonObject,
   rentFlex12ApiErrorResponse,
   requiredRentFlexUuid,
@@ -12,7 +12,7 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
-  const boundary = await beginRentFlex12WriteRequest(request);
+  const boundary = await beginRentFlex12LeaseBindingRequest(request);
   if (boundary instanceof NextResponse) return boundary;
   try {
     const { id } = await context.params;
