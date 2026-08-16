@@ -109,9 +109,15 @@ function materializePre() {
   const headDir = path.resolve(requiredEnv("RF12MR_HEAD_DIR"));
   const combined = path.resolve(requiredEnv("RF12MR_COMBINED_SCHEMA"));
   const output = path.resolve(requiredEnv("RF12MR_OUTPUT"));
-  const files = fs.readdirSync(preDir).filter((name) => name.endsWith(".prisma")).sort();
-  if (files.includes("rent-flex-12.prisma") || files.includes("rent-flex-12-accounting.prisma")) throw new Error("RF12MR_PRE_REFERENCE_ALREADY_CONTAINS_RF12_SCHEMA");
-  const text = files.map((name) => `// ${name}\n${fs.readFileSync(path.join(preDir,name),"utf8")}`).join("\n\n");
+  const supportedBaseFiles = ["schema.prisma", "rbac.prisma"];
+  for (const name of [...supportedBaseFiles, "w1-contract-finance.prisma"]) {
+    if (!fs.existsSync(path.join(preDir, name))) throw new Error(`RF12MR_PRE_SCHEMA_FILE_MISSING:${name}`);
+  }
+  if (fs.existsSync(path.join(preDir, "rent-flex-12.prisma")) || fs.existsSync(path.join(preDir, "rent-flex-12-accounting.prisma"))) {
+    throw new Error("RF12MR_PRE_REFERENCE_ALREADY_CONTAINS_RF12_SCHEMA");
+  }
+  const text = supportedBaseFiles.map((name) => `// ${name}\n${fs.readFileSync(path.join(preDir,name),"utf8")}`).join("\n\n");
+  if (/model\s+(?:ContractTemplate|FinanceCase)\b/.test(text)) throw new Error("RF12MR_BASE_SCHEMA_UNEXPECTED_W1_MODEL");
   write(combined, text);
 
   let result = null;
@@ -119,24 +125,15 @@ function materializePre() {
   const attemptsDir = path.dirname(output);
   while (attempt <= 5) {
     result = run("npx", ["prisma","migrate","diff","--from-empty","--to-schema",combined,"--script"], { cwd: headDir, allowFailure: true });
-    write(path.join(attemptsDir, `pre-rf12-materialize-attempt-${attempt}.txt`), result.output);
+    write(path.join(attemptsDir, `pre-rf12-base-materialize-attempt-${attempt}.txt`), result.output);
     if (result.status === 0) break;
-    if (!result.output.includes("Error in Schema engine")) {
-      throw new Error(`RF12MR_PRE_SCHEMA_MATERIALIZE_FAILED:attempt=${attempt}\n${result.output.slice(-4000)}`);
-    }
-    if (attempt === 5) {
-      throw new Error(`RF12MR_PRE_SCHEMA_ENGINE_RETRY_EXHAUSTED:attempts=${attempt}\n${result.output.slice(-4000)}`);
-    }
+    if (!result.output.includes("Error in Schema engine")) throw new Error(`RF12MR_PRE_SCHEMA_MATERIALIZE_FAILED:attempt=${attempt}\n${result.output.slice(-4000)}`);
+    if (attempt === 5) throw new Error(`RF12MR_PRE_SCHEMA_ENGINE_RETRY_EXHAUSTED:attempts=${attempt}\n${result.output.slice(-4000)}`);
     attempt += 1;
   }
-  write(path.join(attemptsDir, "pre-rf12-materialize-retry-summary.json"), JSON.stringify({ attempts: attempt, verdict: "PASS" }, null, 2) + "\n");
-
-  const markerCandidates = ["-- CreateSchema", "-- CreateTable", "CREATE TABLE"];
-  const starts = markerCandidates.map((marker) => result.stdout.indexOf(marker)).filter((value) => value >= 0);
-  if (!starts.length) throw new Error("RF12MR_PRE_SCHEMA_SQL_MARKER_MISSING");
-  const sql = result.stdout.slice(Math.min(...starts));
-  if (!/\bCREATE\s+TABLE\b/i.test(sql)) throw new Error("RF12MR_PRE_SCHEMA_SQL_EMPTY");
-  write(output, sql);
+  write(path.join(attemptsDir, "pre-rf12-base-materialize-retry-summary.json"), JSON.stringify({ attempts: attempt, verdict: "PASS" }, null, 2) + "\n");
+  if (!result.stdout.trim() || !/\bCREATE\s+TABLE\b/i.test(result.stdout)) throw new Error("RF12MR_PRE_BASE_SQL_OUTPUT_MISSING");
+  write(output, result.stdout);
 }
 
 async function captureBefore() {
