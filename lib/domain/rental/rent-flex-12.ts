@@ -84,6 +84,10 @@ function addCalendarMonthsClamped(startDate: string, offsetMonths: number): stri
 function buildTwelvePartSchedule(totalHalalas: number, firstDueDate: string): RentFlex12Installment[] {
   parseIsoDate(firstDueDate);
 
+  if (totalHalalas < RENT_FLEX_12_INSTALLMENTS) {
+    throw new RentFlex12Error("RENT_FLEX_12_BALANCE_TOO_SMALL");
+  }
+
   const base = Math.floor(totalHalalas / RENT_FLEX_12_INSTALLMENTS);
   const remainder = totalHalalas % RENT_FLEX_12_INSTALLMENTS;
 
