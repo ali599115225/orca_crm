@@ -48,6 +48,8 @@ For authorized property writers, the panel may call the guarded RF12-P2 unit-con
 
 No provider approval is inferred from property configuration.
 
+Unit configuration is identity-bound in the client as well as the server. The panel accepts a config response only when its `unitId` matches the currently requested unit, and an incrementing request identity prevents an older async response from overwriting a newer unit selection.
+
 ## 4. Lease surface and lifecycle order
 
 The Rent Flex lease add-on is intentionally a **pre-lease payment planner**.
@@ -65,6 +67,8 @@ The pre-lease planner exposes:
 For direct monthly payment it displays a deterministic 12-period preview from the verified `buildDirectMonthlyEjarPlan` calculator, including exact total preservation and calendar-month due dates.
 
 For external RNPL it explains that provider repayments remain external and do not become ORCA receivables.
+
+The client validates annual money using the same two-decimal / positive / bounded shape accepted by RF12-P2 before enabling save. Optional monetary values that are absent are displayed as `—`, never as an invented zero.
 
 ## 5. Saved choices and provider offers
 
@@ -96,6 +100,8 @@ For this badge, the Rent Flex read model does **not** trust `FinanceProviderOffe
 - the finance lifecycle has reached `PROVIDER_APPROVED`, `READY_FOR_TRANSACTION`, or `COMPLETED`.
 
 This mirrors the existing W1 provider-approval transition invariant and prevents a provider offer from being presented as an approval merely because offer data exists.
+
+Selection detail is also request-identity-bound. An older detail response cannot replace a newer selection, and the detail pane renders only when `selectionDetail.id` equals the currently selected selection id. Unit configuration in the lease planner follows the same stale-response protection.
 
 Raw provider or settlement `evidenceJson` remains absent from the UI because RF12-P2 does not expose it in the first read model.
 
@@ -150,6 +156,8 @@ RF12-P3 verification must establish:
 - property wording does not imply eligibility or approval;
 - direct monthly preview imports the verified RF12 calculator rather than duplicating schedule math;
 - provider approval presentation is projected only from matching canonical W1 `FinanceCase` authority plus approved lifecycle state;
+- async unit-config and selection-detail responses cannot overwrite a newer UI selection;
+- missing optional money is not rendered as zero;
 - the lease UI uses RF12-P2 routes for selection, offer choice, and lock;
 - no lease-binding route is called in P3;
 - no provider/network/accounting/migration/deploy surface is introduced;
