@@ -115,6 +115,7 @@ function dateLabel(value: string | null | undefined, locale: string) {
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
+        timeZone: "UTC",
       }).format(date);
 }
 
@@ -340,7 +341,8 @@ export default function RentFlexLeaseWorkspacePanel() {
       const rightCost = Number(
         right.rentFlexTerms?.totalTenantPayable ?? Number.POSITIVE_INFINITY,
       );
-      return leftCost - rightCost;
+      if (leftCost === rightCost) return 0;
+      return leftCost < rightCost ? -1 : 1;
     });
   }, [activeSelectionDetail]);
 
