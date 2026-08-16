@@ -19,6 +19,7 @@ describe("RF12 isolated migration readiness", () => {
     expect(WORKFLOW).toContain('test "$candidate" = "$event_head"');
     expect(WORKFLOW).toContain("test ! -e pre/prisma/rent-flex-12.prisma");
     expect(WORKFLOW).toContain("test ! -e pre/prisma/rent-flex-12-accounting.prisma");
+    expect(WORKFLOW).toContain("test -e pre/prisma/w1-contract-finance.prisma");
   });
 
   it("keeps the migration additive and scoped to five RF12 tables", () => {
@@ -49,18 +50,25 @@ describe("RF12 isolated migration readiness", () => {
     expect(SCRIPT).toContain("RF12MR_NON_REHEARSAL_DATABASE_FORBIDDEN");
   });
 
-  it("materializes pre-RF12 with bounded schema-engine retry, applies the artifact, and requires zero Prisma drift", () => {
-    const materialize = WORKFLOW.indexOf("name: Materialize exact pre-RF12 schema");
+  it("reconstructs the exact pre-RF12 supported schema using the proven W1F split", () => {
+    const materialize = WORKFLOW.indexOf("name: Materialize supported pre-RF12 base schema");
+    const w1 = WORKFLOW.indexOf("name: Apply exact pre-RF12 W1 schema migrations");
+    const capture = WORKFLOW.indexOf("name: Capture legacy fingerprint before RF12");
     const apply = WORKFLOW.indexOf("name: Apply RF12 migration to isolated database");
     const verify = WORKFLOW.indexOf("name: Verify exact schema drift and legacy preservation");
     expect(materialize).toBeGreaterThanOrEqual(0);
-    expect(apply).toBeGreaterThan(materialize);
+    expect(w1).toBeGreaterThan(materialize);
+    expect(capture).toBeGreaterThan(w1);
+    expect(apply).toBeGreaterThan(capture);
     expect(verify).toBeGreaterThan(apply);
-    expect(SCRIPT).toContain('"--from-empty"');
+    expect(SCRIPT).toContain('const supportedBaseFiles = ["schema.prisma", "rbac.prisma"]');
+    expect(SCRIPT).toContain("RF12MR_BASE_SCHEMA_UNEXPECTED_W1_MODEL");
     expect(SCRIPT).toContain("while (attempt <= 5)");
     expect(SCRIPT).toContain('result.output.includes("Error in Schema engine")');
-    expect(SCRIPT).toContain("RF12MR_PRE_SCHEMA_ENGINE_RETRY_EXHAUSTED");
-    expect(SCRIPT).toContain("pre-rf12-materialize-attempt-${attempt}.txt");
+    for (const migration of ["20260815001500_w1_contract_finance_foundation","20260815004500_w1d_snapshot_offer_integrity","20260815010000_w1_schema_alignment"]) expect(WORKFLOW).toContain(migration);
+  });
+
+  it("requires zero Prisma drift and legacy fingerprint preservation after RF12", () => {
     expect(SCRIPT).toContain('"--from-config-datasource"');
     expect(SCRIPT).toContain('"--to-schema","prisma"');
     expect(SCRIPT).toContain("const zeroDrift = drift.status === 0");
