@@ -18,6 +18,12 @@ const LEASE_PANEL = read(
   "rent-flex",
   "RentFlexLeaseWorkspacePanel.tsx",
 );
+const READ_MODEL = read(
+  "lib",
+  "domain",
+  "rental",
+  "rent-flex-12-read-service.ts",
+);
 
 describe("RF12-P3 contextual property and lease UI", () => {
   it("extends the existing Properties and Rental/Leases surfaces without a new navigation silo", () => {
@@ -57,7 +63,7 @@ describe("RF12-P3 contextual property and lease UI", () => {
     expect(LEASE_PANEL).toContain("استحقاقًا لصالح المؤجر/الشركة");
     expect(LEASE_PANEL).toContain("سداد خارجي لمزود");
     expect(LEASE_PANEL).toContain("أقساط المستأجر للمزود تظل خارج ذمم ORCA");
-    expect(GATE).toContain("turn external-provider repayments into ORCA receivables");
+    expect(GATE).toContain("provider repayments remain external and do not become ORCA receivables");
   });
 
   it("supports pre-lease selection, provider-offer choice, and lock through RF12-P2 only", () => {
@@ -78,11 +84,21 @@ describe("RF12-P3 contextual property and lease UI", () => {
     expect(GATE).toContain("RF12-P4 — Legacy Accounting Guard + Lease Binding");
   });
 
-  it("distinguishes a provider offer from recorded provider approval", () => {
+  it("distinguishes an offer from approval using canonical W1 FinanceCase authority", () => {
     expect(LEASE_PANEL).toContain("عرض مزود");
     expect(LEASE_PANEL).toContain("موافقة مزود مثبتة");
     expect(LEASE_PANEL).toContain("ليست موافقة مثبتة");
     expect(LEASE_PANEL).toContain('authorityStatus).toUpperCase() === "APPROVED"');
+    expect(READ_MODEL).toContain("prisma.financeCase.findFirst");
+    expect(READ_MODEL).toContain('financeAuthority.authorityStatus === "APPROVED"');
+    expect(READ_MODEL).toContain("financeAuthority.authorityProvider === offer.provider");
+    expect(READ_MODEL).toContain("financeAuthority.authorityReference === offer.providerReference");
+    expect(READ_MODEL).toContain("selection.selectedProviderOfferId === offer.id");
+    expect(READ_MODEL).toContain('"PROVIDER_APPROVED"');
+    expect(READ_MODEL).toContain('"READY_FOR_TRANSACTION"');
+    expect(READ_MODEL).toContain('"COMPLETED"');
+    expect(READ_MODEL).toContain('authorityStatus: canonicalProviderApproval ? "APPROVED" : null');
+    expect(GATE).toContain("does **not** trust `FinanceProviderOffer.authorityStatus`");
     expect(GATE).toContain("does not treat an offer as an approval");
   });
 
@@ -95,11 +111,12 @@ describe("RF12-P3 contextual property and lease UI", () => {
   });
 
   it("introduces no provider-network, accounting, migration, or deployment operation", () => {
-    const combined = [PROPERTY_PANEL, LEASE_PANEL].join("\n");
+    const combined = [PROPERTY_PANEL, LEASE_PANEL, READ_MODEL].join("\n");
     expect(combined).not.toContain("EJAR_API");
     expect(combined).not.toContain("open-banking");
     expect(combined).not.toContain("credit-bureau");
-    expect(combined).not.toContain("prisma");
+    expect(PROPERTY_PANEL).not.toContain("prisma");
+    expect(LEASE_PANEL).not.toContain("prisma");
     expect(combined).not.toContain("/api/accounting/settle-lease");
     expect(combined).not.toContain("/api/v1/invoices/");
     expect(combined).not.toContain("/api/v1/payments/");
