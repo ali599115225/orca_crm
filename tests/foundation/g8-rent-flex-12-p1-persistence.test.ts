@@ -53,11 +53,14 @@ describe("RF12-P1 persistence contract", () => {
     expect(isRentFlexSelectionTransitionAllowed("CANCELLED", "DRAFT")).toBe(false);
   });
 
-  it("permits settlement recovery while keeping received and cancelled terminal", () => {
-    expect(isRentFlexSettlementTransitionAllowed("EXPECTED", "PARTIAL")).toBe(true);
-    expect(isRentFlexSettlementTransitionAllowed("PARTIAL", "FAILED")).toBe(true);
+  it("allows failed settlement recovery without discarding partial receipt evidence", () => {
+    expect(isRentFlexSettlementTransitionAllowed("EXPECTED", "FAILED")).toBe(true);
     expect(isRentFlexSettlementTransitionAllowed("FAILED", "EXPECTED")).toBe(true);
+    expect(isRentFlexSettlementTransitionAllowed("FAILED", "PARTIAL")).toBe(true);
     expect(isRentFlexSettlementTransitionAllowed("FAILED", "RECEIVED")).toBe(true);
+    expect(isRentFlexSettlementTransitionAllowed("PARTIAL", "FAILED")).toBe(false);
+    expect(isRentFlexSettlementTransitionAllowed("PARTIAL", "CANCELLED")).toBe(false);
+    expect(isRentFlexSettlementTransitionAllowed("PARTIAL", "RECEIVED")).toBe(true);
     expect(isRentFlexSettlementTransitionAllowed("RECEIVED", "PARTIAL")).toBe(false);
     expect(isRentFlexSettlementTransitionAllowed("CANCELLED", "EXPECTED")).toBe(false);
   });
@@ -165,6 +168,19 @@ describe("RF12-P1 persistence contract", () => {
     expect(schema).not.toContain("Invoice");
   });
 
+  it("keeps provider selection atomic with W1 inside the Rent Flex transaction", () => {
+    const service = source("lib/domain/rental/rent-flex-12-service.ts");
+    const providerService = source(
+      "lib/domain/contract-finance/provider-offer-service.ts",
+    );
+    expect(providerService).toContain(
+      "export async function selectProviderOfferInTransaction",
+    );
+    expect(service).toContain("selectProviderOfferInTransaction(");
+    expect(service).toContain("Prisma.TransactionIsolationLevel.Serializable");
+    expect(service).not.toContain("await selectProviderOffer(");
+  });
+
   it("keeps all RF12-P1 commands tenant-guarded, audited, integrity-checked, and non-accounting", () => {
     const service = source("lib/domain/rental/rent-flex-12-service.ts");
     for (const command of [
@@ -181,7 +197,6 @@ describe("RF12-P1 persistence contract", () => {
       expect(service).toContain(`function ${command}`);
     }
     expect(service).toContain("requireTenantContext()");
-    expect(service).toContain("selectProviderOffer(");
     expect(service).toContain("db.auditLog.create(");
     expect(service).toContain("parseRentFlexScheduleJson(");
     expect(service).not.toContain("tx.invoice.create(");

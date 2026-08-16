@@ -52,6 +52,11 @@ type PersistedProviderOffer = {
   expiresAt: Date | null;
 };
 
+type ProviderOfferSelectionDb = Pick<
+  typeof prisma,
+  "financeCase" | "financeProviderOffer" | "financeCaseEvent"
+>;
+
 function decimalOrError(
   value: Prisma.Decimal | number | string,
   code: string,
@@ -73,7 +78,10 @@ function optionalDecimalOrError(
   return decimalOrError(value, code);
 }
 
-function decimalEqual(left: Prisma.Decimal | null, right: Prisma.Decimal | null): boolean {
+function decimalEqual(
+  left: Prisma.Decimal | null,
+  right: Prisma.Decimal | null,
+): boolean {
   if (left === null || right === null) return left === right;
   return left.eq(right);
 }
@@ -90,12 +98,18 @@ function providerOfferMatches(
     decimalEqual(existing.fees, normalized.fees) &&
     existing.termMonths === normalized.termMonths &&
     decimalEqual(existing.annualRate, normalized.annualRate) &&
-    (existing.expiresAt?.getTime() ?? null) === (normalized.expiresAt?.getTime() ?? null)
+    (existing.expiresAt?.getTime() ?? null) ===
+      (normalized.expiresAt?.getTime() ?? null)
   );
 }
 
-function normalizeProviderOffer(input: RecordProviderOfferInput): NormalizedProviderOffer {
-  const amount = decimalOrError(input.amount, "W1_PROVIDER_OFFER_AMOUNT_INVALID");
+function normalizeProviderOffer(
+  input: RecordProviderOfferInput,
+): NormalizedProviderOffer {
+  const amount = decimalOrError(
+    input.amount,
+    "W1_PROVIDER_OFFER_AMOUNT_INVALID",
+  );
   if (amount.lte(0)) {
     throw new W1ProviderOfferError("W1_PROVIDER_OFFER_AMOUNT_INVALID");
   }
@@ -109,11 +123,23 @@ function normalizeProviderOffer(input: RecordProviderOfferInput): NormalizedProv
     providerReference: input.providerReference.trim(),
     productName: input.productName?.trim() || null,
     amount,
-    downPayment: optionalDecimalOrError(input.downPayment, "W1_PROVIDER_OFFER_NUMERIC_INVALID"),
-    monthlyPayment: optionalDecimalOrError(input.monthlyPayment, "W1_PROVIDER_OFFER_NUMERIC_INVALID"),
-    fees: optionalDecimalOrError(input.fees, "W1_PROVIDER_OFFER_NUMERIC_INVALID"),
+    downPayment: optionalDecimalOrError(
+      input.downPayment,
+      "W1_PROVIDER_OFFER_NUMERIC_INVALID",
+    ),
+    monthlyPayment: optionalDecimalOrError(
+      input.monthlyPayment,
+      "W1_PROVIDER_OFFER_NUMERIC_INVALID",
+    ),
+    fees: optionalDecimalOrError(
+      input.fees,
+      "W1_PROVIDER_OFFER_NUMERIC_INVALID",
+    ),
     termMonths: input.termMonths,
-    annualRate: optionalDecimalOrError(input.annualRate, "W1_PROVIDER_OFFER_NUMERIC_INVALID"),
+    annualRate: optionalDecimalOrError(
+      input.annualRate,
+      "W1_PROVIDER_OFFER_NUMERIC_INVALID",
+    ),
     expiresAt: input.expiresAt ?? null,
   };
 }
@@ -143,16 +169,22 @@ export async function recordProviderOffer(input: RecordProviderOfferInput) {
           select: { id: true, internalStatus: true },
         });
         if (!financeCase) {
-          throw new W1ProviderOfferError("W1_PROVIDER_OFFER_CASE_NOT_FOUND_FOR_TENANT");
+          throw new W1ProviderOfferError(
+            "W1_PROVIDER_OFFER_CASE_NOT_FOUND_FOR_TENANT",
+          );
         }
         if (!isFinanceInternalStatus(financeCase.internalStatus)) {
-          throw new W1ProviderOfferError("W1_PROVIDER_OFFER_CASE_STATE_UNKNOWN");
+          throw new W1ProviderOfferError(
+            "W1_PROVIDER_OFFER_CASE_STATE_UNKNOWN",
+          );
         }
         if (
           financeCase.internalStatus !== "AWAITING_PROVIDER" &&
           financeCase.internalStatus !== "OFFERS_RECEIVED"
         ) {
-          throw new W1ProviderOfferError("W1_PROVIDER_OFFER_CASE_STATE_INVALID");
+          throw new W1ProviderOfferError(
+            "W1_PROVIDER_OFFER_CASE_STATE_INVALID",
+          );
         }
 
         const existing = await tx.financeProviderOffer.findFirst({
@@ -165,7 +197,9 @@ export async function recordProviderOffer(input: RecordProviderOfferInput) {
         });
         if (existing) {
           if (providerOfferMatches(existing, normalized)) return existing;
-          throw new W1ProviderOfferError("W1_PROVIDER_OFFER_REFERENCE_CONFLICT");
+          throw new W1ProviderOfferError(
+            "W1_PROVIDER_OFFER_REFERENCE_CONFLICT",
+          );
         }
 
         const offer = await tx.financeProviderOffer.create({
@@ -196,7 +230,10 @@ export async function recordProviderOffer(input: RecordProviderOfferInput) {
         if (nextStatus !== financeCase.internalStatus) {
           await tx.financeCase.update({
             where: { id: financeCase.id },
-            data: { internalStatus: nextStatus, updatedBy: input.actorId },
+            data: {
+              internalStatus: nextStatus,
+              updatedBy: input.actorId,
+            },
           });
         }
 
@@ -223,7 +260,10 @@ export async function recordProviderOffer(input: RecordProviderOfferInput) {
   } catch (error) {
     if (error instanceof W1ProviderOfferError) throw error;
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
       const existing = await prisma.financeProviderOffer.findFirst({
         where: {
           tenantId: input.tenantId,
@@ -232,12 +272,106 @@ export async function recordProviderOffer(input: RecordProviderOfferInput) {
           providerReference: normalized.providerReference,
         },
       });
-      if (existing && providerOfferMatches(existing, normalized)) return existing;
+      if (existing && providerOfferMatches(existing, normalized)) {
+        return existing;
+      }
       throw new W1ProviderOfferError("W1_PROVIDER_OFFER_REFERENCE_CONFLICT");
     }
 
     throw error;
   }
+}
+
+export async function selectProviderOfferInTransaction(
+  db: ProviderOfferSelectionDb,
+  tenantId: string,
+  financeCaseId: string,
+  offerId: string,
+  actorId: string,
+) {
+  if (!tenantId || !financeCaseId || !offerId || !actorId) {
+    throw new W1ProviderOfferError(
+      "W1_PROVIDER_OFFER_SELECTION_IDENTITY_REQUIRED",
+    );
+  }
+
+  const financeCase = await db.financeCase.findFirst({
+    where: { id: financeCaseId, tenantId },
+    select: { id: true, internalStatus: true },
+  });
+  if (!financeCase) {
+    throw new W1ProviderOfferError(
+      "W1_PROVIDER_OFFER_CASE_NOT_FOUND_FOR_TENANT",
+    );
+  }
+
+  const offer = await db.financeProviderOffer.findFirst({
+    where: { id: offerId, tenantId, financeCaseId: financeCase.id },
+  });
+  if (!offer) {
+    throw new W1ProviderOfferError(
+      "W1_PROVIDER_OFFER_NOT_FOUND_FOR_TENANT",
+    );
+  }
+
+  if (financeCase.internalStatus === "OFFER_SELECTED") {
+    if (offer.recordStatus === "SELECTED") return offer;
+    throw new W1ProviderOfferError("W1_PROVIDER_OFFER_ALREADY_SELECTED");
+  }
+  if (financeCase.internalStatus !== "OFFERS_RECEIVED") {
+    throw new W1ProviderOfferError(
+      "W1_PROVIDER_OFFER_SELECTION_CASE_STATE_INVALID",
+    );
+  }
+  if (offer.recordStatus !== "RECEIVED") {
+    throw new W1ProviderOfferError(
+      "W1_PROVIDER_OFFER_SELECTION_OFFER_STATE_INVALID",
+    );
+  }
+  if (offer.expiresAt && offer.expiresAt.getTime() <= Date.now()) {
+    throw new W1ProviderOfferError("W1_PROVIDER_OFFER_EXPIRED");
+  }
+
+  const alreadySelected = await db.financeProviderOffer.findFirst({
+    where: {
+      tenantId,
+      financeCaseId: financeCase.id,
+      recordStatus: "SELECTED",
+    },
+    select: { id: true },
+  });
+  if (alreadySelected && alreadySelected.id !== offer.id) {
+    throw new W1ProviderOfferError("W1_PROVIDER_OFFER_ALREADY_SELECTED");
+  }
+
+  const selectedAt = new Date();
+  const selected = await db.financeProviderOffer.update({
+    where: { id: offer.id },
+    data: { recordStatus: "SELECTED", selectedAt },
+  });
+
+  await db.financeCase.update({
+    where: { id: financeCase.id },
+    data: { internalStatus: "OFFER_SELECTED", updatedBy: actorId },
+  });
+
+  await db.financeCaseEvent.create({
+    data: {
+      tenantId,
+      financeCaseId: financeCase.id,
+      eventType: "finance_case.provider_offer_selected",
+      internalStatus: "OFFER_SELECTED",
+      provider: selected.provider,
+      actorId,
+      evidenceJson: {
+        offerId: selected.id,
+        providerReference: selected.providerReference,
+        selectedAt: selectedAt.toISOString(),
+      },
+    },
+  });
+
+  return selected;
 }
 
 export async function selectProviderOffer(
@@ -246,82 +380,15 @@ export async function selectProviderOffer(
   offerId: string,
   actorId: string,
 ) {
-  if (!tenantId || !financeCaseId || !offerId || !actorId) {
-    throw new W1ProviderOfferError("W1_PROVIDER_OFFER_SELECTION_IDENTITY_REQUIRED");
-  }
-
-  return await prisma.$transaction(
-    async (tx) => {
-      const financeCase = await tx.financeCase.findFirst({
-        where: { id: financeCaseId, tenantId },
-        select: { id: true, internalStatus: true },
-      });
-      if (!financeCase) {
-        throw new W1ProviderOfferError("W1_PROVIDER_OFFER_CASE_NOT_FOUND_FOR_TENANT");
-      }
-
-      const offer = await tx.financeProviderOffer.findFirst({
-        where: { id: offerId, tenantId, financeCaseId: financeCase.id },
-      });
-      if (!offer) {
-        throw new W1ProviderOfferError("W1_PROVIDER_OFFER_NOT_FOUND_FOR_TENANT");
-      }
-
-      if (financeCase.internalStatus === "OFFER_SELECTED") {
-        if (offer.recordStatus === "SELECTED") return offer;
-        throw new W1ProviderOfferError("W1_PROVIDER_OFFER_ALREADY_SELECTED");
-      }
-      if (financeCase.internalStatus !== "OFFERS_RECEIVED") {
-        throw new W1ProviderOfferError("W1_PROVIDER_OFFER_SELECTION_CASE_STATE_INVALID");
-      }
-      if (offer.recordStatus !== "RECEIVED") {
-        throw new W1ProviderOfferError("W1_PROVIDER_OFFER_SELECTION_OFFER_STATE_INVALID");
-      }
-      if (offer.expiresAt && offer.expiresAt.getTime() <= Date.now()) {
-        throw new W1ProviderOfferError("W1_PROVIDER_OFFER_EXPIRED");
-      }
-
-      const alreadySelected = await tx.financeProviderOffer.findFirst({
-        where: {
-          tenantId,
-          financeCaseId: financeCase.id,
-          recordStatus: "SELECTED",
-        },
-        select: { id: true },
-      });
-      if (alreadySelected && alreadySelected.id !== offer.id) {
-        throw new W1ProviderOfferError("W1_PROVIDER_OFFER_ALREADY_SELECTED");
-      }
-
-      const selectedAt = new Date();
-      const selected = await tx.financeProviderOffer.update({
-        where: { id: offer.id },
-        data: { recordStatus: "SELECTED", selectedAt },
-      });
-
-      await tx.financeCase.update({
-        where: { id: financeCase.id },
-        data: { internalStatus: "OFFER_SELECTED", updatedBy: actorId },
-      });
-
-      await tx.financeCaseEvent.create({
-        data: {
-          tenantId,
-          financeCaseId: financeCase.id,
-          eventType: "finance_case.provider_offer_selected",
-          internalStatus: "OFFER_SELECTED",
-          provider: selected.provider,
-          actorId,
-          evidenceJson: {
-            offerId: selected.id,
-            providerReference: selected.providerReference,
-            selectedAt: selectedAt.toISOString(),
-          },
-        },
-      });
-
-      return selected;
-    },
+  return prisma.$transaction(
+    (tx) =>
+      selectProviderOfferInTransaction(
+        tx,
+        tenantId,
+        financeCaseId,
+        offerId,
+        actorId,
+      ),
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
   );
 }

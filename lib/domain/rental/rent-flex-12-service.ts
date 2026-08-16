@@ -4,7 +4,7 @@ import { createHash } from "crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireTenantContext } from "@/lib/tenant-context";
-import { selectProviderOffer } from "@/lib/domain/contract-finance/provider-offer-service";
+import { selectProviderOfferInTransaction } from "@/lib/domain/contract-finance/provider-offer-service";
 import {
   buildDirectMonthlyEjarPlan,
   buildExternalRnpl12Quote,
@@ -597,95 +597,81 @@ export async function selectExternalRnplOffer(input: {
 }) {
   requireIdentity(input.tenantId, input.actorId);
 
-  const selection = await prisma.rentFlexSelection.findFirst({
-    where: { id: input.selectionId, tenantId: input.tenantId },
-  });
-  if (!selection) {
-    throw new RentFlexP1Error("RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT");
-  }
-  if (
-    asMode(selection.mode) !== RENT_FLEX_MODE_EXTERNAL ||
-    !selection.financeCaseId
-  ) {
-    throw new RentFlexP1Error("RENT_FLEX_P1_EXTERNAL_FINANCE_CASE_REQUIRED");
-  }
-  const status = asSelectionStatus(selection.status);
-  if (status === "LOCKED") {
-    if (selection.selectedProviderOfferId === input.financeProviderOfferId) {
-      return selection;
-    }
-    throw new RentFlexP1Error("RENT_FLEX_P1_SELECTION_IMMUTABLE");
-  }
-  if (status !== "SELECTED") {
-    throw new RentFlexP1Error("RENT_FLEX_P1_OFFER_SELECTION_STATE_INVALID");
-  }
-
-  const offer = await prisma.financeProviderOffer.findFirst({
-    where: {
-      id: input.financeProviderOfferId,
-      tenantId: input.tenantId,
-      financeCaseId: selection.financeCaseId,
-    },
-    select: { id: true },
-  });
-  if (!offer) {
-    throw new RentFlexP1Error(
-      "RENT_FLEX_P1_PROVIDER_OFFER_NOT_FOUND_FOR_TENANT",
-    );
-  }
-  const terms = await prisma.rentFlexOfferTerms.findFirst({
-    where: {
-      tenantId: input.tenantId,
-      financeProviderOfferId: offer.id,
-    },
-    select: { id: true },
-  });
-  if (!terms) {
-    throw new RentFlexP1Error("RENT_FLEX_P1_PROVIDER_OFFER_TERMS_REQUIRED");
-  }
-
-  await selectProviderOffer(
-    input.tenantId,
-    selection.financeCaseId,
-    offer.id,
-    input.actorId,
-  );
-
   return prisma.$transaction(
     async (tx) => {
-      const current = await tx.rentFlexSelection.findFirst({
+      const selection = await tx.rentFlexSelection.findFirst({
         where: { id: input.selectionId, tenantId: input.tenantId },
       });
-      if (!current) {
+      if (!selection) {
         throw new RentFlexP1Error(
           "RENT_FLEX_P1_SELECTION_NOT_FOUND_FOR_TENANT",
         );
       }
       if (
-        current.selectedProviderOfferId &&
-        current.selectedProviderOfferId !== offer.id
+        asMode(selection.mode) !== RENT_FLEX_MODE_EXTERNAL ||
+        !selection.financeCaseId
+      ) {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_EXTERNAL_FINANCE_CASE_REQUIRED",
+        );
+      }
+      const status = asSelectionStatus(selection.status);
+      if (status === "LOCKED") {
+        if (selection.selectedProviderOfferId === input.financeProviderOfferId) {
+          return selection;
+        }
+        throw new RentFlexP1Error("RENT_FLEX_P1_SELECTION_IMMUTABLE");
+      }
+      if (status !== "SELECTED") {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_OFFER_SELECTION_STATE_INVALID",
+        );
+      }
+      if (
+        selection.selectedProviderOfferId &&
+        selection.selectedProviderOfferId !== input.financeProviderOfferId
       ) {
         throw new RentFlexP1Error(
           "RENT_FLEX_P1_DIFFERENT_PROVIDER_OFFER_ALREADY_SELECTED",
         );
       }
-      const selectedOffer = await tx.financeProviderOffer.findFirst({
+
+      const offer = await tx.financeProviderOffer.findFirst({
         where: {
-          id: offer.id,
+          id: input.financeProviderOfferId,
           tenantId: input.tenantId,
-          financeCaseId: current.financeCaseId ?? undefined,
-          recordStatus: "SELECTED",
+          financeCaseId: selection.financeCaseId,
         },
-        select: { id: true, providerReference: true },
+        select: { id: true },
       });
-      if (!selectedOffer) {
+      if (!offer) {
         throw new RentFlexP1Error(
-          "RENT_FLEX_P1_PROVIDER_OFFER_NOT_SELECTED_IN_W1",
+          "RENT_FLEX_P1_PROVIDER_OFFER_NOT_FOUND_FOR_TENANT",
+        );
+      }
+      const terms = await tx.rentFlexOfferTerms.findFirst({
+        where: {
+          tenantId: input.tenantId,
+          financeProviderOfferId: offer.id,
+        },
+        select: { id: true },
+      });
+      if (!terms) {
+        throw new RentFlexP1Error(
+          "RENT_FLEX_P1_PROVIDER_OFFER_TERMS_REQUIRED",
         );
       }
 
+      const selectedOffer = await selectProviderOfferInTransaction(
+        tx,
+        input.tenantId,
+        selection.financeCaseId,
+        offer.id,
+        input.actorId,
+      );
+
       const updated = await tx.rentFlexSelection.update({
-        where: { id: current.id },
+        where: { id: selection.id },
         data: {
           selectedProviderOfferId: selectedOffer.id,
           updatedBy: input.actorId,
@@ -696,7 +682,7 @@ export async function selectExternalRnplOffer(input: {
         actorId: input.actorId,
         action: "RENT_FLEX_PROVIDER_OFFER_SELECTED",
         tableName: "rent_flex_selections",
-        recordId: current.id,
+        recordId: selection.id,
         details: {
           financeProviderOfferId: selectedOffer.id,
           providerReference: selectedOffer.providerReference,
