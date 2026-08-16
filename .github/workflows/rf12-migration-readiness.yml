@@ -108,7 +108,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          RF12MR_PRE_PRISMA_DIR=pre/prisma RF12MR_HEAD_DIR=head RF12MR_COMBINED_SCHEMA=evidence/pre-rf12-base-schema.prisma RF12MR_OUTPUT=evidence/pre-rf12-base-schema.sql node head/scripts/rf12-migration-readiness.mjs materialize-pre
+          DATABASE_URL="$UPGRADE_URL" DIRECT_URL="$UPGRADE_URL" RF12MR_PRE_PRISMA_DIR=pre/prisma RF12MR_HEAD_DIR=head RF12MR_COMBINED_SCHEMA=evidence/pre-rf12-base-schema.prisma RF12MR_OUTPUT=evidence/pre-rf12-base-schema.sql node head/scripts/rf12-migration-readiness.mjs materialize-pre
           psql "$UPGRADE_URL" -v ON_ERROR_STOP=1 -f evidence/pre-rf12-base-schema.sql > evidence/pre-rf12-base-apply.txt
 
       - name: Apply exact pre-RF12 W1 schema migrations
