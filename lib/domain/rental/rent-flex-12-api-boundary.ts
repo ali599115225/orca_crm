@@ -14,6 +14,9 @@ import { RentFlexP1Error } from "./rent-flex-12-persistence-contract";
 const RF12_UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RF12_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+const RF12_MONEY_PATTERN = /^\d+(?:\.\d{1,2})?$/;
+const RF12_EVIDENCE_JSON_MAX_BYTES = 64 * 1024;
+const RF12_EVIDENCE_JSON_MAX_DEPTH = 8;
 const RF12_FORBIDDEN_BODY_KEYS = [
   "tenantId",
   "actorId",
@@ -199,19 +202,22 @@ function numericMoney(
   allowZero: boolean,
 ): string | number {
   if (typeof value === "number") {
+    if (!Number.isFinite(value) || value > 1_000_000_000) {
+      throw new RentFlexP2RequestError("RENT_FLEX_P2_INVALID_INPUT");
+    }
+    const normalized = String(value);
     if (
-      !Number.isFinite(value) ||
-      (allowZero ? value < 0 : value <= 0) ||
-      value > 1_000_000_000
+      !RF12_MONEY_PATTERN.test(normalized) ||
+      (allowZero ? value < 0 : value <= 0)
     ) {
       throw new RentFlexP2RequestError("RENT_FLEX_P2_INVALID_INPUT");
     }
-    return value;
+    return normalized;
   }
 
   if (typeof value === "string") {
     const normalized = value.trim();
-    if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) {
+    if (!RF12_MONEY_PATTERN.test(normalized)) {
       throw new RentFlexP2RequestError("RENT_FLEX_P2_INVALID_INPUT");
     }
     const parsed = Number(normalized);
@@ -280,13 +286,76 @@ export function optionalRentFlexNonEmptyString(
   return value.trim();
 }
 
+function assertRentFlexJsonValue(
+  value: unknown,
+  depth: number,
+  seen: WeakSet<object>,
+): void {
+  if (depth > RF12_EVIDENCE_JSON_MAX_DEPTH) {
+    throw new RentFlexP2RequestError("RENT_FLEX_P2_INVALID_INPUT");
+  }
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "boolean"
+  ) {
+    return;
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      throw new RentFlexP2RequestError("RENT_FLEX_P2_INVALID_INPUT");
+    }
+    return;
+  }
+  if (typeof value !== "object") {
+    throw new RentFlexP2RequestError("RENT_FLEX_P2_INVALID_INPUT");
+  }
+  if (seen.has(value)) {
+    throw new RentFlexP2RequestError("RENT_FLEX_P2_INVALID_INPUT");
+  }
+  seen.add(value);
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      assertRentFlexJsonValue(item, depth + 1, seen);
+    }
+    seen.delete(value);
+    return;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new RentFlexP2RequestError("RENT_FLEX_P2_INVALID_INPUT");
+  }
+  for (const [key, item] of Object.entries(value)) {
+    if (!key || item === undefined) {
+      throw new RentFlexP2RequestError("RENT_FLEX_P2_INVALID_INPUT");
+    }
+    assertRentFlexJsonValue(item, depth + 1, seen);
+  }
+  seen.delete(value);
+}
+
 export function optionalRentFlexJsonOrNull(
   body: Record<string, unknown>,
   key: string,
 ): Prisma.InputJsonValue | null | undefined {
   if (!(key in body) || body[key] === undefined) return undefined;
-  if (body[key] === null) return null;
-  return body[key] as Prisma.InputJsonValue;
+  const value = body[key];
+  if (value === null) return null;
+
+  assertRentFlexJsonValue(value, 0, new WeakSet<object>());
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(value);
+  } catch {
+    throw new RentFlexP2RequestError("RENT_FLEX_P2_INVALID_INPUT");
+  }
+  if (
+    !serialized ||
+    new TextEncoder().encode(serialized).byteLength > RF12_EVIDENCE_JSON_MAX_BYTES
+  ) {
+    throw new RentFlexP2RequestError("RENT_FLEX_P2_INVALID_INPUT");
+  }
+  return value as Prisma.InputJsonValue;
 }
 
 export function optionalRentFlexListLimit(request: NextRequest): number | undefined {
