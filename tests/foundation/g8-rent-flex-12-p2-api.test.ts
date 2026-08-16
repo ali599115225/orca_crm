@@ -54,14 +54,17 @@ describe("RF12-P2 guarded Rent Flex API wrappers", () => {
     }
   });
 
-  it("keeps reads behind feature plus schema readiness and writes behind the third gate", () => {
+  it("keeps reads behind feature plus schema readiness, writes behind a third gate, and lease binding behind accounting-guard readiness", () => {
     expect(BOUNDARY).toContain('process.env.ORCA_RENT_FLEX_12_ENABLED === "true"');
     expect(BOUNDARY).toContain('process.env.ORCA_RENT_FLEX_12_SCHEMA_READY === "true"');
     expect(BOUNDARY).toContain('process.env.ORCA_RENT_FLEX_12_WRITES_ENABLED === "true"');
+    expect(BOUNDARY).toContain('process.env.ORCA_RENT_FLEX_12_ACCOUNTING_GUARD_READY === "true"');
+    expect(BOUNDARY).toContain("isRentFlex12LeaseBindingApiEnabled");
     expect(BOUNDARY).toContain("if (!enabled)");
     expect(BOUNDARY).toContain("return notFoundResponse(request)");
     expect(GATE).toContain("All flags remain absent/false by default");
-    expect(GATE).toContain("operational acknowledgement only");
+    expect(GATE).toContain("operational acknowledgements only");
+    expect(GATE).toContain("Enabling the three general Rent Flex flags alone cannot create a lease-bound Rent Flex state");
   });
 
   it("executes the dark gate before authentication and every route uses the correct boundary", () => {
@@ -75,7 +78,9 @@ describe("RF12-P2 guarded Rent Flex API wrappers", () => {
     expect(ROUTES[1]).toContain("beginRentFlex12ReadRequest");
     expect(ROUTES[1]).toContain("beginRentFlex12WriteRequest");
     expect(ROUTES[2]).toContain("beginRentFlex12ReadRequest");
-    for (const source of WRITE_ROUTES.slice(2)) {
+    expect(ROUTES[6]).toContain("beginRentFlex12LeaseBindingRequest");
+    expect(ROUTES[6]).not.toContain("beginRentFlex12WriteRequest");
+    for (const source of [ROUTES[3], ROUTES[4], ROUTES[5], ROUTES[7], ROUTES[8]]) {
       expect(source).toContain("beginRentFlex12WriteRequest");
     }
   });
@@ -163,5 +168,6 @@ describe("RF12-P2 guarded Rent Flex API wrappers", () => {
     expect(GATE).toContain("RF12-P2 performs no:");
     expect(GATE).toContain("- provider callback/webhook;");
     expect(GATE).toContain("- deploy or production action.");
+    expect(GATE).toContain("legacy `settle-lease` guard is intentionally not implemented in RF12-P2");
   });
 });
