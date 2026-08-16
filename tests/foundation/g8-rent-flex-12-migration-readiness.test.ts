@@ -62,6 +62,11 @@ describe("RF12 isolated migration readiness", () => {
     expect(apply).toBeGreaterThan(capture);
     expect(verify).toBeGreaterThan(apply);
     expect(WORKFLOW).toContain('DATABASE_URL="$UPGRADE_URL" DIRECT_URL="$UPGRADE_URL" RF12MR_PRE_PRISMA_DIR=pre/prisma');
+    expect(WORKFLOW).toContain("cp evidence/pre-rf12-base-schema.sql evidence/pre-rf12-base-schema.raw.txt");
+    expect(WORKFLOW).toContain("const marker = '-- CreateSchema';");
+    expect(WORKFLOW).toContain("RF12MR_PRE_BASE_SQL_MARKER_MISSING");
+    expect(WORKFLOW).toContain("RF12MR_PRE_BASE_SQL_PREAMBLE_NOT_STRIPPED");
+    expect(WORKFLOW).toContain("if (/^◇\\s/m.test(sql))");
     expect(SCRIPT).toContain('const supportedBaseFiles = ["schema.prisma", "rbac.prisma"]');
     expect(SCRIPT).toContain("RF12MR_BASE_SCHEMA_UNEXPECTED_W1_MODEL");
     expect(SCRIPT).toContain("while (attempt <= 5)");
