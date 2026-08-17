@@ -238,6 +238,13 @@ describe("W1J deterministic rendering contract", () => {
     expectCode(datetimeInput, "W1_RENDER_ISO_DATETIME_INVALID");
   });
 
+  it("does not allow FACT variables to resolve draft binding storage", () => {
+    const input = assembly();
+    (input.structuredFacts as any).templateVersion.variableSchemaJson.variables[0].path =
+      "dataBindingsJson.values.BUYER_NAME";
+    expectCode(input, "W1_RENDER_FACT_PATH_FORBIDDEN_ROOT");
+  });
+
   it("rejects unsafe fact paths", () => {
     const input = assembly();
     (input.structuredFacts as any).templateVersion.variableSchemaJson.variables[0].path =
