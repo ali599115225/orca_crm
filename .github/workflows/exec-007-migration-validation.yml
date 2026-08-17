@@ -140,15 +140,15 @@ jobs:
           (cd base && npx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script --output ../evidence/legacy-schema.sql)
           apply_chain(){
             local url="$1"; psql "$url" -v ON_ERROR_STOP=1 -f evidence/legacy-schema.sql
-            for m in 20260726043000_exec_004_organization_authority 20260726123000_exec_005_customer_identity_lifecycle 20260726124500_exec_005_customer_identity_integrity_hardening 20260726160000_exec_006_unit_commitment_reservation_tours 20260726161000_exec_006_unit_commitment_integrity_hardening 20260726162000_exec_006_authority_availability_hardening 20260726163000_exec_006_availability_disambiguation 20260726164000_exec_006_reconciliation_race_hardening 20260726165000_exec_006_lifecycle_approval_guard_hardening 20260726166000_exec_006_exact_scope_hardening; do psql "$url" -v ON_ERROR_STOP=1 -f "head/prisma/migrations/$m/migration.sql"; done
+            for m in 20260726043000_exec_004_organization_authority 20260726123000_exec_005_customer_identity_lifecycle 20260726124500_exec_005_customer_identity_integrity_hardening 20260726160000_exec_006_unit_commitment_reservation_tours 20260726161000_exec_006_unit_commitment_integrity_hardening 20260726162000_exec_006_authority_availability_hardening 20260726163000_exec_006_availability_disambiguation 20260726164000_exec_006_reconciliation_race_hardening 20260726165000_exec_006_lifecycle_approval_guard_hardening 20260726166000_exec_006_exact_scope_hardening; do psql "$url" -v ON_ERROR_STOP=1 -f "head/prisma/migration-evidence/non-production/$m/migration.sql"; done
           }
           for db in orca_exec007_empty orca_exec007_current; do
             url="$BOOTSTRAP_BASE/$db?sslmode=disable"; apply_chain "$url"
-            psql "$url" -v ON_ERROR_STOP=1 -f head/prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql
+            psql "$url" -v ON_ERROR_STOP=1 -f head/prisma/migration-evidence/non-production/20260727090000_exec_007_exact_scope_foundation/migration.sql
             EXEC007_DB_NAME="$db" EXEC007_BOOTSTRAP_ROLE=ci_neon_bootstrap EXEC007_PGCRYPTO_ABSENT_PASS=1 EXEC007_POSTGRES_EVIDENCE_PATH="evidence/$db.json" DATABASE_URL="$url" node head/scripts/exec-007-postgres-concurrency.mjs > "evidence/$db-summary.json"
           done
           absent="$BOOTSTRAP_BASE/orca_exec007_pgcrypto_absent?sslmode=disable"; apply_chain "$absent"
-          sed '/CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;/d' head/prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql > evidence/no-pgcrypto.sql
+          sed '/CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;/d' head/prisma/migration-evidence/non-production/20260727090000_exec_007_exact_scope_foundation/migration.sql > evidence/no-pgcrypto.sql
           psql "$absent" -v ON_ERROR_STOP=1 -f evidence/no-pgcrypto.sql
           EXEC007_PGCRYPTO_ABSENT_ONLY=1 EXEC007_DB_NAME=orca_exec007_pgcrypto_absent EXEC007_POSTGRES_EVIDENCE_PATH=evidence/pgcrypto-absent.json DATABASE_URL="$absent" node head/scripts/exec-007-postgres-concurrency.mjs
           node <<'NODE'
