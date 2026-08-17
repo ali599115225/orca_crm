@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { canTransitionVersion } from "@/lib/offer-management/state-machine";
 
 const migration = fs.readFileSync(
-  path.join(process.cwd(), "prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql"),
+  path.join(process.cwd(), "prisma/migration-evidence/non-production/20260727090000_exec_007_exact_scope_foundation/migration.sql"),
   "utf8",
 );
 

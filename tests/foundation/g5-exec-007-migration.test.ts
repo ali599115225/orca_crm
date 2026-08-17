@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-const migration = fs.readFileSync(path.join(process.cwd(), "prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql"), "utf8");
+const migration = fs.readFileSync(path.join(process.cwd(), "prisma/migration-evidence/non-production/20260727090000_exec_007_exact_scope_foundation/migration.sql"), "utf8");
 
 describe("EXEC-007 additive migration contract", () => {
   it("T-MIG-01 creates all frozen EXEC-007 tables without backfill", () => {

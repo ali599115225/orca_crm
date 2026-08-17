@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 const MIGRATION_PATH = join(
   process.cwd(),
   "prisma",
-  "migrations",
+  "migration-evidence",
+  "non-production",
   "20260726043000_exec_004_organization_authority",
   "migration.sql",
 );
