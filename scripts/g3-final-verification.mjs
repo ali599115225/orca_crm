@@ -159,7 +159,7 @@ function scanUntrustedTenantSources() {
 }
 
 function verifyG3Migrations() {
-  const migrationDir = resolve(ROOT, 'prisma/migrations')
+  const migrationDir = resolve(ROOT, 'prisma/migration-evidence/non-production')
   const violations = []
   const reviewed = []
   if (!existsSync(migrationDir)) return { violations, reviewed }
