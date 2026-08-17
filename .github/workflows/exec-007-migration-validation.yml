@@ -38,6 +38,7 @@ env:
 
 jobs:
   validate:
+    if: github.event_name == 'workflow_dispatch' || github.base_ref == 'work/orca-zero-based-execution-20260721'
     name: Exact-head Node 24 and PostgreSQL 16
     runs-on: ubuntu-latest
     timeout-minutes: 90
