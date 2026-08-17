@@ -162,7 +162,13 @@ function verifyG3Migrations() {
   const migrationDir = resolve(ROOT, 'prisma/migration-evidence/non-production')
   const violations = []
   const reviewed = []
-  if (!existsSync(migrationDir)) return { violations, reviewed }
+  if (!existsSync(migrationDir)) {
+    violations.push({
+      path: 'prisma/migration-evidence/non-production',
+      ruleId: 'missing-g3-migration-evidence-root',
+    })
+    return { violations, reviewed }
+  }
 
   for (const directory of readdirSync(migrationDir).sort()) {
     if (!directory.toLowerCase().includes('g3')) continue
