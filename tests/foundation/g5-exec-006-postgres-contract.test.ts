@@ -6,31 +6,31 @@ const workflow = readFileSync(
   "utf8",
 );
 const foundation = readFileSync(
-  "prisma/migrations/20260726160000_exec_006_unit_commitment_reservation_tours/migration.sql",
+  "prisma/migration-evidence/non-production/20260726160000_exec_006_unit_commitment_reservation_tours/migration.sql",
   "utf8",
 );
 const hardening = readFileSync(
-  "prisma/migrations/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql",
+  "prisma/migration-evidence/non-production/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql",
   "utf8",
 );
 const authorityAvailability = readFileSync(
-  "prisma/migrations/20260726162000_exec_006_authority_availability_hardening/migration.sql",
+  "prisma/migration-evidence/non-production/20260726162000_exec_006_authority_availability_hardening/migration.sql",
   "utf8",
 );
 const availabilityDisambiguation = readFileSync(
-  "prisma/migrations/20260726163000_exec_006_availability_disambiguation/migration.sql",
+  "prisma/migration-evidence/non-production/20260726163000_exec_006_availability_disambiguation/migration.sql",
   "utf8",
 );
 const reconciliationHardening = readFileSync(
-  "prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql",
+  "prisma/migration-evidence/non-production/20260726164000_exec_006_reconciliation_race_hardening/migration.sql",
   "utf8",
 );
 const lifecycleApprovalHardening = readFileSync(
-  "prisma/migrations/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql",
+  "prisma/migration-evidence/non-production/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql",
   "utf8",
 );
 const exactScopeHardening = readFileSync(
-  "prisma/migrations/20260726166000_exec_006_exact_scope_hardening/migration.sql",
+  "prisma/migration-evidence/non-production/20260726166000_exec_006_exact_scope_hardening/migration.sql",
   "utf8",
 );
 const drill = readFileSync(
