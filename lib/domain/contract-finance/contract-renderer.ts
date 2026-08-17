@@ -54,6 +54,7 @@ const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_DATETIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const W1I_STRUCTURED_FACTS_SCHEMA_VERSION = "W1I_CANONICAL_SNAPSHOT_FACTS_V1" as const;
 const FORBIDDEN_PATH_SEGMENTS = new Set(["__proto__", "prototype", "constructor"]);
+const FORBIDDEN_FACT_ROOTS = new Set(["dataBindingsJson"]);
 
 function fail(code: string): never {
   throw new W1ContractRenderingError(code);
@@ -197,7 +198,11 @@ function readVariableDefinitions(variableSchemaJson: unknown): Map<string, Varia
     if (source === "FACT") {
       path = asString(variable.path, "W1_RENDER_FACT_PATH_REQUIRED");
       if (!FACT_PATH_PATTERN.test(path)) fail("W1_RENDER_FACT_PATH_INVALID");
-      for (const segment of path.split(".")) {
+      const pathSegments = path.split(".");
+      if (FORBIDDEN_FACT_ROOTS.has(pathSegments[0])) {
+        fail("W1_RENDER_FACT_PATH_FORBIDDEN_ROOT");
+      }
+      for (const segment of pathSegments) {
         if (FORBIDDEN_PATH_SEGMENTS.has(segment)) fail("W1_RENDER_FACT_PATH_FORBIDDEN");
       }
       if (variable.bindingKey !== undefined) fail("W1_RENDER_FACT_BINDING_KEY_FORBIDDEN");
