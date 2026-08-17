@@ -7,7 +7,7 @@ const root = process.cwd();
 const hardening = readFileSync(
   path.join(
     root,
-    "prisma/migrations/20260726124500_exec_005_customer_identity_integrity_hardening/migration.sql",
+    "prisma/migration-evidence/non-production/20260726124500_exec_005_customer_identity_integrity_hardening/migration.sql",
   ),
   "utf8",
 );
