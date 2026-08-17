@@ -52,6 +52,7 @@ const FACT_PATH_PATTERN = /^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)*$/;
 const DECIMAL_PATTERN = /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_DATETIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+const W1I_STRUCTURED_FACTS_SCHEMA_VERSION = "W1I_CANONICAL_SNAPSHOT_FACTS_V1" as const;
 const FORBIDDEN_PATH_SEGMENTS = new Set(["__proto__", "prototype", "constructor"]);
 
 function fail(code: string): never {
@@ -288,12 +289,25 @@ function renderValue(value: unknown, definition: VariableDefinition): string {
     case "DECIMAL":
       if (!DECIMAL_PATTERN.test(normalized)) fail("W1_RENDER_DECIMAL_INVALID");
       return normalized;
-    case "ISO_DATE":
+    case "ISO_DATE": {
       if (!ISO_DATE_PATTERN.test(normalized)) fail("W1_RENDER_ISO_DATE_INVALID");
+      const instant = new Date(`${normalized}T00:00:00.000Z`);
+      if (
+        !Number.isFinite(instant.getTime()) ||
+        instant.toISOString().slice(0, 10) !== normalized
+      ) {
+        fail("W1_RENDER_ISO_DATE_INVALID");
+      }
       return normalized;
-    case "ISO_DATETIME":
+    }
+    case "ISO_DATETIME": {
       if (!ISO_DATETIME_PATTERN.test(normalized)) fail("W1_RENDER_ISO_DATETIME_INVALID");
+      const instant = new Date(normalized);
+      if (!Number.isFinite(instant.getTime()) || instant.toISOString() !== normalized) {
+        fail("W1_RENDER_ISO_DATETIME_INVALID");
+      }
       return normalized;
+    }
   }
 }
 
@@ -322,6 +336,11 @@ function renderNodes(
 
 export function renderCanonicalContract(input: W1CanonicalRenderingInput): string {
   const structuredFacts = asObject(input.structuredFacts, "W1_RENDER_STRUCTURED_FACTS_INVALID");
+  readSchemaVersion(
+    structuredFacts,
+    W1I_STRUCTURED_FACTS_SCHEMA_VERSION,
+    "W1_RENDER_STRUCTURED_FACTS_SCHEMA_UNSUPPORTED",
+  );
   const templateVersion = asObject(
     structuredFacts.templateVersion,
     "W1_RENDER_TEMPLATE_VERSION_FACTS_REQUIRED",
