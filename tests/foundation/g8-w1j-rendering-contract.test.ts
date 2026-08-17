@@ -198,6 +198,46 @@ describe("W1J deterministic rendering contract", () => {
     expect(output).toContain("2026-08-17T05:30:45.123Z");
   });
 
+  it("rejects unsupported W1I structured-facts schemas", () => {
+    const input = assembly();
+    (input.structuredFacts as any).schemaVersion = "W1I_CANONICAL_SNAPSHOT_FACTS_V2";
+    expectCode(input, "W1_RENDER_STRUCTURED_FACTS_SCHEMA_UNSUPPORTED");
+  });
+
+  it("rejects calendar-invalid ISO date and datetime values", () => {
+    const dateInput = assembly();
+    const dateFacts = dateInput.structuredFacts as any;
+    dateFacts.contract.acceptedDate = "2026-02-30";
+    dateFacts.templateVersion.variableSchemaJson.variables.push({
+      key: "ACCEPTED_DATE",
+      source: "FACT",
+      path: "contract.acceptedDate",
+      valueType: "ISO_DATE",
+      required: true,
+    });
+    (dateInput.sourceContentJson as any).sections[1].nodes.push({
+      type: "VARIABLE",
+      key: "ACCEPTED_DATE",
+    });
+    expectCode(dateInput, "W1_RENDER_ISO_DATE_INVALID");
+
+    const datetimeInput = assembly();
+    const datetimeFacts = datetimeInput.structuredFacts as any;
+    datetimeFacts.contract.acceptedAt = "2026-13-01T05:30:45.123Z";
+    datetimeFacts.templateVersion.variableSchemaJson.variables.push({
+      key: "ACCEPTED_AT",
+      source: "FACT",
+      path: "contract.acceptedAt",
+      valueType: "ISO_DATETIME",
+      required: true,
+    });
+    (datetimeInput.sourceContentJson as any).sections[1].nodes.push({
+      type: "VARIABLE",
+      key: "ACCEPTED_AT",
+    });
+    expectCode(datetimeInput, "W1_RENDER_ISO_DATETIME_INVALID");
+  });
+
   it("rejects unsafe fact paths", () => {
     const input = assembly();
     (input.structuredFacts as any).templateVersion.variableSchemaJson.variables[0].path =
