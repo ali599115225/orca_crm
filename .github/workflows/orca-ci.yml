@@ -2,13 +2,13 @@ name: ORCA CI
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
+    types:
+      - ready_for_review
+  workflow_dispatch:
 
 concurrency:
-  group: orca-ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: orca-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -62,7 +62,7 @@ jobs:
             artifacts/g4-contract-registry.json
             artifacts/g4-contract-registry.md
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 3
 
       - name: G5 security and quality inventory
         run: node scripts/g5-security-quality-inventory.mjs
@@ -93,7 +93,7 @@ jobs:
             artifacts/g5-npm-tree.json
             artifacts/g5-npm-outdated.json
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 3
 
       - name: G5 executable contract tests
         run: >
@@ -108,7 +108,7 @@ jobs:
           name: g5-executable-test-evidence
           path: artifacts/g5-test-results.json
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 3
 
       - name: G6 operational reliability inventory
         run: npm run g6:inventory
@@ -121,7 +121,7 @@ jobs:
             artifacts/g6-operational-reliability-inventory.json
             artifacts/g6-operational-reliability-inventory.md
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 3
 
       - name: G6 executable contract tests
         run: >
@@ -136,7 +136,7 @@ jobs:
           name: g6-executable-test-evidence
           path: artifacts/g6-test-results.json
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 3
 
       - name: G7 remediation reconciliation
         run: npm run g7:reconcile
@@ -149,7 +149,7 @@ jobs:
             artifacts/g7-remediation-reconciliation.json
             artifacts/g7-remediation-reconciliation.md
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 3
 
       - name: G7 executable reconciliation tests
         run: >
@@ -164,7 +164,7 @@ jobs:
           name: g7-executable-test-evidence
           path: artifacts/g7-test-results.json
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 3
 
       - name: G8 final foundation gate
         run: npm run g8:gate
@@ -180,7 +180,7 @@ jobs:
             ORCA_CENTRAL_BASELINE_REPORT.md
             docs/reports/foundation/ORCA_G8_FINAL_CLOSURE.md
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
 
       - name: G8 executable final-gate tests
         run: >
@@ -195,7 +195,7 @@ jobs:
           name: g8-executable-test-evidence
           path: artifacts/g8-test-results.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
 
       - name: Foundation and core regression tests
         run: >
@@ -316,4 +316,4 @@ jobs:
           name: g6-isolated-recovery-drill
           path: artifacts/g6-recovery-drill/
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 3
