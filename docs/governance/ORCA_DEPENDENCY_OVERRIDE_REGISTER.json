@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "documentId": "ORCA-EXEC-002-OVERRIDE-REGISTER-001",
-  "date": "2026-08-05",
+  "date": "2026-09-07",
   "status": "ACTIVE / SECURITY ADVISORY REMEDIATION REVIEW",
   "policy": "Every package.json override must be exact, owned, justified, review-triggered and removable when the upstream dependency graph is safe.",
   "overrides": [
@@ -15,11 +15,29 @@
       "expiryPolicy": "Remove only after npm ls and the Production audit prove every reachable path resolves to a safe upstream version without the override."
     },
     {
-      "package": "fast-uri",
-      "value": "3.1.5",
+      "package": "browserslist",
+      "value": "4.28.9",
       "owner": "Security Engineering",
-      "reason": "Pins the patched 3.x release required to close GHSA-7p8r-x3mc-p8w7 while preserving the existing compatible dependency line.",
-      "introducedBy": "Security advisory remediation after ORCA CI #734",
+      "reason": "Pins a patched release above the <=4.28.6 ranges affected by GHSA-c83g-rgw3-j3cx and GHSA-73wf-gq98-2v4g after ORCA CI advisory drift.",
+      "introducedBy": "PR #198 security dependency remediation",
+      "reviewTrigger": "Review on every frontend/build dependency-tree update affecting browserslist, on any new browserslist advisory, and before the final Release Candidate.",
+      "expiryPolicy": "Remove only after npm ls and the Production audit prove every reachable path resolves to a safe upstream version without the override."
+    },
+    {
+      "package": "deepmerge-ts",
+      "value": "8.0.1",
+      "owner": "Security Engineering",
+      "reason": "Pins the patched release required to close GHSA-ggr8-5vv4-36mx in Prisma's transitive @prisma/config dependency while keeping Prisma 7.9.0 unchanged.",
+      "introducedBy": "PR #198 security dependency remediation",
+      "reviewTrigger": "Review on every Prisma or lockfile update, on any new deepmerge-ts advisory, and before the final Release Candidate.",
+      "expiryPolicy": "Remove when Prisma's supported dependency graph resolves to a patched deepmerge-ts release without an ORCA override and the Production audit remains clean."
+    },
+    {
+      "package": "fast-uri",
+      "value": "3.1.7",
+      "owner": "Security Engineering",
+      "reason": "Pins the current patched 3.x line after new 2026 host-confusion and SSRF advisories made the prior 3.1.5 security pin vulnerable; 3.1.6+ closes the affected 3.x ranges.",
+      "introducedBy": "Security advisory remediation after ORCA CI #734; refreshed in PR #198",
       "reviewTrigger": "Review on every dependency-tree update affecting fast-uri, on any new fast-uri advisory, and before the final Release Candidate.",
       "expiryPolicy": "Remove only after all reachable dependency paths are verified safe without the override."
     },
@@ -31,6 +49,15 @@
       "introducedBy": "PR #79",
       "reviewTrigger": "Review on every Next.js/server dependency update and before the final Release Candidate.",
       "expiryPolicy": "Remove only after the dependency graph and Production audit remain safe without the override."
+    },
+    {
+      "package": "mysql2",
+      "value": "3.24.3",
+      "owner": "Security Engineering",
+      "reason": "Pins a current patched 3.x release above the <=3.23.0 range affected by 2026 authentication-downgrade and compressed-protocol decompression advisories exposed through Prisma's transitive dependency graph.",
+      "introducedBy": "PR #198 security dependency remediation",
+      "reviewTrigger": "Review on every Prisma or lockfile update, on any new mysql2 advisory, and before the final Release Candidate.",
+      "expiryPolicy": "Remove when Prisma's supported dependency graph resolves to a safe mysql2 release without an ORCA override and the Production audit remains clean."
     },
     {
       "package": "postcss",
