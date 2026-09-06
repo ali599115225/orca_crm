@@ -1,0 +1,43 @@
+name: Security lockfile normalize
+
+on:
+  push:
+    branches:
+      - work/deepmerge-prisma-security-remediation-20260907
+    paths:
+      - .github/workflows/security-lockfile-normalize.yml
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: work/deepmerge-prisma-security-remediation-20260907
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - name: Restore stable root lockfile metadata
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs')
+          const path = 'package-lock.json'
+          const lock = JSON.parse(fs.readFileSync(path, 'utf8'))
+          lock.packages[''] = { name: 'orca_crm', ...lock.packages[''] }
+          fs.writeFileSync(path, JSON.stringify(lock, null, 4) + '\n')
+          const dep = lock.packages['node_modules/deepmerge-ts']
+          if (!dep || dep.version !== '8.0.1') process.exit(1)
+          NODE
+      - name: Commit normalized lockfile
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git diff --cached --quiet && exit 0
+          git commit -m "fix(security): preserve lockfile root metadata"
+          git push origin HEAD:work/deepmerge-prisma-security-remediation-20260907
