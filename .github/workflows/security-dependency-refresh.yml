@@ -5,6 +5,8 @@ on:
     branches:
       - work/deepmerge-prisma-security-remediation-20260907
     paths:
+      - package.json
+      - docs/governance/ORCA_DEPENDENCY_OVERRIDE_REGISTER.json
       - .github/workflows/security-dependency-refresh.yml
 
 permissions:
