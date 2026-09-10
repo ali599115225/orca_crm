@@ -1,0 +1,65 @@
+name: Security Next Sharp Refresh
+
+on:
+  push:
+    branches:
+      - work/next-sharp-security-remediation-20260911
+    paths:
+      - .github/workflows/security-next-sharp-refresh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-and-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: work/next-sharp-security-remediation-20260911
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Refresh lockfile
+        run: |
+          npm install --package-lock-only --ignore-scripts
+          node <<'NODE'
+          const fs = require('node:fs')
+          const path = 'package-lock.json'
+          const lock = JSON.parse(fs.readFileSync(path, 'utf8'))
+          lock.packages[''] = { name: 'orca_crm', ...lock.packages[''] }
+          const expected = {
+            'node_modules/next': '16.3.4',
+            'node_modules/sharp': '0.35.4'
+          }
+          for (const [key, version] of Object.entries(expected)) {
+            if (lock.packages[key]?.version !== version) {
+              console.error(key, lock.packages[key]?.version, '!=', version)
+              process.exit(1)
+            }
+          }
+          fs.writeFileSync(path, JSON.stringify(lock, null, 4) + '\n')
+          NODE
+      - name: Clean install
+        run: npm ci
+      - name: Production dependency audit
+        run: npm run security:audit
+      - name: Prisma validate and generate
+        run: |
+          npx prisma validate
+          npx prisma generate
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Commit verified lockfile
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git diff --cached --quiet && exit 0
+          git commit -m "fix(security): refresh Next.js and sharp lockfile"
+          git push origin HEAD:work/next-sharp-security-remediation-20260911
