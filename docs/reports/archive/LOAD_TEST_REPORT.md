@@ -26,7 +26,7 @@ import { Rate, Trend } from 'k6/metrics';
 
 const BASE_URL = 'https://orca.az-ez.pro';
 const LOGIN_EMAIL = 'admin@dar-al-amar.com';
-const LOGIN_PASSWORD = 'Orca@Secure2026!';
+const LOGIN_PASSWORD = '<REDACTED_TEST_PASSWORD>';
 
 const errorRate = new Rate('errors');
 const loginTrend = new Trend('login_duration');

@@ -3,7 +3,9 @@
 
 const BASE = process.env.BASE_URL || "http://localhost:3458";
 const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) { console.error("FATAL: JWT_SECRET env var required"); process.exit(1); }
+const TEST_EMAIL = process.env.ORCA_TEST_EMAIL;
+const TEST_PASSWORD = process.env.ORCA_TEST_PASSWORD;
+if (!JWT_SECRET || !TEST_EMAIL || !TEST_PASSWORD) { console.error("FATAL: JWT_SECRET, ORCA_TEST_EMAIL and ORCA_TEST_PASSWORD are required"); process.exit(1); }
 
 import { SignJWT } from "jose";
 
@@ -40,7 +42,7 @@ async function createSessionCookie(userId = "demo-user-id", tenantId = "demo-ten
     tenantSubdomain: "demo",
     role: "ADMIN",
     name: "Admin Demo",
-    email: "admin@demo.orca-crm.com",
+    email: TEST_EMAIL,
   };
   const token = await new SignJWT(session)
     .setProtectedHeader({ alg: "HS256" })
@@ -75,7 +77,7 @@ async function main() {
     const res = await fetch(`${BASE}/api/v1/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "admin@demo.orca-crm.com", password: "Demo@2026" }),
+      body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD }),
     });
     if (!res.ok) throw new Error(`Status ${res.status}: ${await res.text()}`);
     const data = await res.json();
