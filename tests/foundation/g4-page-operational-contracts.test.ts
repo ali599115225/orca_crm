@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -15,6 +16,7 @@ const pagesPath = join(ROOT, "docs/architecture/ORCA_G4_PAGES_AND_SURFACES.md");
 const apisPath = join(ROOT, "docs/architecture/ORCA_G4_API_CONTRACTS.md");
 const actionsPath = join(ROOT, "docs/architecture/ORCA_G4_SERVER_ACTION_CONTRACTS.md");
 const workflowPath = join(ROOT, ".github/workflows/orca-ci.yml");
+const registryLockPath = join(tmpdir(), "orca-crm-g4-registry-test.lock");
 
 type RegistryResult = {
   inventory: any;
@@ -23,17 +25,48 @@ type RegistryResult = {
 
 let cachedRegistry: RegistryResult | null = null;
 
+function sleepSync(milliseconds: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+function withRegistryGenerationLock<T>(operation: () => T): T {
+  const deadline = Date.now() + 15_000;
+
+  while (true) {
+    try {
+      mkdirSync(registryLockPath);
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      if (Date.now() >= deadline) {
+        throw new Error("G4_REGISTRY_TEST_LOCK_TIMEOUT");
+      }
+      sleepSync(25);
+    }
+  }
+
+  try {
+    return operation();
+  } finally {
+    rmSync(registryLockPath, { recursive: true, force: true });
+  }
+}
+
 function runRegistry(): RegistryResult {
   if (cachedRegistry) return cachedRegistry;
 
-  execFileSync(process.execPath, [inventoryScript], { cwd: ROOT, stdio: "pipe" });
-  execFileSync(process.execPath, [normalizeScript], { cwd: ROOT, stdio: "pipe" });
-  execFileSync(process.execPath, [reconcileScript], { cwd: ROOT, stdio: "pipe" });
-  cachedRegistry = {
-    inventory: JSON.parse(readFileSync(inventoryPath, "utf8")),
-    registry: JSON.parse(readFileSync(registryPath, "utf8")),
-  };
-  return cachedRegistry;
+  return withRegistryGenerationLock(() => {
+    if (cachedRegistry) return cachedRegistry;
+
+    execFileSync(process.execPath, [inventoryScript], { cwd: ROOT, stdio: "pipe" });
+    execFileSync(process.execPath, [normalizeScript], { cwd: ROOT, stdio: "pipe" });
+    execFileSync(process.execPath, [reconcileScript], { cwd: ROOT, stdio: "pipe" });
+    cachedRegistry = {
+      inventory: JSON.parse(readFileSync(inventoryPath, "utf8")),
+      registry: JSON.parse(readFileSync(registryPath, "utf8")),
+    };
+    return cachedRegistry;
+  });
 }
 
 describe("G4 — Page and operational contract registry", () => {
@@ -44,9 +77,9 @@ describe("G4 — Page and operational contract registry", () => {
     expect(inventory.summary.apisWithoutDetectedMethods).toBe(0);
     expect(inventory.summary.normalizedReExportedApiMethods).toBe(1);
 
-    expect(registry.summary.totalContracts).toBe(384);
+    expect(registry.summary.totalContracts).toBe(385);
     expect(registry.summary.byKind).toEqual({
-      API: 150,
+      API: 151,
       ERROR_STATE: 4,
       LAYOUT: 5,
       LOADING_STATE: 3,
@@ -58,7 +91,7 @@ describe("G4 — Page and operational contract registry", () => {
     expect(registry.summary.duplicateContractIds).toBe(0);
     expect(registry.summary.invalidPermissionKeys).toBe(0);
     expect(registry.summary.malformedContracts).toBe(0);
-    expect(registry.contracts).toHaveLength(384);
+    expect(registry.contracts).toHaveLength(385);
     expect(registry.contracts.every((contract: { coverageStatus: string }) => contract.coverageStatus === "RECORDED")).toBe(true);
   });
 
@@ -66,7 +99,7 @@ describe("G4 — Page and operational contract registry", () => {
     const { registry } = runRegistry();
     const apis = registry.contracts.filter((contract: { kind: string }) => contract.kind === "API");
 
-    expect(apis).toHaveLength(150);
+    expect(apis).toHaveLength(151);
     expect(apis.every((contract: { apiMethods: string[] }) => contract.apiMethods.length > 0)).toBe(true);
 
     const ngenius = apis.find((contract: { route: string }) => contract.route === "/api/v1/installments/[id]/pay/ngenius");

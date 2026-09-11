@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -14,6 +15,7 @@ const g5Path = join(ROOT, "artifacts/g5-security-quality-inventory.json");
 const packagePath = join(ROOT, "package.json");
 const workflowPath = join(ROOT, ".github/workflows/orca-ci.yml");
 const registerPath = join(ROOT, "docs/architecture/ORCA_G5_SECURITY_QUALITY_REGISTER.md");
+const registryLockPath = join(tmpdir(), "orca-crm-g4-registry-test.lock");
 
 interface G5Finding {
   id: string;
@@ -68,18 +70,50 @@ interface G5Inventory {
 
 let cached: G5Inventory | null = null;
 
+function sleepSync(milliseconds: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+function withRegistryGenerationLock<T>(operation: () => T): T {
+  const deadline = Date.now() + 15_000;
+
+  while (true) {
+    try {
+      mkdirSync(registryLockPath);
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      if (Date.now() >= deadline) {
+        throw new Error("G4_REGISTRY_TEST_LOCK_TIMEOUT");
+      }
+      sleepSync(25);
+    }
+  }
+
+  try {
+    return operation();
+  } finally {
+    rmSync(registryLockPath, { recursive: true, force: true });
+  }
+}
+
 function rebuildInventory(): G5Inventory {
   if (cached) return cached;
-  for (const script of [
-    scripts.g4Inventory,
-    scripts.g4Normalize,
-    scripts.g4Reconcile,
-    scripts.g5Inventory,
-  ]) {
-    execFileSync(process.execPath, [script], { cwd: ROOT, stdio: "pipe" });
-  }
-  cached = JSON.parse(readFileSync(g5Path, "utf8")) as G5Inventory;
-  return cached;
+
+  return withRegistryGenerationLock(() => {
+    if (cached) return cached;
+
+    for (const script of [
+      scripts.g4Inventory,
+      scripts.g4Normalize,
+      scripts.g4Reconcile,
+      scripts.g5Inventory,
+    ]) {
+      execFileSync(process.execPath, [script], { cwd: ROOT, stdio: "pipe" });
+    }
+    cached = JSON.parse(readFileSync(g5Path, "utf8")) as G5Inventory;
+    return cached;
+  });
 }
 
 describe("G5 — Security and quality gate", () => {
@@ -87,7 +121,7 @@ describe("G5 — Security and quality gate", () => {
     const inventory = rebuildInventory();
 
     expect(inventory.schemaVersion).toBe(2);
-    expect(inventory.summary.g4Contracts).toBe(384);
+    expect(inventory.summary.g4Contracts).toBe(385);
     expect(inventory.summary.unprovenContracts).toBe(33);
     expect(inventory.unprovenContracts).toHaveLength(33);
     expect(inventory.summary.unprovenByPriority).toEqual({
@@ -133,11 +167,11 @@ describe("G5 — Security and quality gate", () => {
   it("records a security boundary for all APIs", () => {
     const inventory = rebuildInventory();
 
-    expect(inventory.summary.apiRoutes).toBe(150);
+    expect(inventory.summary.apiRoutes).toBe(151);
     expect(
       inventory.summary.apiAuthEvidenceByStatus.AUTH_EVIDENCE_NOT_DETECTED ?? 0,
     ).toBe(0);
-    expect(inventory.apiAuthEvidence).toHaveLength(150);
+    expect(inventory.apiAuthEvidence).toHaveLength(151);
     expect(
       inventory.apiAuthEvidence.every(
         (api) => api.status !== "AUTH_EVIDENCE_NOT_DETECTED",
