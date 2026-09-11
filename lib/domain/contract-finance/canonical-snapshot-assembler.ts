@@ -433,6 +433,8 @@ export async function assembleCanonicalContractSnapshotWithTx(
 export async function assembleCanonicalContractSnapshot(
   input: CanonicalContractSnapshotAssemblyInput,
 ): Promise<CanonicalContractSnapshotAssembly> {
+  assertCanonicalAssemblyAuthority(input);
+
   return await prisma.$transaction(
     async (tx) => await assembleCanonicalContractSnapshotWithTx(tx, input),
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
