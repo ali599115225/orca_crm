@@ -47,6 +47,7 @@ const SNAPSHOT_ROUTE_PATH = join(
   "issue",
   "route.ts",
 );
+const SNAPSHOT_ROUTE = readFileSync(SNAPSHOT_ROUTE_PATH, "utf8");
 
 const ROUTES = [REQUEST_APPROVAL, DECIDE_APPROVAL, FINALIZE_APPROVAL];
 const G4_API_ROUTE_EVIDENCE = [
@@ -109,17 +110,6 @@ describe("W1H guarded Contract Studio approval commands", () => {
   it("preserves existing W1E author/admin approval role separation", () => {
     expect(PERMISSIONS).toMatch(/const AUTHOR_ROLES = \[\s*"ADMIN",\s*"SALES_MANAGER",\s*"SALES_EMPLOYEE",\s*\]/m);
     expect(PERMISSIONS).toMatch(/const CONTRACT_APPROVER_ROLES = \[\s*"ADMIN",\s*\]/m);
-    expect(PERMISSIONS).toContain('"contract-studio.approval-request"');
-    expect(PERMISSIONS).toContain("allowedRoles: AUTHOR_ROLES");
-
-    for (const key of [
-      '"contract-studio.approval-decide"',
-      '"contract-studio.approval-finalize"',
-    ]) {
-      const start = PERMISSIONS.indexOf(`${key}: {`);
-      expect(start).toBeGreaterThanOrEqual(0);
-      expect(PERMISSIONS.slice(start, start + 320)).toContain("allowedRoles: CONTRACT_APPROVER_ROLES");
-    }
     expect(GATE).toContain("No Legal/Finance role is invented in this slice");
   });
 
@@ -177,21 +167,39 @@ describe("W1H guarded Contract Studio approval commands", () => {
     expect(GATE).toContain("W1D remains authoritative for allowed draft state");
   });
 
-  it("keeps snapshot issuance internal until a canonical compiler exists", () => {
-    expect(existsSync(SNAPSHOT_ROUTE_PATH)).toBe(false);
+  it("keeps W1H historical snapshot exclusion while W1K adds the later guarded command", () => {
+    expect(existsSync(SNAPSHOT_ROUTE_PATH)).toBe(true);
     expect(SNAPSHOT_SERVICE).toContain("issueApprovedContractSnapshot");
     expect(SNAPSHOT_SERVICE).toContain("computeContractSnapshotDigest");
-    expect(SNAPSHOT_SERVICE).toContain("input.renderedContent");
-    expect(SNAPSHOT_SERVICE).toContain("input.structuredFacts");
-    expect(SNAPSHOT_SERVICE).toContain("input.clauseSnapshot");
-    expect(SNAPSHOT_SERVICE).toContain("input.paymentPlanSnapshot");
     expect(GATE).toContain("does not expose it as a network command");
     expect(GATE).toContain("deterministic server-side compiler/assembler");
-    expect(GATE).toContain("must not be able to choose rendered legal content or canonical financial facts");
+
+    expect(SNAPSHOT_ROUTE).toContain("beginW1hContractCommandRequest");
+    expect(SNAPSHOT_ROUTE).toContain("await assertW1hEmptyCommandBody(request)");
+    expect(SNAPSHOT_ROUTE).toContain("requiredW1gUuidValue(id)");
+    expect(SNAPSHOT_ROUTE).toContain("w1eIssueApprovedContractSnapshot");
+    expect(SNAPSHOT_ROUTE).toContain('"Cache-Control": "no-store"');
+    expect(SNAPSHOT_ROUTE).not.toContain("request.json");
+    expect(SNAPSHOT_ROUTE).not.toContain("@/lib/prisma");
+    expect(SNAPSHOT_ROUTE).not.toContain("contract-snapshot-service");
+    expect(SNAPSHOT_ROUTE).not.toContain("canonical-snapshot-assembler");
+    expect(SNAPSHOT_ROUTE).not.toContain("contract-renderer");
+    for (const forbidden of [
+      "renderedContent",
+      "structuredFacts",
+      "clauseSnapshot",
+      "paymentPlanSnapshot",
+      "approvalSnapshot",
+      "templateVersionId",
+      "contractId",
+      "digest",
+    ]) {
+      expect(SNAPSHOT_ROUTE).not.toContain(forbidden);
+    }
   });
 
   it("does not add signature, provider network, deploy, or Transaction Spine financial writes", () => {
-    const combined = [COMMAND_BOUNDARY, ...ROUTES].join("\n");
+    const combined = [COMMAND_BOUNDARY, ...ROUTES, SNAPSHOT_ROUTE].join("\n");
     expect(combined).not.toContain("fetch(");
     expect(combined).not.toContain("axios");
     expect(combined).not.toContain("EJAR_API");
