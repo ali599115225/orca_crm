@@ -98,7 +98,7 @@ async function main() {
   let sessionCookie = "";
   await test("2. Login (configured test user)", async () => {
     const r = await api("POST", "/api/v1/auth/login", {
-      email: "admin@demo.orca-crm.com",
+      email: TEST_EMAIL,
       password: TEST_PASSWORD,
     });
     if (r.status !== 200) throw new Error(`Status ${r.status}: ${JSON.stringify(r.data)}`);
@@ -114,7 +114,7 @@ async function main() {
       tenantSubdomain: "demo",
       role: "ADMIN",
       name: "Admin Demo",
-      email: "admin@demo.orca-crm.com",
+      email: TEST_EMAIL,
     }).setProtectedHeader({ alg: "HS256" }).setIssuedAt().setExpirationTime("24h").sign(secret);
     sessionCookie = `session_token=${session}`;
     return r.data;
