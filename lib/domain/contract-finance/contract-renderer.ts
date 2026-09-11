@@ -197,13 +197,13 @@ function readVariableDefinitions(variableSchemaJson: unknown): Map<string, Varia
 
     if (source === "FACT") {
       path = asString(variable.path, "W1_RENDER_FACT_PATH_REQUIRED");
-      if (!FACT_PATH_PATTERN.test(path)) fail("W1_RENDER_FACT_PATH_INVALID");
       const pathSegments = path.split(".");
-      if (FORBIDDEN_FACT_ROOTS.has(pathSegments[0])) {
-        fail("W1_RENDER_FACT_PATH_FORBIDDEN_ROOT");
-      }
       for (const segment of pathSegments) {
         if (FORBIDDEN_PATH_SEGMENTS.has(segment)) fail("W1_RENDER_FACT_PATH_FORBIDDEN");
+      }
+      if (!FACT_PATH_PATTERN.test(path)) fail("W1_RENDER_FACT_PATH_INVALID");
+      if (FORBIDDEN_FACT_ROOTS.has(pathSegments[0])) {
+        fail("W1_RENDER_FACT_PATH_FORBIDDEN_ROOT");
       }
       if (variable.bindingKey !== undefined) fail("W1_RENDER_FACT_BINDING_KEY_FORBIDDEN");
     } else {
