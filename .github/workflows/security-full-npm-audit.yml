@@ -1,0 +1,41 @@
+name: Security full npm audit
+
+on:
+  push:
+    branches:
+      - security/full-npm-audit-20260911
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: security/full-npm-audit-20260911
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Full dependency audit including devDependencies
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > npm-audit.json
+          code=$?
+          node <<'NODE'
+          const fs = require('fs');
+          const audit = JSON.parse(fs.readFileSync('npm-audit.json', 'utf8'));
+          console.log('AUDIT_COUNTS=' + JSON.stringify(audit.metadata?.vulnerabilities ?? {}));
+          const vulns = audit.vulnerabilities ?? {};
+          for (const [name, info] of Object.entries(vulns)) {
+            console.log(`AUDIT_ITEM name=${name} severity=${info.severity} direct=${Boolean(info.isDirect)} range=${info.range ?? ''}`);
+          }
+          NODE
+          exit $code
