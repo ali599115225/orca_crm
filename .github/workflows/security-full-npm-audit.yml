@@ -35,7 +35,14 @@ jobs:
           console.log('AUDIT_COUNTS=' + JSON.stringify(audit.metadata?.vulnerabilities ?? {}));
           const vulns = audit.vulnerabilities ?? {};
           for (const [name, info] of Object.entries(vulns)) {
-            console.log(`AUDIT_ITEM name=${name} severity=${info.severity} direct=${Boolean(info.isDirect)} range=${info.range ?? ''}`);
+            console.log(`AUDIT_ITEM name=${name} severity=${info.severity} direct=${Boolean(info.isDirect)} range=${info.range ?? ''} fix=${JSON.stringify(info.fixAvailable ?? null)} effects=${JSON.stringify(info.effects ?? [])}`);
+            for (const via of info.via ?? []) {
+              if (typeof via === 'string') {
+                console.log(`AUDIT_VIA name=${name} via=${via}`);
+              } else {
+                console.log(`AUDIT_VIA name=${name} source=${via.source ?? ''} title=${via.title ?? ''} range=${via.range ?? ''}`);
+              }
+            }
           }
           NODE
           exit $code
