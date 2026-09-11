@@ -1,0 +1,69 @@
+name: Security transitive remediation
+
+on:
+  push:
+    branches:
+      - security/transitive-audit-remediation-20260911
+
+permissions:
+  contents: write
+
+jobs:
+  remediate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: security/transitive-audit-remediation-20260911
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Update vulnerable transitives within existing parent ranges
+        run: npm update undici esbuild --package-lock-only --ignore-scripts
+
+      - name: Verify exact resolved safe versions
+        shell: bash
+        run: |
+          node <<'NODE'
+          const lock = require('./package-lock.json');
+          const u = lock.packages?.['node_modules/undici']?.version;
+          const e = lock.packages?.['node_modules/esbuild']?.version;
+          console.log(`UNDICI=${u}`);
+          console.log(`ESBUILD=${e}`);
+          if (!u || Number(u.split('.')[0]) !== 7 || Number(u.split('.')[1]) < 29) process.exit(1);
+          if (e !== '0.28.1') process.exit(1);
+          NODE
+
+      - name: Full npm audit including devDependencies
+        run: npm audit --audit-level=low
+
+      - name: Scope guard
+        shell: bash
+        run: |
+          changed="$(git diff --name-only)"
+          printf '%s\n' "$changed"
+          unexpected="$(printf '%s\n' "$changed" | grep -Ev '^package-lock\.json$' || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'Unexpected files changed:'
+            printf '%s\n' "$unexpected"
+            exit 1
+          fi
+
+      - name: Commit remediated lockfile
+        shell: bash
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo 'No lockfile change produced.'
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json
+          git commit -m 'fix(security): remediate undici and esbuild audit findings'
+          git push origin HEAD:security/transitive-audit-remediation-20260911
