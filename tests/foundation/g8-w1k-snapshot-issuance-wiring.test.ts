@@ -64,6 +64,21 @@ describe("W1K canonical snapshot issuance wiring", () => {
     expect(ASSEMBLER).toContain('orderBy: [{ requestedAt: "asc" }, { id: "asc" }]');
     expect(ASSEMBLER).toContain("async (tx) => await assembleCanonicalContractSnapshotWithTx(tx, input)");
     expect(ASSEMBLER).toContain("Prisma.TransactionIsolationLevel.Serializable");
+
+    const wrapperStart = ASSEMBLER.indexOf(
+      "export async function assembleCanonicalContractSnapshot(\n",
+    );
+    const authorityCheck = ASSEMBLER.indexOf(
+      "assertCanonicalAssemblyAuthority(input);",
+      wrapperStart,
+    );
+    const transactionStart = ASSEMBLER.indexOf(
+      "return await prisma.$transaction(",
+      wrapperStart,
+    );
+    expect(wrapperStart).toBeGreaterThanOrEqual(0);
+    expect(authorityCheck).toBeGreaterThan(wrapperStart);
+    expect(transactionStart).toBeGreaterThan(authorityCheck);
   });
 
   it("owns one outer SERIALIZABLE transaction and never nests legacy W1I/W1D transactions", () => {
