@@ -32,6 +32,13 @@ export type ContractSnapshotIssueInput = Omit<
   createdBy?: string | null;
 };
 
+export type CanonicalContractSnapshotPersistInput = Omit<
+  ContractSnapshotDigestInput,
+  "snapshotType" | "signedAt"
+> & {
+  createdBy?: string | null;
+};
+
 function canonicalize(value: unknown): unknown {
   if (
     value === null ||
@@ -80,6 +87,55 @@ export function computeContractSnapshotDigest(input: ContractSnapshotDigestInput
   });
 
   return createHash("sha256").update(JSON.stringify(digestPayload), "utf8").digest("hex");
+}
+
+export async function persistCanonicalIssuedSnapshotWithTx(
+  tx: Prisma.TransactionClient,
+  input: CanonicalContractSnapshotPersistInput,
+) {
+  if (!input.tenantId || !input.draftId || !input.templateVersionId) {
+    throw new W1SnapshotIntegrityError("W1_SNAPSHOT_REQUIRED_IDENTITY_MISSING");
+  }
+  if (!input.renderedContent.trim()) {
+    throw new W1SnapshotIntegrityError("W1_SNAPSHOT_RENDERED_CONTENT_REQUIRED");
+  }
+
+  const digest = computeContractSnapshotDigest({
+    ...input,
+    snapshotType: "ISSUED",
+    signedAt: null,
+  });
+
+  const existing = await tx.contractSnapshot.findFirst({
+    where: {
+      tenantId: input.tenantId,
+      draftId: input.draftId,
+      snapshotType: "ISSUED",
+    },
+  });
+
+  if (existing) {
+    if (existing.digest === digest) return existing;
+    throw new W1SnapshotIntegrityError("W1_SNAPSHOT_ALREADY_ISSUED_DIFFERENT_DIGEST");
+  }
+
+  return await tx.contractSnapshot.create({
+    data: {
+      tenantId: input.tenantId,
+      draftId: input.draftId,
+      contractId: input.contractId ?? null,
+      templateVersionId: input.templateVersionId,
+      snapshotType: "ISSUED",
+      renderedContent: input.renderedContent,
+      structuredFacts: input.structuredFacts,
+      clauseSnapshot: input.clauseSnapshot,
+      paymentPlanSnapshot: input.paymentPlanSnapshot,
+      approvalSnapshot: input.approvalSnapshot,
+      digest,
+      createdBy: input.createdBy ?? null,
+      signedAt: null,
+    },
+  });
 }
 
 export async function issueApprovedContractSnapshot(input: ContractSnapshotIssueInput) {
