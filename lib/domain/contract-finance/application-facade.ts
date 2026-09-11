@@ -16,10 +16,7 @@ import {
   type DecideContractApprovalInput,
   type RequestContractApprovalInput,
 } from "./contract-draft-service";
-import {
-  issueApprovedContractSnapshot,
-  type ContractSnapshotIssueInput,
-} from "./contract-snapshot-service";
+import { issueCanonicalApprovedContractSnapshot } from "./contract-snapshot-issuance-service";
 import {
   createFinanceCase,
   recordFinanceAuthorityEvidence,
@@ -86,10 +83,9 @@ export type W1eDecideContractApprovalInput = Omit<
   "tenantId" | "approvalId" | "decidedBy"
 >;
 
-export type W1eIssueContractSnapshotInput = Omit<
-  ContractSnapshotIssueInput,
-  "tenantId" | "createdBy" | "contractId"
->;
+export type W1eIssueContractSnapshotInput = {
+  draftId: string;
+};
 
 export async function w1eListFinanceCases(
   session: unknown,
@@ -310,24 +306,10 @@ export async function w1eIssueApprovedContractSnapshot(
     session,
     "contract-studio.snapshot-issue",
     async (actor) =>
-      await issueApprovedContractSnapshot({
-        ...input,
+      await issueCanonicalApprovedContractSnapshot({
         tenantId: actor.tenantId,
+        draftId: input.draftId,
         createdBy: actor.userId,
       }),
   );
 }
-
-// Compile-time evidence that W1E inputs are business payloads only. The
-// identity fields below intentionally do not appear in any exported W1E write
-// input type and are injected solely from authorizeW1eActor().
-export type W1eForbiddenCallerIdentityFields =
-  | "tenantId"
-  | "createdBy"
-  | "updatedBy"
-  | "requestedBy"
-  | "decidedBy"
-  | "approvedBy"
-  | "actorId";
-
-export type W1eJsonInput = Prisma.InputJsonValue;
