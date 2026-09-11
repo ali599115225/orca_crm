@@ -2,6 +2,14 @@ import http from "node:http";
 import { SignJWT } from "jose";
 
 const PORT = 3460;
+const JWT_SECRET = process.env.JWT_SECRET;
+const TEST_EMAIL = process.env.ORCA_TEST_EMAIL;
+const TEST_PASSWORD = process.env.ORCA_TEST_PASSWORD;
+
+if (!JWT_SECRET || !TEST_EMAIL || !TEST_PASSWORD) {
+  console.error("FATAL: JWT_SECRET, ORCA_TEST_EMAIL and ORCA_TEST_PASSWORD are required");
+  process.exit(1);
+}
 
 async function api(m, p, b, c) {
   return new Promise((res, rej) => {
@@ -33,18 +41,18 @@ async function main() {
 
   // 2. Login
   try {
-    const l = await api("POST", "/api/v1/auth/login", { email: "admin@demo.orca-crm.com", password: "Demo@2026" });
+    const l = await api("POST", "/api/v1/auth/login", { email: TEST_EMAIL, password: TEST_PASSWORD });
     console.log("2. Login: " + (l.s === 200 && l.j?.token ? "PASS" : "FAIL"));
   } catch (e) { console.log("2. Login: FAIL - " + e.message); }
 
   // 3. Session cookie
   let cookie = "";
   try {
-    const secret = new TextEncoder().encode("6ba5289724f54ce28e10ab06cb42d472bfa63d847505932638590f5401e6916bf45ff53d8695301e51367cfe84d2ec9486e23e190f28d76b6b9a373ed060ba88");
+    const secret = new TextEncoder().encode(JWT_SECRET);
     const tok = await new SignJWT({
       userId: "admin-demo-id", tenantId: "demo-tenant-id",
       tenantSubdomain: "demo", role: "ADMIN",
-      name: "Admin", email: "admin@demo.orca-crm.com",
+      name: "Admin", email: TEST_EMAIL,
     }).setProtectedHeader({ alg: "HS256" }).setIssuedAt().setExpirationTime("24h").sign(secret);
     cookie = "session_token=" + tok;
     console.log("3. Session Cookie: PASS (created)");
