@@ -27,17 +27,28 @@ jobs:
       - name: Update vulnerable transitives within existing parent ranges
         run: npm update undici esbuild --package-lock-only --ignore-scripts
 
-      - name: Verify exact resolved safe versions
+      - name: Verify resolved versions meet patched minimums
         shell: bash
         run: |
           node <<'NODE'
           const lock = require('./package-lock.json');
+          const gte = (a, b) => {
+            const av = a.split('.').map(Number);
+            const bv = b.split('.').map(Number);
+            for (let i = 0; i < Math.max(av.length, bv.length); i++) {
+              const x = av[i] || 0;
+              const y = bv[i] || 0;
+              if (x > y) return true;
+              if (x < y) return false;
+            }
+            return true;
+          };
           const u = lock.packages?.['node_modules/undici']?.version;
           const e = lock.packages?.['node_modules/esbuild']?.version;
           console.log(`UNDICI=${u}`);
           console.log(`ESBUILD=${e}`);
-          if (!u || Number(u.split('.')[0]) !== 7 || Number(u.split('.')[1]) < 29) process.exit(1);
-          if (e !== '0.28.1') process.exit(1);
+          if (!u || !gte(u, '7.29.0')) process.exit(1);
+          if (!e || !gte(e, '0.28.1')) process.exit(1);
           NODE
 
       - name: Full npm audit including devDependencies
