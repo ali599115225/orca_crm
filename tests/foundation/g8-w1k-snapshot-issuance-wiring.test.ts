@@ -51,8 +51,10 @@ describe("W1K canonical snapshot issuance wiring", () => {
   });
 
   it("exposes a tx-aware W1I helper while preserving the legacy SERIALIZABLE wrapper", () => {
+    expect(ASSEMBLER).toContain("type CanonicalSnapshotAssemblerTransaction = Pick<");
+    expect(ASSEMBLER).toContain('"contractDraft" | "contract"');
     expect(ASSEMBLER).toContain("export async function assembleCanonicalContractSnapshotWithTx(");
-    expect(ASSEMBLER).toContain("tx: Prisma.TransactionClient");
+    expect(ASSEMBLER).toContain("tx: CanonicalSnapshotAssemblerTransaction");
     expect(ASSEMBLER).toContain("const draft = await tx.contractDraft.findFirst");
     expect(ASSEMBLER).toContain('orderBy: [{ requestedAt: "asc" }, { id: "asc" }]');
     expect(ASSEMBLER).toContain("async (tx) => await assembleCanonicalContractSnapshotWithTx(tx, input)");
