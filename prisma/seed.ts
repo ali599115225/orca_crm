@@ -18,7 +18,7 @@ if (!connectionString) {
   process.exit(1);
 }
 
-const seedPassword = process.env.ORCA_TEST_PASSWORD;
+const seedPassword: string = process.env.ORCA_TEST_PASSWORD ?? "";
 if (!seedPassword) {
   console.error("❌ ORCA_TEST_PASSWORD مطلوب لتشغيل seed");
   process.exit(1);

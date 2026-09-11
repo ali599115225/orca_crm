@@ -12,7 +12,7 @@ import bcrypt from 'bcryptjs';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) { console.error("❌ DATABASE_URL فارغ!"); process.exit(1); }
-const testPassword = process.env.ORCA_TEST_PASSWORD;
+const testPassword: string = process.env.ORCA_TEST_PASSWORD ?? "";
 if (!testPassword) { console.error("❌ ORCA_TEST_PASSWORD مطلوب لتشغيل seed-demo"); process.exit(1); }
 
 const pool = new Pool({ connectionString });
