@@ -120,14 +120,32 @@ describe("W1E contract / finance permission + application facade", () => {
     }
   });
 
-  it("removes tenant, actor, and snapshot contract binding from W1E write payload types", () => {
+  it("removes tenant, actor, and canonical snapshot facts from W1E write payload types", () => {
     expect(FACADE_SOURCE).toContain('CreateFinanceCaseInput,\n  "tenantId" | "createdBy"');
     expect(FACADE_SOURCE).toContain('RecordFinanceAuthorityInput,\n  "tenantId" | "financeCaseId" | "actorId"');
     expect(FACADE_SOURCE).toContain('RecordProviderOfferInput,\n  "tenantId" | "financeCaseId" | "actorId"');
     expect(FACADE_SOURCE).toContain('CreateContractDraftInput,\n  "tenantId" | "createdBy"');
     expect(FACADE_SOURCE).toContain('RequestContractApprovalInput,\n  "tenantId" | "draftId" | "requestedBy"');
     expect(FACADE_SOURCE).toContain('DecideContractApprovalInput,\n  "tenantId" | "approvalId" | "decidedBy"');
-    expect(FACADE_SOURCE).toContain('ContractSnapshotIssueInput,\n  "tenantId" | "createdBy" | "contractId"');
+    expect(FACADE_SOURCE).toContain('export type W1eIssueContractSnapshotInput = {\n  draftId: string;\n};');
+
+    const snapshotTypeStart = FACADE_SOURCE.indexOf("export type W1eIssueContractSnapshotInput");
+    const snapshotFunctionStart = FACADE_SOURCE.indexOf("export async function w1eListFinanceCases");
+    const snapshotType = FACADE_SOURCE.slice(snapshotTypeStart, snapshotFunctionStart);
+    for (const forbidden of [
+      "tenantId",
+      "createdBy",
+      "contractId",
+      "templateVersionId",
+      "renderedContent",
+      "structuredFacts",
+      "clauseSnapshot",
+      "paymentPlanSnapshot",
+      "approvalSnapshot",
+      "digest",
+    ]) {
+      expect(snapshotType).not.toContain(forbidden);
+    }
 
     expect(FACADE_SOURCE).toContain("tenantId: actor.tenantId");
     expect(FACADE_SOURCE).toContain("createdBy: actor.userId");
@@ -136,7 +154,7 @@ describe("W1E contract / finance permission + application facade", () => {
     expect(FACADE_SOURCE).toContain("actorId: actor.userId");
   });
 
-  it("delegates writes to W1B-W1D services instead of duplicating persistence logic", () => {
+  it("delegates writes to W1B-W1K services instead of duplicating persistence logic", () => {
     for (const delegatedCall of [
       "createFinanceCase(",
       "transitionFinanceCaseInternalStatus(",
@@ -147,7 +165,7 @@ describe("W1E contract / finance permission + application facade", () => {
       "requestContractApproval(",
       "decideContractApproval(",
       "finalizeContractDraftApproval(",
-      "issueApprovedContractSnapshot(",
+      "issueCanonicalApprovedContractSnapshot(",
     ]) {
       expect(FACADE_SOURCE).toContain(delegatedCall);
     }
