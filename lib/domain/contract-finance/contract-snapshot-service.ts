@@ -39,6 +39,8 @@ export type CanonicalContractSnapshotPersistInput = Omit<
   createdBy?: string | null;
 };
 
+type CanonicalSnapshotPersistTransaction = Pick<typeof prisma, "contractSnapshot">;
+
 function canonicalize(value: unknown): unknown {
   if (
     value === null ||
@@ -90,7 +92,7 @@ export function computeContractSnapshotDigest(input: ContractSnapshotDigestInput
 }
 
 export async function persistCanonicalIssuedSnapshotWithTx(
-  tx: Prisma.TransactionClient,
+  tx: CanonicalSnapshotPersistTransaction,
   input: CanonicalContractSnapshotPersistInput,
 ) {
   if (!input.tenantId || !input.draftId || !input.templateVersionId) {
