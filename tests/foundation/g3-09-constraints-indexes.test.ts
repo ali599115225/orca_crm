@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const migrationPath =
-  'prisma/migrations/20260721020000_g3_rbac_constraints_indexes/migration.sql'
+  'prisma/migration-evidence/non-production/20260721020000_g3_rbac_constraints_indexes/migration.sql'
 const preflightPath = 'scripts/g3-rbac-constraint-preflight.sql'
 const validatePath = 'scripts/g3-rbac-constraint-validate.sql'
 const rollbackPath = 'scripts/g3-rbac-constraint-rollback.sql'
