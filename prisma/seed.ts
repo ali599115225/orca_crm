@@ -18,7 +18,7 @@ if (!connectionString) {
   process.exit(1);
 }
 
-const seedUserPassword = process.env.ORCA_SEED_USER_PASSWORD;
+const seedUserPassword = process.env.ORCA_SEED_USER_PASSWORD ?? '';
 if (!seedUserPassword) {
   console.error("❌ خطأ: ORCA_SEED_USER_PASSWORD فارغ!");
   process.exit(1);
