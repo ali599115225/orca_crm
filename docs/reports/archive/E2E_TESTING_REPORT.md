@@ -165,7 +165,7 @@ test.describe('CRM - Lead Creation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/login');
     await page.fill('input[type="email"]', 'admin@dar-al-amar.com');
-    await page.fill('input[type="password"]', 'Orca@Secure2026!');
+    await page.fill('input[type="password"]', '<REDACTED_TEST_PASSWORD>');
     await page.click('button[type="submit"]');
     await page.waitForURL('**/dashboard');
   });

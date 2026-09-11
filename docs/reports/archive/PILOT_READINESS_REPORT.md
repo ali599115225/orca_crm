@@ -77,9 +77,9 @@
 
 ```
 🏢 ORCA Demo Real Estate (subdomain: demo)
-👤 Admin:   admin@demo.orca-crm.com / Demo@2026
-👤 Manager: sara@demo.orca-crm.com / Demo@2026
-👤 Agent:   khalid@demo.orca-crm.com / Demo@2026
+👤 Admin:   admin@demo.orca-crm.com / <REDACTED_TEST_PASSWORD>
+👤 Manager: sara@demo.orca-crm.com / <REDACTED_TEST_PASSWORD>
+👤 Agent:   khalid@demo.orca-crm.com / <REDACTED_TEST_PASSWORD>
 📊 6 Leads, 7 Units, 3 Projects, 3 Tasks, 3 WhatsApp Chats
 ```
 
