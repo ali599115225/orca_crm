@@ -37,3 +37,12 @@ test-results/
 artifacts/
 lighthouse-report*.html
 lighthouse-report*.json
+lighthouse-report/
+
+# مخرجات التشغيل والتشخيص المحلية
+logs/
+*.log
+/report.json
+/summary.json
+/orca_az-ez_pro.report.html
+/orca_az-ez_pro.report.json
