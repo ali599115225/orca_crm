@@ -18,6 +18,12 @@ if (!connectionString) {
   process.exit(1);
 }
 
+const seedPassword = process.env.ORCA_TEST_PASSWORD;
+if (!seedPassword) {
+  console.error("❌ ORCA_TEST_PASSWORD مطلوب لتشغيل seed");
+  process.exit(1);
+}
+
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
@@ -59,7 +65,7 @@ async function main() {
 
   console.log("🔑 جاري إنشاء البيانات التجريبية...");
 
-  const securePassword = await bcrypt.hash("Orca@Secure2026!", 10);
+  const securePassword = await bcrypt.hash(seedPassword, 10);
 
   // ═══════════════════════════════════════════════════════════════
   // TENANT + USERS

@@ -6,6 +6,10 @@ import http from "http";
 
 const PORT = 3459;
 const BASE = `http://localhost:${PORT}`;
+const JWT_SECRET = process.env.JWT_SECRET;
+const TEST_EMAIL = process.env.ORCA_TEST_EMAIL;
+const TEST_PASSWORD = process.env.ORCA_TEST_PASSWORD;
+if (!JWT_SECRET || !TEST_EMAIL || !TEST_PASSWORD) { console.error("FATAL: JWT_SECRET, ORCA_TEST_EMAIL and ORCA_TEST_PASSWORD are required"); process.exit(1); }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -92,10 +96,10 @@ async function main() {
 
   // ─── 2. Login ───────────────────────────────────────────────────────────
   let sessionCookie = "";
-  await test("2. Login (admin@demo.orca-crm.com)", async () => {
+  await test("2. Login (configured test user)", async () => {
     const r = await api("POST", "/api/v1/auth/login", {
       email: "admin@demo.orca-crm.com",
-      password: "Demo@2026",
+      password: TEST_PASSWORD,
     });
     if (r.status !== 200) throw new Error(`Status ${r.status}: ${JSON.stringify(r.data)}`);
     if (!r.data.token) throw new Error("No token returned");
@@ -103,9 +107,7 @@ async function main() {
     // The encrypt() function uses jose SignJWT with { userId, tenantId, tenantSubdomain, role, name, email }
     // We need the secret key
     const { SignJWT } = await import("jose");
-    const jwt = process.env.JWT_SECRET;
-    if (!jwt) { console.error("FATAL: JWT_SECRET env var required"); process.exit(1); }
-    const secret = new TextEncoder().encode(jwt);
+    const secret = new TextEncoder().encode(JWT_SECRET);
     const session = await new SignJWT({
       userId: "admin-demo-id",
       tenantId: "demo-tenant-id",

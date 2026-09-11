@@ -34,7 +34,9 @@ function api(method, path, body, cookie, retries = 20) {
 
 async function main() {
   const JWT_SECRET = process.env.JWT_SECRET;
-  if (!JWT_SECRET) { console.error("FATAL: JWT_SECRET env var required"); process.exit(1); }
+  const TEST_EMAIL = process.env.ORCA_TEST_EMAIL;
+  const TEST_PASSWORD = process.env.ORCA_TEST_PASSWORD;
+  if (!JWT_SECRET || !TEST_EMAIL || !TEST_PASSWORD) { console.error("FATAL: JWT_SECRET, ORCA_TEST_EMAIL and ORCA_TEST_PASSWORD are required"); process.exit(1); }
   const secret = new TextEncoder().encode(JWT_SECRET);
   const session = await new SignJWT({
     userId: "admin-demo-id",
@@ -42,7 +44,7 @@ async function main() {
     tenantSubdomain: "demo",
     role: "ADMIN",
     name: "Admin Demo",
-    email: "admin@demo.orca-crm.com",
+    email: TEST_EMAIL,
   }).setProtectedHeader({ alg: "HS256" }).setIssuedAt().setExpirationTime("24h").sign(secret);
   const cookie = `session_token=${session}`;
 
@@ -51,7 +53,7 @@ async function main() {
   const h = await api("GET", "/api/v1/health");
   console.log(`1. Health: ${h.status} - DB: ${h.data?.checks?.database?.status}`);
 
-  const login = await api("POST", "/api/v1/auth/login", { email: "admin@demo.orca-crm.com", password: "Demo@2026" });
+  const login = await api("POST", "/api/v1/auth/login", { email: TEST_EMAIL, password: TEST_PASSWORD });
   console.log(`2. Login: ${login.status} - Token: ${login.data?.token ? "yes" : "no"}`);
 
   const leads = await api("POST", "/api/v1/leads", { name: "Verify Test", phone: "+96650000099", email: "v@t.com", source: "WEBSITE" }, cookie);

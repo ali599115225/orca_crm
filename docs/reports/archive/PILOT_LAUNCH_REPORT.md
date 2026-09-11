@@ -96,9 +96,9 @@
 
 | الدور | البريد | كلمة المرور |
 |-------|--------|-------------|
-| Admin | admin@demo.orca-crm.com | Demo@2026 |
-| Manager | sara@demo.orca-crm.com | Demo@2026 |
-| Agent | khalid@demo.orca-crm.com | Demo@2026 |
+| Admin | admin@demo.orca-crm.com | <REDACTED_TEST_PASSWORD> |
+| Manager | sara@demo.orca-crm.com | <REDACTED_TEST_PASSWORD> |
+| Agent | khalid@demo.orca-crm.com | <REDACTED_TEST_PASSWORD> |
 
 ---
 

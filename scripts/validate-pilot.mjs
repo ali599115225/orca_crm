@@ -2,6 +2,9 @@
 // Tests: Login, Lead CRUD, Property, Contract, Payment, WhatsApp, Notifications, Multi-Tenant
 
 const BASE = process.env.BASE_URL || "http://localhost:3456";
+const TEST_EMAIL = process.env.ORCA_TEST_EMAIL;
+const TEST_PASSWORD = process.env.ORCA_TEST_PASSWORD;
+if (!TEST_EMAIL || !TEST_PASSWORD) { console.error("FATAL: ORCA_TEST_EMAIL and ORCA_TEST_PASSWORD are required"); process.exit(1); }
 
 async function test(label, fn) {
   try {
@@ -28,11 +31,11 @@ async function main() {
   });
 
   // 2. Login
-  const login = await test("Login (admin@demo.orca-crm.com)", async () => {
+  const login = await test("Login (configured test user)", async () => {
     const res = await fetch(`${BASE}/api/v1/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "admin@demo.orca-crm.com", password: "Demo@2026" }),
+      body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD }),
     });
     if (!res.ok) throw new Error(`Status ${res.status}: ${await res.text()}`);
     const data = await res.json();

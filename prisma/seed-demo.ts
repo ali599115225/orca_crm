@@ -2,6 +2,9 @@ import dotenv from 'dotenv';
 import path from 'path';
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
+import { assertSeedExecutionAllowed } from './seed-guard';
+assertSeedExecutionAllowed();
+
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
@@ -9,6 +12,8 @@ import bcrypt from 'bcryptjs';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) { console.error("❌ DATABASE_URL فارغ!"); process.exit(1); }
+const testPassword = process.env.ORCA_TEST_PASSWORD;
+if (!testPassword) { console.error("❌ ORCA_TEST_PASSWORD مطلوب لتشغيل seed-demo"); process.exit(1); }
 
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
@@ -42,7 +47,7 @@ async function main() {
     tenantId = t.id;
   }
 
-  const password = await bcrypt.hash("Demo@2026", 10);
+  const password = await bcrypt.hash(testPassword, 10);
 
   const admin = await prisma.user.create({ data: { tenantId, name: "أحمد المدير", email: "admin@demo.orca-crm.com", passwordHash: password, role: "ADMIN" } });
   const sara = await prisma.user.create({ data: { tenantId, name: "سارة المبيعات", email: "sara@demo.orca-crm.com", passwordHash: password, role: "SALES_MANAGER" } });
@@ -119,9 +124,9 @@ async function main() {
   console.log("✅ شركة العرض التجريبي جاهزة!");
   console.log("═══════════════════════════════════════");
   console.log("🏢 ORCA Demo Real Estate (subdomain: demo)");
-  console.log("👤 Admin:   admin@demo.orca-crm.com / Demo@2026");
-  console.log("👤 Manager: sara@demo.orca-crm.com / Demo@2026");
-  console.log("👤 Agent:   khalid@demo.orca-crm.com / Demo@2026");
+  console.log("👤 Admin:   admin@demo.orca-crm.com / <configured via ORCA_TEST_PASSWORD>");
+  console.log("👤 Manager: sara@demo.orca-crm.com / <configured via ORCA_TEST_PASSWORD>");
+  console.log("👤 Agent:   khalid@demo.orca-crm.com / <configured via ORCA_TEST_PASSWORD>");
   console.log(`📊 ${leads.length} Leads, ${units.length} Units, 3 Projects`);
   console.log("═══════════════════════════════════════");
 }
