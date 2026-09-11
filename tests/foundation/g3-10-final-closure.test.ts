@@ -27,8 +27,8 @@ describe('G3-10 final repository closure', () => {
       productionDeployPerformed: false,
     })
     expect(result.reviewedG3Migrations).toEqual([
-      'prisma/migrations/20260721010000_g3_rbac_expand/migration.sql',
-      'prisma/migrations/20260721020000_g3_rbac_constraints_indexes/migration.sql',
+      'prisma/migration-evidence/non-production/20260721010000_g3_rbac_expand/migration.sql',
+      'prisma/migration-evidence/non-production/20260721020000_g3_rbac_constraints_indexes/migration.sql',
     ])
     expect(result.reviewedPlatformTargets).toEqual([
       {

@@ -10,7 +10,7 @@ const prismaConfig = readFileSync(join(root, 'prisma.config.ts'), 'utf8')
 const migration = readFileSync(
   join(
     root,
-    'prisma/migrations/20260721010000_g3_rbac_expand/migration.sql',
+    'prisma/migration-evidence/non-production/20260721010000_g3_rbac_expand/migration.sql',
   ),
   'utf8',
 )

@@ -111,7 +111,7 @@ describe('G3-08 layered legacy SaaS disablement', () => {
   it('preserves historical SaaS structures and additive migration safety', () => {
     const schema = read('prisma/schema.prisma')
     const migration = read(
-      'prisma/migrations/20260721010000_g3_rbac_expand/migration.sql',
+      'prisma/migration-evidence/non-production/20260721010000_g3_rbac_expand/migration.sql',
     )
 
     for (const anchor of [

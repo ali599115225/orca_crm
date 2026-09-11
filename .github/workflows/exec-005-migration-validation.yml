@@ -3,8 +3,8 @@ name: EXEC-005 Migration Validation
 on:
   pull_request:
     paths:
-      - "prisma/migrations/20260726123000_exec_005_customer_identity_lifecycle/migration.sql"
-      - "prisma/migrations/20260726124500_exec_005_customer_identity_integrity_hardening/migration.sql"
+      - "prisma/migration-evidence/non-production/20260726123000_exec_005_customer_identity_lifecycle/migration.sql"
+      - "prisma/migration-evidence/non-production/20260726124500_exec_005_customer_identity_integrity_hardening/migration.sql"
       - ".github/workflows/exec-005-migration-validation.yml"
 
 permissions:
@@ -69,17 +69,17 @@ jobs:
       - name: Apply EXEC-004 authority prerequisite
         run: >-
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
-          -f prisma/migrations/20260726043000_exec_004_organization_authority/migration.sql
+          -f prisma/migration-evidence/non-production/20260726043000_exec_004_organization_authority/migration.sql
 
       - name: Apply EXEC-005 identity foundation
         run: >-
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
-          -f prisma/migrations/20260726123000_exec_005_customer_identity_lifecycle/migration.sql
+          -f prisma/migration-evidence/non-production/20260726123000_exec_005_customer_identity_lifecycle/migration.sql
 
       - name: Apply EXEC-005 integrity hardening
         run: >-
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
-          -f prisma/migrations/20260726124500_exec_005_customer_identity_integrity_hardening/migration.sql
+          -f prisma/migration-evidence/non-production/20260726124500_exec_005_customer_identity_integrity_hardening/migration.sql
 
       - name: Validate schema objects and append-only guards
         shell: bash

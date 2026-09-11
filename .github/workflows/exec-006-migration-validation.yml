@@ -3,13 +3,13 @@ name: EXEC-006 Migration Validation
 on:
   pull_request:
     paths:
-      - "prisma/migrations/20260726160000_exec_006_unit_commitment_reservation_tours/migration.sql"
-      - "prisma/migrations/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql"
-      - "prisma/migrations/20260726162000_exec_006_authority_availability_hardening/migration.sql"
-      - "prisma/migrations/20260726163000_exec_006_availability_disambiguation/migration.sql"
-      - "prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql"
-      - "prisma/migrations/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql"
-      - "prisma/migrations/20260726166000_exec_006_exact_scope_hardening/migration.sql"
+      - "prisma/migration-evidence/non-production/20260726160000_exec_006_unit_commitment_reservation_tours/migration.sql"
+      - "prisma/migration-evidence/non-production/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql"
+      - "prisma/migration-evidence/non-production/20260726162000_exec_006_authority_availability_hardening/migration.sql"
+      - "prisma/migration-evidence/non-production/20260726163000_exec_006_availability_disambiguation/migration.sql"
+      - "prisma/migration-evidence/non-production/20260726164000_exec_006_reconciliation_race_hardening/migration.sql"
+      - "prisma/migration-evidence/non-production/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql"
+      - "prisma/migration-evidence/non-production/20260726166000_exec_006_exact_scope_hardening/migration.sql"
       - "scripts/exec-006-postgres-concurrency.mjs"
       - "scripts/exec-006-postgres-exact-scope.sql"
       - "tests/foundation/g5-exec-006-postgres-contract.test.ts"
@@ -78,52 +78,52 @@ jobs:
       - name: Apply EXEC-004 authority prerequisite
         run: >-
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
-          -f prisma/migrations/20260726043000_exec_004_organization_authority/migration.sql
+          -f prisma/migration-evidence/non-production/20260726043000_exec_004_organization_authority/migration.sql
 
       - name: Apply EXEC-005 identity foundation
         run: >-
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
-          -f prisma/migrations/20260726123000_exec_005_customer_identity_lifecycle/migration.sql
+          -f prisma/migration-evidence/non-production/20260726123000_exec_005_customer_identity_lifecycle/migration.sql
 
       - name: Apply EXEC-005 integrity hardening
         run: >-
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
-          -f prisma/migrations/20260726124500_exec_005_customer_identity_integrity_hardening/migration.sql
+          -f prisma/migration-evidence/non-production/20260726124500_exec_005_customer_identity_integrity_hardening/migration.sql
 
       - name: Apply EXEC-006 commitment foundation
         run: >-
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
-          -f prisma/migrations/20260726160000_exec_006_unit_commitment_reservation_tours/migration.sql
+          -f prisma/migration-evidence/non-production/20260726160000_exec_006_unit_commitment_reservation_tours/migration.sql
 
       - name: Apply EXEC-006 integrity hardening
         run: >-
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
-          -f prisma/migrations/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql
+          -f prisma/migration-evidence/non-production/20260726161000_exec_006_unit_commitment_integrity_hardening/migration.sql
 
       - name: Apply EXEC-006 authority and availability hardening
         run: >-
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
-          -f prisma/migrations/20260726162000_exec_006_authority_availability_hardening/migration.sql
+          -f prisma/migration-evidence/non-production/20260726162000_exec_006_authority_availability_hardening/migration.sql
 
       - name: Apply EXEC-006 availability disambiguation
         run: >-
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
-          -f prisma/migrations/20260726163000_exec_006_availability_disambiguation/migration.sql
+          -f prisma/migration-evidence/non-production/20260726163000_exec_006_availability_disambiguation/migration.sql
 
       - name: Apply EXEC-006 reconciliation race hardening
         run: >-
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
-          -f prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql
+          -f prisma/migration-evidence/non-production/20260726164000_exec_006_reconciliation_race_hardening/migration.sql
 
       - name: Apply EXEC-006 lifecycle approval guard hardening
         run: >-
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
-          -f prisma/migrations/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql
+          -f prisma/migration-evidence/non-production/20260726165000_exec_006_lifecycle_approval_guard_hardening/migration.sql
 
       - name: Apply EXEC-006 exact persisted scope hardening
         run: >-
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1
-          -f prisma/migrations/20260726166000_exec_006_exact_scope_hardening/migration.sql
+          -f prisma/migration-evidence/non-production/20260726166000_exec_006_exact_scope_hardening/migration.sql
 
       - name: Validate schema objects and guards
         shell: bash

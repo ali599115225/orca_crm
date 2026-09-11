@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const MIGRATION = path.join(
   process.cwd(),
-  "prisma/migrations/20260726123000_exec_005_customer_identity_lifecycle/migration.sql",
+  "prisma/migration-evidence/non-production/20260726123000_exec_005_customer_identity_lifecycle/migration.sql",
 );
 
 const sql = readFileSync(MIGRATION, "utf8");

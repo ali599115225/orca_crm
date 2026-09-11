@@ -2,15 +2,15 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
-  "prisma/migrations/20260726160000_exec_006_unit_commitment_reservation_tours/migration.sql",
+  "prisma/migration-evidence/non-production/20260726160000_exec_006_unit_commitment_reservation_tours/migration.sql",
   "utf8",
 );
 const reconciliationHardening = readFileSync(
-  "prisma/migrations/20260726164000_exec_006_reconciliation_race_hardening/migration.sql",
+  "prisma/migration-evidence/non-production/20260726164000_exec_006_reconciliation_race_hardening/migration.sql",
   "utf8",
 );
 const exactScopeHardening = readFileSync(
-  "prisma/migrations/20260726166000_exec_006_exact_scope_hardening/migration.sql",
+  "prisma/migration-evidence/non-production/20260726166000_exec_006_exact_scope_hardening/migration.sql",
   "utf8",
 );
 const freeze = readFileSync(

@@ -8,7 +8,7 @@ import {
 
 const root = process.cwd();
 const migration = fs.readFileSync(
-  path.join(root, "prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql"),
+  path.join(root, "prisma/migration-evidence/non-production/20260727090000_exec_007_exact_scope_foundation/migration.sql"),
   "utf8",
 );
 const postgresEvidence = fs.readFileSync(
@@ -191,7 +191,7 @@ describe("EXEC-007 governed atomic integration with EXEC-006", () => {
 const batch3IntegrationCases = [
   ["T-B3-BIND-007", "challenge binds exact issued offer version"],
   ["T-B3-BIND-008", "grant challenge and version subject party match"],
-  ["T-B3-BIND-009", "grant challenge and version account match with NULL-safe equality"],
+  ["T-B3-BIND-009", "grant challenge and version subject account match with NULL-safe equality"],
   ["T-B3-BIND-014", "exact idempotent replay only and payload mismatch denied"],
   ["T-B3-BIND-015", "concurrent acceptance has one winner"],
   ["T-B3-BIND-016", "offer current issued version and exact identity match"],
