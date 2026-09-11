@@ -110,6 +110,17 @@ describe("W1H guarded Contract Studio approval commands", () => {
   it("preserves existing W1E author/admin approval role separation", () => {
     expect(PERMISSIONS).toMatch(/const AUTHOR_ROLES = \[\s*"ADMIN",\s*"SALES_MANAGER",\s*"SALES_EMPLOYEE",\s*\]/m);
     expect(PERMISSIONS).toMatch(/const CONTRACT_APPROVER_ROLES = \[\s*"ADMIN",\s*\]/m);
+    expect(PERMISSIONS).toContain('"contract-studio.approval-request"');
+    expect(PERMISSIONS).toContain("allowedRoles: AUTHOR_ROLES");
+
+    for (const key of [
+      '"contract-studio.approval-decide"',
+      '"contract-studio.approval-finalize"',
+    ]) {
+      const start = PERMISSIONS.indexOf(`${key}: {`);
+      expect(start).toBeGreaterThanOrEqual(0);
+      expect(PERMISSIONS.slice(start, start + 320)).toContain("allowedRoles: CONTRACT_APPROVER_ROLES");
+    }
     expect(GATE).toContain("No Legal/Finance role is invented in this slice");
   });
 
@@ -173,6 +184,7 @@ describe("W1H guarded Contract Studio approval commands", () => {
     expect(SNAPSHOT_SERVICE).toContain("computeContractSnapshotDigest");
     expect(GATE).toContain("does not expose it as a network command");
     expect(GATE).toContain("deterministic server-side compiler/assembler");
+    expect(GATE).toContain("must not be able to choose rendered legal content or canonical financial facts");
 
     expect(SNAPSHOT_ROUTE).toContain("beginW1hContractCommandRequest");
     expect(SNAPSHOT_ROUTE).toContain("await assertW1hEmptyCommandBody(request)");
