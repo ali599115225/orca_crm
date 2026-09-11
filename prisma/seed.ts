@@ -18,6 +18,12 @@ if (!connectionString) {
   process.exit(1);
 }
 
+const seedUserPassword = process.env.ORCA_SEED_USER_PASSWORD;
+if (!seedUserPassword) {
+  console.error("❌ خطأ: ORCA_SEED_USER_PASSWORD فارغ!");
+  process.exit(1);
+}
+
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
@@ -59,7 +65,7 @@ async function main() {
 
   console.log("🔑 جاري إنشاء البيانات التجريبية...");
 
-  const securePassword = await bcrypt.hash("Orca@Secure2026!", 10);
+  const securePassword = await bcrypt.hash(seedUserPassword, 10);
 
   // ═══════════════════════════════════════════════════════════════
   // TENANT + USERS
@@ -357,7 +363,6 @@ async function main() {
       },
     });
   }
-
   console.log("✅ تم إنشاء 15 مهمة");
 
   // ═══════════════════════════════════════════════════════════════
