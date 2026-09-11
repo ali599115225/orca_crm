@@ -27,6 +27,6 @@ export async function POST(
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
-    return w1gApiErrorResponse(error, request);
+    return w1gApiErrorResponse(error);
   }
 }
