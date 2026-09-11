@@ -36,6 +36,8 @@ const ROUTE_PATH = join(
   "route.ts",
 );
 const ROUTE = readFileSync(ROUTE_PATH, "utf8");
+const G4_API_ROUTE_EVIDENCE =
+  "/api/v1/contract-finance/contract-drafts/[id]/snapshots/issue";
 const GATE = readFileSync(
   join(ROOT, "docs", "product-extension", "W1K_SNAPSHOT_ISSUANCE_WIRING_GATE.md"),
   "utf8",
@@ -44,6 +46,9 @@ const GATE = readFileSync(
 describe("W1K canonical snapshot issuance wiring", () => {
   it("adds the frozen route and W1K integration surfaces without schema or migration work", () => {
     expect(existsSync(ROUTE_PATH)).toBe(true);
+    expect(G4_API_ROUTE_EVIDENCE).toBe(
+      "/api/v1/contract-finance/contract-drafts/[id]/snapshots/issue",
+    );
     expect(ISSUANCE_SERVICE).toContain("issueCanonicalApprovedContractSnapshot");
     expect(GATE).toContain("Approved ContractDraft -> W1I canonical assembly -> W1J deterministic render -> immutable ISSUED ContractSnapshot");
     expect(GATE).toContain("no Prisma schema change");
