@@ -1,0 +1,60 @@
+name: Security Prisma lockfile refresh
+
+on:
+  push:
+    branches:
+      - security/prisma-7.9.1-central-20260911
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lockfile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: security/prisma-7.9.1-central-20260911
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Refresh Prisma runtime packages
+        run: npm install --package-lock-only --ignore-scripts --save-exact '@prisma/adapter-neon@7.9.1' '@prisma/adapter-pg@7.9.1' '@prisma/client@7.9.1'
+
+      - name: Refresh Prisma CLI package
+        run: npm install --package-lock-only --ignore-scripts --save-dev --save-exact 'prisma@7.9.1'
+
+      - name: Scope guard
+        shell: bash
+        run: |
+          changed="$(git diff --name-only)"
+          printf '%s\n' "$changed"
+          if [ -z "$changed" ]; then
+            echo 'No dependency changes produced.'
+            exit 0
+          fi
+          unexpected="$(printf '%s\n' "$changed" | grep -Ev '^(package\.json|package-lock\.json)$' || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'Unexpected files changed:'
+            printf '%s\n' "$unexpected"
+            exit 1
+          fi
+
+      - name: Commit generated dependency files
+        shell: bash
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo 'Nothing to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json package-lock.json
+          git commit -m 'chore(deps): align prisma packages at 7.9.1'
+          git push origin HEAD:security/prisma-7.9.1-central-20260911
