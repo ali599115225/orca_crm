@@ -34,7 +34,8 @@ const HISTORICAL_NON_TRANSACTIONAL_MIGRATION =
   "20260721020000_g3_rbac_constraints_indexes";
 const HISTORICAL_NON_TRANSACTIONAL_PATH = path.join(
   "prisma",
-  "migrations",
+  "migration-evidence",
+  "non-production",
   HISTORICAL_NON_TRANSACTIONAL_MIGRATION,
   "migration.sql",
 );
