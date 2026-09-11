@@ -30,7 +30,7 @@ export const EXEC007_EXACT_AUTHORIZED_PATHS = new Set<string>([
   "lib/organization/authority.ts",
   "lib/organization/contracts.ts",
   "lib/tenant-model-policy.ts",
-  "prisma/migrations/20260727090000_exec_007_exact_scope_foundation/migration.sql",
+  "prisma/migration-evidence/non-production/20260727090000_exec_007_exact_scope_foundation/migration.sql",
   "prisma/schema.prisma",
   "scripts/exec-007-postgres-concurrency.mjs",
   "scripts/exec-007-postgres-privacy-retention.sql",

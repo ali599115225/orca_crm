@@ -74,6 +74,9 @@ jobs:
 
           echo "Verified migration: $MIGRATION_NAME"
 
+      - name: Guard production migration chain
+        run: node scripts/prisma-production-migration-chain-guard.mjs
+
       - name: Install dependencies
         run: npm ci
 
