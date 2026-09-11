@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "documentId": "ORCA-EXEC-002-OVERRIDE-REGISTER-001",
-  "date": "2026-09-07",
+  "date": "2026-09-11",
   "status": "ACTIVE / SECURITY ADVISORY REMEDIATION REVIEW",
   "policy": "Every package.json override must be exact, owned, justified, review-triggered and removable when the upstream dependency graph is safe.",
   "overrides": [
@@ -70,12 +70,12 @@
     },
     {
       "package": "sharp",
-      "value": "0.35.3",
+      "value": "0.35.4",
       "owner": "Security Engineering",
-      "reason": "Pins the safe image-processing version for the security advisory remediated through PR #76.",
-      "introducedBy": "PR #76",
-      "reviewTrigger": "Review on every Next.js or sharp update and before the final Release Candidate.",
-      "expiryPolicy": "Remove only after all reachable paths resolve to a safe supported version without the override."
+      "reason": "Pins the patched release required to close GHSA-rgj7-g3m4-5g8c and its vulnerable libheif dependency path used by Next.js image optimization.",
+      "introducedBy": "PR #76; refreshed by September 2026 security remediation after GHSA-rgj7-g3m4-5g8c",
+      "reviewTrigger": "Review on every Next.js or sharp update, on any new sharp/libheif advisory, and before the final Release Candidate.",
+      "expiryPolicy": "Remove only after all reachable paths resolve to a safe supported version without the override and the Production audit remains clean."
     },
     {
       "package": "valibot",
