@@ -28,6 +28,11 @@ export type CanonicalContractSnapshotAssembly = {
   approvalSnapshot: Prisma.InputJsonValue;
 };
 
+type CanonicalSnapshotAssemblerTransaction = Pick<
+  typeof prisma,
+  "contractDraft" | "contract"
+>;
+
 function decimalString(value: Prisma.Decimal | null): string | null {
   return value?.toString() ?? null;
 }
@@ -54,7 +59,7 @@ function assertCanonicalAssemblyAuthority(input: CanonicalContractSnapshotAssemb
 }
 
 export async function assembleCanonicalContractSnapshotWithTx(
-  tx: Prisma.TransactionClient,
+  tx: CanonicalSnapshotAssemblerTransaction,
   input: CanonicalContractSnapshotAssemblyInput,
 ): Promise<CanonicalContractSnapshotAssembly> {
   assertCanonicalAssemblyAuthority(input);
