@@ -24,38 +24,58 @@ describe("dashboard executive model and agent plan", () => {
     const header = source("features/dashboard/components/DashboardHeader.tsx");
     const kpis = source("features/dashboard/components/DashboardKpiGrid.tsx");
 
-    expect(visual).toContain("orca-dashboard-final");
-    expect(header).toContain("orca-workspace-hero");
+    expect(visual).toContain('page: "orca-dashboard-v1"');
+    expect(visual).toContain('import { operationsVisual }');
+    expect(header).toContain("<OperationsPageHeader");
     expect(header).toContain("copy.issueContract");
     expect(header).toContain("copy.askOrca");
-    expect(header).toContain("className={dashboardVisual.headerPrimaryButton}");
-    expect(header).toContain("className={dashboardVisual.headerSecondaryButton}");
-    expect(header).toContain("className={dashboardVisual.headerGhostButton}");
+    expect(header).toContain("className={operationsVisual.primaryButton}");
+    expect(header).toContain("className={operationsVisual.secondaryButton}");
+    expect(header).toContain("className={operationsVisual.iconButton}");
     expect(header).toContain("copy.refreshData");
-    expect(kpis).toContain("orca-workspace-metrics");
+    expect(kpis).toContain("className={dashboardVisual.kpiGrid}");
   });
 
-  it("uses the approved 8/4 executive layout in two rows", () => {
+  it("uses the current CSS-governed executive layout in two rows", () => {
     const center = source(
       "features/dashboard/components/AgentDecisionCenter.tsx",
     );
+    const dashboardCss = source(
+      "app/operations/dashboard/orca-dashboard-v1.css",
+    );
 
-    expect(center).toContain("xl:grid-cols-12");
-    expect(center.match(/xl:col-span-8/g)?.length).toBe(2);
-    expect(center.match(/xl:col-span-4/g)?.length).toBe(2);
+    expect(center).toContain('className="orca-dashboard-v1-executive-grid"');
+    expect(center).toContain('className="orca-dashboard-v1-lower-grid"');
+    expect(center).toContain("orca-dashboard-v1-pipeline-slot");
+    expect(center).toContain("orca-dashboard-v1-operations-slot");
+    expect(center).toContain("orca-dashboard-v1-decision");
+    expect(center).toContain("orca-dashboard-v1-agents");
     expect(center).toContain("<DealSpineSnapshot");
     expect(center).toContain("<DailyOperationsCenter");
+    expect(dashboardCss).toContain(".orca-dashboard-v1-executive-grid,");
+    expect(dashboardCss).toContain(".orca-dashboard-v1-lower-grid {");
+    expect(dashboardCss).toContain(
+      "grid-template-columns: minmax(0, 2.05fr) minmax(270px, 0.95fr);",
+    );
   });
 
   it("renders the deal path as one connected flow rather than five cards", () => {
     const spine = source(
       "features/dashboard/components/DealSpineSnapshot.tsx",
     );
+    const dashboardCss = source(
+      "app/operations/dashboard/orca-dashboard-v1.css",
+    );
 
     expect(spine).toContain("data-dashboard-connected-pipeline");
-    expect(spine).toContain("grid grid-cols-5");
-    expect(spine).toContain('left-[10%] right-[10%]');
+    expect(spine).toContain("orca-dashboard-v1-stage-track");
+    expect(spine).toContain("orca-dashboard-v1-stage-line");
     expect(spine).toContain("data-dashboard-pipeline-summary");
+    expect(dashboardCss).toContain(".orca-dashboard-v1-stage-track");
+    expect(dashboardCss).toContain(
+      "grid-template-columns: repeat(5, minmax(0, 1fr));",
+    );
+    expect(dashboardCss).toContain(".orca-dashboard-v1-stage-line");
     expect(spine).not.toContain("grid grid-cols-3 divide-x");
     expect(spine).not.toContain("dashboardVisual.stageCard");
     expect(spine).not.toContain("progressBar");
@@ -83,11 +103,16 @@ describe("dashboard executive model and agent plan", () => {
       "features/dashboard/components/AgentDecisionCenter.tsx",
     );
 
-    expect(center).toContain("data-orca-assistant-drawer");
+    expect(center).toContain("data-orca-assistant-modal");
+    expect(center).not.toContain("data-orca-assistant-drawer");
     expect(center).toContain("createPortal");
     expect(center).toContain("document.body");
-    expect(center).toContain("z-[999]");
-    expect(center).toContain("nc-btn-secondary");
+    expect(center).toContain("orca-dialog-overlay");
+    expect(center).toContain('className="orca-dialog max-w-2xl');
+    expect(center).toContain("orca-dialog-header");
+    expect(center).toContain("orca-dialog-body");
+    expect(center).toContain("orca-dialog-close");
+    expect(center).not.toContain("absolute inset-y-0 flex w-full max-w-[460px]");
     expect(center).toContain("<textarea");
     expect(center).toContain("assistantInputPlaceholder");
     expect(center).toContain("handleDraftKeyDown");
@@ -111,17 +136,25 @@ describe("dashboard executive model and agent plan", () => {
     expect(copy).not.toContain("قريبًا");
   });
 
-  it("uses fixed-height operational panels with internal hidden scrolling", () => {
+  it("uses the current CSS-governed operational scrolling contract", () => {
     const center = source(
       "features/dashboard/components/AgentDecisionCenter.tsx",
     );
     const operations = source(
       "features/dashboard/components/DailyOperationsCenter.tsx",
     );
+    const dashboardCss = source(
+      "app/operations/dashboard/orca-dashboard-v1.css",
+    );
 
-    expect(center).toContain("max-h-[430px]");
-    expect(center).toContain("[scrollbar-width:none]");
-    expect(operations).toContain("max-h-[430px]");
-    expect(operations).toContain("overflow-y-auto");
+    expect(center).toContain("orca-dashboard-v1-agents");
+    expect(operations).toContain("orca-dashboard-v1-ops-panel");
+    expect(dashboardCss).toContain(".orca-dashboard-v1-ops-panel");
+    expect(dashboardCss).toContain("max-height: 260px");
+    expect(dashboardCss).toContain("overflow-y: auto");
+    expect(dashboardCss).toContain(".orca-dashboard-v1-hide-scrollbar");
+    expect(dashboardCss).toContain(
+      ".orca-dashboard-v1-hide-scrollbar::-webkit-scrollbar",
+    );
   });
 });

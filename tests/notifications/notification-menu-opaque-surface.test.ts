@@ -7,28 +7,35 @@ const source = readFileSync(
   "utf8",
 );
 
-describe("Sovereign header notification menu opacity", () => {
-  it("renders the menu on a fully opaque theme-aware surface", () => {
+const shellCss = readFileSync(
+  resolve(process.cwd(), "app/operations/orca-operations-v1.css"),
+  "utf8",
+);
+
+describe("Sovereign header notification menu — Visual System V1", () => {
+  it("uses the V1 operations popover contract", () => {
     expect(source).toContain("data-notification-opaque-panel");
-    expect(source).toContain("bg-white");
-    expect(source).toContain("dark:bg-slate-950");
-    expect(source).toContain("backdrop-blur-none");
-    expect(source).toContain("shadow-[0_24px_80px_rgba(15,23,42,0.34)]");
+    expect(source).toContain("orca-v1-notification-panel");
+    expect(shellCss).toContain(".orca-v1-notification-panel");
+    expect(shellCss).toContain("background: var(--nc-surface-solid)");
+    expect(shellCss).toContain("backdrop-filter: none");
   });
 
-  it("uses solid read and unread notification item surfaces", () => {
+  it("uses unified rounded read and unread notification rows", () => {
     expect(source).toContain("data-notification-opaque-item");
-    expect(source).toContain("bg-slate-50");
-    expect(source).toContain("dark:bg-slate-900");
-    expect(source).toContain("bg-amber-50");
-    expect(source).toContain("dark:bg-slate-800");
+    expect(source).toContain("orca-v1-notification-item");
+    expect(source).toContain("'is-read'");
+    expect(source).toContain("'is-unread'");
+    expect(shellCss).toContain(".orca-v1-notification-item.is-read");
+    expect(shellCss).toContain(".orca-v1-notification-item.is-unread");
+    expect(shellCss).toContain("border-radius: 12px");
   });
 
-  it("does not reuse translucent application surface tokens for the menu", () => {
-    const menuStart = source.indexOf("data-notification-opaque-panel");
-    const menuEnd = source.indexOf("{/* Language toggle */}", menuStart);
-    const menuSource = source.slice(menuStart, menuEnd);
-    expect(menuSource).not.toContain("bg-[var(--nc-surface-strong)]");
-    expect(menuSource).not.toContain("bg-[var(--nc-accent-soft)]");
+  it("uses the current ORCA color variables instead of a new palette", () => {
+    expect(shellCss).toContain("var(--nc-surface-solid)");
+    expect(shellCss).toContain("var(--nc-accent-soft)");
+    expect(shellCss).toContain("var(--nc-accent-border)");
+    expect(shellCss).not.toContain("--orca-v1-bg:");
+    expect(shellCss).not.toContain("--orca-v1-accent:");
   });
 });

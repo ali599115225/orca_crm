@@ -10,7 +10,6 @@ import type {
   DashboardReadModel,
 } from "../model";
 import { dashboardCopy } from "../copy/dashboardCopy";
-import { dashboardVisual } from "../visual";
 import DashboardHeader from "./DashboardHeader";
 import DashboardKpiGrid from "./DashboardKpiGrid";
 import AgentDecisionCenter from "./AgentDecisionCenter";
@@ -57,8 +56,12 @@ export default function DashboardView({
   const refresh = () => router.refresh();
 
   return (
-    <main className={dashboardVisual.page} dir={isArabic ? "rtl" : "ltr"}>
-      <div className={dashboardVisual.shell}>
+    <main
+      className="orca-dashboard-v1"
+      dir={isArabic ? "rtl" : "ltr"}
+      data-dashboard-zero-base-v1
+    >
+      <div className="orca-dashboard-v1-shell">
         <DashboardHeader
           copy={copy}
           welcomeName={welcomeName}

@@ -26,7 +26,7 @@ describe('contracts and payments independent payments pane', () => {
 
     expect(page).toContain('type ActivePane = ContractsPaymentsPane');
     expect(page).toContain('<ContractsPaymentsShell');
-    expect(shell).toContain("id: 'payments'");
+    expect(shell).toMatch(/id:\s*["']payments["']/);
     expect(page).toContain("activePane === 'payments'");
     expect(page).toContain('<PaymentsWorkspace');
     expect(workspace).toContain('data-payments-workspace');

@@ -13,23 +13,27 @@ describe("WhatsApp dedicated visual identity", () => {
     expect(view).not.toContain('module="whatsapp"');
   });
 
-  it("uses the page-specific hero, KPI strip, results strip, and two-card contract", () => {
+  it("uses the shared Dashboard hero, KPI strip, and two-card Operations contract", () => {
     expect(view).toContain("data-whatsapp-property-workspace");
     expect(view).toContain("data-whatsapp-two-card-workspace");
-    expect(view).toContain("orca-workspace-hero");
-    expect(view).toContain("orca-workspace-metrics");
-    expect(view).toContain("orca-workspace-note");
-    expect(view).toContain('lg:grid-cols-[340px_minmax(0,1fr)]');
+    expect(view).toContain("OperationsPageHeader");
+    expect(view).toContain("OperationsKpiGrid");
+    expect(view).toContain("OperationsMetricCard");
+    expect(view).toContain("OperationsExecutiveGrid");
   });
 
-  it("keeps a fixed five-row conversation list with internal hidden scrolling", () => {
+  it("keeps a five-row conversation list in page-owned flow with bounded history scrolling", () => {
     expect(view).toContain("const PAGE_SIZE = 5");
     expect(view).toContain("data-whatsapp-conversation-list");
     expect(view).toContain("data-whatsapp-row");
-    expect(view).toContain("h-[68px]");
-    expect(view).toContain("lg:h-[520px]");
-    expect(view).toContain("[scrollbar-width:none]");
-    expect(view).toContain("[&::-webkit-scrollbar]:hidden");
+    expect(view).toContain("h-[60px]");
+    expect(view).not.toContain("lg:h-[460px]");
+    expect(view).toContain("orca-operations-flow-region");
+    expect(view).toContain("OperationsScrollRegion");
+    expect(view).toContain('scrollRole="conversation"');
+    expect(view).not.toContain("min-h-0 flex-1 overflow-y-auto px-4 py-3");
+    expect(view).toContain('scrollRole="menu"');
+    expect(view).not.toContain('OperationsMasterList className="max-h-64 overflow-y-auto"');
   });
 
   it("uses a dedicated detail card and operational blue outgoing messages", () => {
@@ -39,12 +43,14 @@ describe("WhatsApp dedicated visual identity", () => {
     expect(view).toContain("w-[120px]");
   });
 
-  it("uses one compact connection action without repeated warning banners", () => {
+  it("keeps disconnected guidance contextual without repeated provider banners", () => {
     expect(view).toContain("t.manageConnection");
     expect(view).toContain(
       "/operations/settings?tab=integrations&category=MESSAGING",
     );
     expect(view).not.toContain("t.configureProvider");
-    expect(view).not.toContain('role="status"');
+    expect(view).toContain("composeDisconnectedNotice");
+    expect(view).toContain('<div role="status"');
+    expect(view.match(/role="status"/g)?.length).toBe(1);
   });
 });

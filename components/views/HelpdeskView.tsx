@@ -26,7 +26,6 @@ import {
   X,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { createPortal } from "react-dom";
 
 import {
   closeTicketAction,
@@ -36,6 +35,22 @@ import {
 } from "@/app/actions/helpdesk";
 import { useApp } from "@/app/context/AppContext";
 import SettingsSelect from "@/components/settings/SettingsSelect";
+import {
+  OperationsDialog,
+  OperationsEmptyState,
+  OperationsExecutiveGrid,
+  OperationsFormField,
+  OperationsKpiGrid,
+  OperationsMasterList,
+  OperationsMasterRow,
+  OperationsMetricCard,
+  OperationsPageHeader,
+  OperationsPanel,
+  OperationsScrollRegion,
+  OperationsTextField,
+  OperationsTextareaField,
+} from "@/components/operations";
+import { operationsConversationTypography, operationsVisual } from "@/features/operations/visual";
 import { toArabicNumerals } from "@/lib/formatters";
 
 const PAGE_SIZE = 6;
@@ -120,6 +135,12 @@ const TEXT = {
     createError: "تعذر إنشاء التذكرة.",
     titleField: "عنوان التذكرة",
     detailsField: "تفاصيل المشكلة أو الطلب",
+    channelField: "القناة",
+    emailField: "البريد الإلكتروني",
+    phoneField: "الهاتف",
+    emailChannel: "البريد الإلكتروني",
+    smsChannel: "رسالة نصية",
+    whatsappChannel: "واتساب",
     unknown: "غير محدد",
     openCount: "التذاكر النشطة",
     conversation: "المحادثة",
@@ -186,6 +207,12 @@ const TEXT = {
     createError: "Failed to create ticket.",
     titleField: "Ticket title",
     detailsField: "Describe the issue or request",
+    channelField: "Channel",
+    emailField: "Email",
+    phoneField: "Phone",
+    emailChannel: "Email",
+    smsChannel: "SMS",
+    whatsappChannel: "WhatsApp",
     unknown: "Not specified",
     openCount: "Active tickets",
     conversation: "Conversation",
@@ -218,23 +245,6 @@ function cleanDisplayText(value: unknown, fallback: string) {
     .trim();
 
   return withoutIdentifiers || fallback;
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block space-y-1.5">
-      <span className="text-xs font-bold text-[var(--nc-text-secondary)]">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
 }
 
 export default function HelpdeskView({
@@ -583,76 +593,29 @@ export default function HelpdeskView({
   return (
     <section
       dir={isArabic ? "rtl" : "ltr"}
-      className="nc-page nc-stack orca-container pb-4"
+      className={operationsVisual.page}
       data-helpdesk-property-workspace
       data-support-split-workspace
     >
-      <header className="orca-workspace-hero">
-        <div>
-          <p className="text-xs font-bold text-[var(--nc-accent)]">
-            {t.flow}
-          </p>
-          <h1 className="mt-1 text-2xl font-black">{t.title}</h1>
-          <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">
-            {t.description}
-          </p>
-        </div>
+      <OperationsPageHeader
+        eyebrow={t.flow}
+        title={t.title}
+        description={`${t.description} · ${tenantName}`}
+        icon={Headphones}
+        actions={
+          <>
+            <button type="button" onClick={() => void loadTickets(selectedId)} disabled={isLoading} className={operationsVisual.iconButton} aria-label={t.refresh} title={t.refresh}><RefreshCw className={isLoading ? "animate-spin" : ""} aria-hidden="true" /></button>
+            <button type="button" onClick={beginCreate} className={operationsVisual.primaryButton}><Plus aria-hidden="true" />{t.newTicket}</button>
+          </>
+        }
+      />
 
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <button
-            type="button"
-            onClick={() => void loadTickets(selectedId)}
-            disabled={isLoading}
-            className="nc-btn nc-btn-ghost min-h-[44px] rounded-xl border border-[var(--nc-border)] px-4 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <RefreshCw
-              size={15}
-              className={isLoading ? "animate-spin" : ""}
-            />
-            {t.refresh}
-          </button>
-
-          <button
-            type="button"
-            onClick={beginCreate}
-            className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-black"
-          >
-            <Plus size={16} />
-            {t.newTicket}
-          </button>
-        </div>
-      </header>
-
-      <div className="orca-workspace-metrics">
-        {[
-          { label: t.total, value: formatNumber(tickets.length), icon: Headphones },
-          { label: t.open, value: formatNumber(openCount), icon: Clock3 },
-          { label: t.closed, value: formatNumber(closedCount), icon: TicketCheck },
-          { label: t.waiting, value: formatNumber(waitingCount), icon: MessageSquareText },
-        ].map(({ label, value, icon: Icon }) => (
-          <div key={label} className="orca-workspace-metric min-h-[84px]">
-            <div className="flex items-center justify-between gap-3 text-xs font-bold text-[var(--nc-text-secondary)]">
-              <span>{label}</span>
-              <Icon size={17} />
-            </div>
-            <strong className="mt-3 block text-2xl">{value}</strong>
-          </div>
-        ))}
-      </div>
-
-      <div className="orca-workspace-note flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
-        <span className="text-[var(--nc-text-secondary)]">
-          {t.openCount}:
-        </span>
-        <strong>{formatNumber(openCount)}</strong>
-        <span className="text-[var(--nc-border)]">|</span>
-        <span className="text-[var(--nc-text-secondary)]">
-          {t.matching}:
-        </span>
-        <strong>{formatNumber(filteredTickets.length)}</strong>
-        <span className="text-[var(--nc-border)]">|</span>
-        <span className="text-[var(--nc-text-secondary)]">{t.ordered}</span>
-      </div>
+      <OperationsKpiGrid aria-label={t.title}>
+        <OperationsMetricCard title={t.total} value={formatNumber(tickets.length)} description={`${t.matching}: ${formatNumber(filteredTickets.length)}`} icon={Headphones} />
+        <OperationsMetricCard title={t.open} value={formatNumber(openCount)} description={t.openCount} icon={Clock3} />
+        <OperationsMetricCard title={t.closed} value={formatNumber(closedCount)} description={t.closed} icon={TicketCheck} />
+        <OperationsMetricCard title={t.waiting} value={formatNumber(waitingCount)} description={t.ordered} icon={MessageSquareText} />
+      </OperationsKpiGrid>
 
       {loadError ? (
         <div
@@ -663,23 +626,19 @@ export default function HelpdeskView({
           <button
             type="button"
             onClick={() => void loadTickets(selectedId)}
-            className="nc-btn nc-btn-ghost min-h-[44px] rounded-xl border border-rose-500/30 px-4 text-xs font-black"
+            className={operationsVisual.secondaryButton}
           >
             {t.retry}
           </button>
         </div>
       ) : null}
 
-      <div
-        dir="ltr"
-        className="grid min-w-0 gap-3 lg:grid-cols-[340px_minmax(0,1fr)]"
-        data-four-page-two-card-workspace
-      >
-        <aside
+      <OperationsExecutiveGrid dir="ltr" data-four-page-two-card-workspace>
+        <OperationsPanel
           dir={isArabic ? "rtl" : "ltr"}
           data-support-ticket-list
           data-operational-list-card
-          className={`orca-workspace-panel min-w-0 flex-col overflow-hidden lg:flex lg:h-[520px] ${
+          className={`min-w-0 flex-col overflow-hidden lg:flex ${
             mobileDetailOpen ? "hidden lg:flex" : "flex"
           }`}
         >
@@ -699,9 +658,7 @@ export default function HelpdeskView({
                     setPage(1);
                   }}
                   placeholder={t.search}
-                  className={`min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] py-2.5 text-sm outline-none focus:border-[var(--nc-accent-border)] ${
-                    isArabic ? "pl-3 pr-10" : "pl-10 pr-3"
-                  }`}
+                  className={`orca-operations-input ${isArabic ? "pl-3 pr-10" : "pl-10 pr-3"}`}
                 />
               </label>
 
@@ -721,7 +678,7 @@ export default function HelpdeskView({
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="orca-operations-flow-region p-2">
             {isLoading && tickets.length === 0 ? (
               <div className="flex h-full min-h-[220px] items-center justify-center gap-2 text-sm text-[var(--nc-text-secondary)]">
                 <Loader2
@@ -750,7 +707,7 @@ export default function HelpdeskView({
                         setSelectedId(ticket.id);
                         setMobileDetailOpen(true);
                       }}
-                      className={`group flex h-[68px] w-full items-center gap-3 rounded-2xl border px-3 text-start outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-border)] ${
+                      className={`group flex h-[60px] w-full items-center gap-3 rounded-2xl border px-3 text-start outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-border)] ${
                         selected
                           ? "border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-accent)]"
                           : "border-[var(--nc-border)] bg-[var(--nc-surface-strong)] hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent)]"
@@ -769,12 +726,12 @@ export default function HelpdeskView({
 
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center justify-between gap-2">
-                          <strong className="truncate text-sm">
+                          <strong className={`truncate ${operationsConversationTypography.listTitle}`}>
                             {cleanDisplayText(ticket.title, t.unknown)}
                           </strong>
                           <time
                             dir="ltr"
-                            className="shrink-0 text-[11px] text-[var(--nc-text-dim)]"
+                            className={`shrink-0 text-[var(--nc-text-dim)] ${operationsConversationTypography.metadata}`}
                           >
                             {formatDateTime(ticket.updatedAt)}
                           </time>
@@ -782,15 +739,15 @@ export default function HelpdeskView({
 
                         <span className="mt-1 flex items-center justify-between gap-2">
                           <span className="min-w-0 flex items-center gap-2">
-                            <span className="shrink-0 text-[11px] font-bold text-[var(--nc-text-dim)]">
+                            <span className={`shrink-0 font-bold text-[var(--nc-text-dim)] ${operationsConversationTypography.metadata}`}>
                               {ticketNumber(ticket)}
                             </span>
-                            <span className="min-w-0 truncate text-xs text-[var(--nc-text-secondary)]">
+                            <span className={`min-w-0 truncate text-[var(--nc-text-secondary)] ${operationsConversationTypography.listSecondary}`}>
                               {cleanDisplayText(ticket.description, t.unknown)}
                             </span>
                           </span>
                           <span
-                            className={`inline-flex min-w-[76px] shrink-0 justify-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${statusClass(
+                            className={`inline-flex min-w-[76px] shrink-0 justify-center rounded-full border px-2 py-0.5 font-bold ${operationsConversationTypography.statusBadge} ${statusClass(
                               ticket,
                             )}`}
                           >
@@ -842,13 +799,13 @@ export default function HelpdeskView({
               </button>
             </div>
           </div>
-        </aside>
+        </OperationsPanel>
 
-        <section
+        <OperationsPanel
           dir={isArabic ? "rtl" : "ltr"}
           data-support-conversation
           data-operational-detail-card
-          className={`orca-workspace-panel min-w-0 flex-col overflow-hidden lg:flex lg:h-[520px] ${
+          className={`min-w-0 flex-col overflow-hidden lg:flex ${
             mobileDetailOpen ? "flex" : "hidden lg:flex"
           }`}
         >
@@ -866,15 +823,15 @@ export default function HelpdeskView({
                   </button>
 
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-[var(--nc-accent)]">
+                    <p className={`font-bold text-[var(--nc-accent)] ${operationsConversationTypography.metadata}`}>
                       {ticketNumber(selectedTicket)}
                     </p>
-                    <h2 className="mt-1 truncate text-lg font-black">
+                    <h2 className={`mt-1 truncate font-black ${operationsConversationTypography.detailTitle}`}>
                       {cleanDisplayText(selectedTicket.title, t.unknown)}
                     </h2>
                     <p
                       dir="ltr"
-                      className="mt-1 text-xs text-[var(--nc-text-secondary)]"
+                      className={`mt-1 text-[var(--nc-text-secondary)] ${operationsConversationTypography.metadata}`}
                     >
                       {formatDateTime(selectedTicket.updatedAt)}
                     </p>
@@ -883,7 +840,7 @@ export default function HelpdeskView({
 
                 <div className="flex shrink-0 items-center gap-2">
                   <span
-                    className={`hidden min-w-[82px] justify-center rounded-full border px-3 py-1 text-xs font-bold sm:inline-flex ${statusClass(
+                    className={`hidden min-w-[82px] justify-center rounded-full border px-3 py-1 font-bold sm:inline-flex ${operationsConversationTypography.statusBadge} ${statusClass(
                       selectedTicket,
                     )}`}
                   >
@@ -925,17 +882,17 @@ export default function HelpdeskView({
 
                 {contextOpen ? (
                   <div className="grid gap-2 pb-2 sm:grid-cols-3">
-                    <div className="orca-info-cell min-h-[56px]">
+                    <div className={`orca-info-cell min-h-[56px] ${operationsConversationTypography.field}`}>
                       <span>{t.organization}</span>
                       <strong className="truncate">{organizationName}</strong>
                     </div>
-                    <div className="orca-info-cell min-h-[56px]">
+                    <div className={`orca-info-cell min-h-[56px] ${operationsConversationTypography.field}`}>
                       <span>{t.created}</span>
                       <strong dir="ltr">
                         {formatDateTime(selectedTicket.createdAt)}
                       </strong>
                     </div>
-                    <div className="orca-info-cell min-h-[56px]">
+                    <div className={`orca-info-cell min-h-[56px] ${operationsConversationTypography.field}`}>
                       <span>{t.updated}</span>
                       <strong dir="ltr">
                         {formatDateTime(selectedTicket.updatedAt)}
@@ -945,10 +902,10 @@ export default function HelpdeskView({
                 ) : null}
               </section>
 
-              <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <OperationsScrollRegion scrollRole="conversation" className="px-3 py-3">
                 <div className="mx-auto flex max-w-4xl flex-col gap-2.5">
                   <article className="max-w-[74%] self-start rounded-2xl rounded-tl-md border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3.5 py-2.5">
-                    <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+                    <div className={`mb-2 flex items-center justify-between gap-3 ${operationsConversationTypography.metadata}`}>
                       <strong className="text-[var(--nc-accent)]">
                         {t.originalRequest}
                       </strong>
@@ -956,14 +913,14 @@ export default function HelpdeskView({
                         {formatDateTime(selectedTicket.createdAt)}
                       </time>
                     </div>
-                    <p className="whitespace-pre-wrap leading-7 text-[var(--nc-text-primary)]">
+                    <p className={`whitespace-pre-wrap text-[var(--nc-text-primary)] ${operationsConversationTypography.messageBody}`}>
                       {cleanDisplayText(selectedTicket.description, t.unknown)}
                     </p>
                   </article>
 
                   {selectedTicket.aiResponse?.trim() ? (
                     <article className="max-w-[74%] self-end rounded-2xl rounded-tr-md border border-sky-500/25 bg-sky-500/10 px-3.5 py-2.5">
-                      <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+                      <div className={`mb-2 flex items-center justify-between gap-3 ${operationsConversationTypography.metadata}`}>
                         <strong className="text-sky-700 dark:text-sky-300">
                           {t.supportTeam}
                         </strong>
@@ -971,7 +928,7 @@ export default function HelpdeskView({
                           {formatDateTime(selectedTicket.updatedAt)}
                         </time>
                       </div>
-                      <p className="whitespace-pre-wrap leading-7">
+                      <p className={`whitespace-pre-wrap ${operationsConversationTypography.messageBody}`}>
                         {cleanDisplayText(
                           selectedTicket.aiResponse,
                           t.noSupportResponse,
@@ -1010,7 +967,7 @@ export default function HelpdeskView({
                               : "self-start rounded-tl-md border-[var(--nc-border)] bg-[var(--nc-surface-solid)]"
                           }`}
                         >
-                          <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+                          <div className={`mb-2 flex items-center justify-between gap-3 ${operationsConversationTypography.metadata}`}>
                             <strong
                               className={
                                 fromSupport
@@ -1024,7 +981,7 @@ export default function HelpdeskView({
                               {formatDateTime(reply.createdAt)}
                             </time>
                           </div>
-                          <p className="whitespace-pre-wrap leading-7">
+                          <p className={`whitespace-pre-wrap ${operationsConversationTypography.messageBody}`}>
                             {cleanDisplayText(reply.message, t.unknown)}
                           </p>
                         </article>
@@ -1032,7 +989,7 @@ export default function HelpdeskView({
                     })
                   )}
                 </div>
-              </div>
+              </OperationsScrollRegion>
 
               <footer className="shrink-0 border-t border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-2.5">
                 {selectedTicket.status.toUpperCase() === "OPEN" ? (
@@ -1042,7 +999,7 @@ export default function HelpdeskView({
                       value={replyInput}
                       onChange={(event) => setReplyInput(event.target.value)}
                       placeholder={t.replyPlaceholder}
-                      className="orca-form-textarea min-h-[56px] max-h-[88px] w-full resize-y rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2 outline-none focus:border-[var(--nc-accent-border)]"
+                      className={`orca-operations-textarea min-h-[56px] max-h-[88px] ${operationsConversationTypography.composer}`}
                     />
                     <button
                       type="button"
@@ -1070,144 +1027,44 @@ export default function HelpdeskView({
               {t.selectTicket}
             </div>
           )}
-        </section>
-      </div>
+        </OperationsPanel>
+      </OperationsExecutiveGrid>
 
-      {editorOpen && typeof document !== "undefined"
-        ? createPortal(
-            <div
-              className="orca-dialog-overlay fixed inset-x-0 bottom-0 top-[88px] z-[140] flex items-start justify-center overflow-y-auto bg-black/60 p-4 pt-6 backdrop-blur-sm"
-              onMouseDown={(event) => {
-                if (event.target === event.currentTarget && !saving) {
-                  setEditorOpen(false);
-                }
-              }}
-            >
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="helpdesk-editor-title"
-                className="orca-dialog w-full max-w-2xl overflow-hidden rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] shadow-2xl"
-              >
-                <div className="orca-dialog-header">
-                  <div>
-                    <p className="text-xs font-bold text-[var(--nc-accent)]">
-                      {t.title}
-                    </p>
-                    <h2
-                      id="helpdesk-editor-title"
-                      className="mt-1 text-lg font-black"
-                    >
-                      {t.modalTitle}
-                    </h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setEditorOpen(false)}
-                    disabled={saving}
-                    className="orca-dialog-close min-h-[44px] min-w-[44px]"
-                    aria-label={t.cancel}
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void createTicket();
-                  }}
-                  className="max-h-[calc(100vh-190px)] overflow-y-auto p-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                >
-                  <div className="grid gap-4">
-                    <Field label={t.titleField}>
-                      <input
-                        value={newTitle}
-                        onChange={(event) => setNewTitle(event.target.value)}
-                        maxLength={160}
-                        required
-                        autoFocus
-                        className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5 outline-none focus:border-[var(--nc-accent-border)]"
-                      />
-                    </Field>
-
-                    <Field label={t.detailsField}>
-                      <textarea
-                        rows={5}
-                        value={newDescription}
-                        onChange={(event) => setNewDescription(event.target.value)}
-                        maxLength={5000}
-                        required
-                        className="orca-form-textarea min-h-[120px] max-h-[220px] w-full resize-y rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5 outline-none focus:border-[var(--nc-accent-border)]"
-                      />
-                    </Field>
-
-                    <Field label="Channel">
-                      <select
-                        value={newChannel}
-                        onChange={(event) =>
-                          setNewChannel(
-                            event.target.value as "EMAIL" | "SMS" | "WHATSAPP",
-                          )
-                        }
-                        className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5 outline-none focus:border-[var(--nc-accent-border)]"
-                      >
-                        <option value="EMAIL">EMAIL</option>
-                        <option value="SMS">SMS</option>
-                        <option value="WHATSAPP">WHATSAPP</option>
-                      </select>
-                    </Field>
-
-                    <Field label="Email">
-                      <input
-                        type="email"
-                        value={newEmail}
-                        onChange={(event) => setNewEmail(event.target.value)}
-                        className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5 outline-none focus:border-[var(--nc-accent-border)]"
-                      />
-                    </Field>
-
-                    <Field label="Phone">
-                      <input
-                        value={newPhone}
-                        onChange={(event) => setNewPhone(event.target.value)}
-                        className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5 outline-none focus:border-[var(--nc-accent-border)]"
-                      />
-                    </Field>
-
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <button
-                        type="button"
-                        onClick={() => setEditorOpen(false)}
-                        disabled={saving}
-                        className="nc-btn nc-btn-ghost min-h-[44px] rounded-xl border border-[var(--nc-border)] px-4 font-bold disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {t.cancel}
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={
-                          saving ||
-                          newTitle.trim().length < 3 ||
-                          newDescription.trim().length < 5
-                        }
-                        className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 font-black disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {saving ? (
-                          <Loader2 size={16} className="animate-spin" />
-                        ) : (
-                          <CheckCircle2 size={16} />
-                        )}
-                        {t.create}
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
+      <OperationsDialog
+        open={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        title={t.modalTitle}
+        description={t.description}
+        closeLabel={t.cancel}
+        closeDisabled={saving}
+        dir={isArabic ? "rtl" : "ltr"}
+        footer={
+          <>
+            <button type="button" onClick={() => setEditorOpen(false)} disabled={saving} className={operationsVisual.secondaryButton}>{t.cancel}</button>
+            <button form="helpdesk-create-ticket-form" type="submit" disabled={saving || newTitle.trim().length < 3 || newDescription.trim().length < 5} className={operationsVisual.primaryButton}>{saving ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}{t.create}</button>
+          </>
+        }
+      >
+        <form id="helpdesk-create-ticket-form" onSubmit={(event) => { event.preventDefault(); void createTicket(); }} noValidate className="grid gap-4">
+          <OperationsFormField label={t.titleField}><OperationsTextField value={newTitle} onChange={(event) => setNewTitle(event.target.value)} maxLength={160} autoFocus /></OperationsFormField>
+          <OperationsFormField label={t.detailsField}><OperationsTextareaField rows={5} value={newDescription} onChange={(event) => setNewDescription(event.target.value)} maxLength={5000} /></OperationsFormField>
+          <OperationsFormField label={t.channelField}>
+            <SettingsSelect
+              value={newChannel}
+              onChange={(value) =>
+                setNewChannel(value as "EMAIL" | "SMS" | "WHATSAPP")
+              }
+              options={[
+                { value: "EMAIL", label: t.emailChannel },
+                { value: "SMS", label: t.smsChannel },
+                { value: "WHATSAPP", label: t.whatsappChannel },
+              ]}
+            />
+          </OperationsFormField>
+          <OperationsFormField label={t.emailField}><OperationsTextField type="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} /></OperationsFormField>
+          <OperationsFormField label={t.phoneField}><OperationsTextField value={newPhone} onChange={(event) => setNewPhone(event.target.value)} /></OperationsFormField>
+        </form>
+      </OperationsDialog>
     </section>
   );
 }

@@ -429,9 +429,9 @@ export default function AgentDecisionCenter({
 
     return (
       <div
-        className={`flex h-11 min-h-11 items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
+        className={`group flex h-11 min-h-11 items-center justify-between gap-3 rounded-lg border px-3 py-2 transition-colors duration-150 hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)] ${
           isSentinel
-            ? "border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)]"
+            ? "border-[var(--nc-accent-border)] bg-[var(--nc-surface-solid)]"
             : "border-[var(--nc-border)] bg-[var(--nc-surface-solid)]"
         }`}
       >
@@ -475,11 +475,11 @@ export default function AgentDecisionCenter({
   return (
     <>
       <section
-        className="grid gap-4 xl:grid-cols-12"
+        className="orca-dashboard-v1-executive-grid"
         dir="ltr"
         data-dashboard-executive-grid
       >
-        <div className="min-w-0 xl:col-span-8" dir={isArabic ? "rtl" : "ltr"}>
+        <div className="orca-dashboard-v1-pipeline-slot" dir={isArabic ? "rtl" : "ltr"}>
           <DealSpineSnapshot
             pipeline={model.pipeline}
             copy={copy}
@@ -488,7 +488,7 @@ export default function AgentDecisionCenter({
         </div>
 
         <aside
-          className={`${dashboardVisual.dashPanel} p-4 xl:col-span-4`}
+          className={`${dashboardVisual.dashPanel} orca-dashboard-v1-decision`}
           dir={isArabic ? "rtl" : "ltr"}
           data-dashboard-card="decision"
           data-dashboard-decision-center
@@ -545,8 +545,8 @@ export default function AgentDecisionCenter({
         </aside>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-12" dir="ltr">
-        <div className="min-w-0 xl:col-span-8" dir={isArabic ? "rtl" : "ltr"}>
+      <section className="orca-dashboard-v1-lower-grid" dir="ltr" data-dashboard-lower-grid>
+        <div className="orca-dashboard-v1-operations-slot" dir={isArabic ? "rtl" : "ltr"}>
           <DailyOperationsCenter
             operations={model.operations}
             copy={copy}
@@ -558,7 +558,7 @@ export default function AgentDecisionCenter({
         </div>
 
         <aside
-          className={`${dashboardVisual.dashPanel} flex flex-col p-4 xl:col-span-4`}
+          className={`${dashboardVisual.dashPanel} orca-dashboard-v1-agents`}
           dir={isArabic ? "rtl" : "ltr"}
           data-dashboard-card="agents"
           data-dashboard-agent-status
@@ -599,7 +599,9 @@ export default function AgentDecisionCenter({
                     )}
                   </div>
                 ))}
-                {renderAgentRow(copy.sentinel, sentinelAgent, true)}
+                <div>
+                  {renderAgentRow(copy.sentinel, sentinelAgent, true)}
+                </div>
               </div>
             )}
           </div>
@@ -619,34 +621,31 @@ export default function AgentDecisionCenter({
       {isAssistantOpen && typeof document !== "undefined"
         ? createPortal(
             <div
-              className="fixed inset-0 z-[999] bg-slate-950/80"
+              className="orca-dialog-overlay"
               role="presentation"
-              data-orca-assistant-drawer
+              data-orca-assistant-modal
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget) {
+                  onCloseAssistant();
+                }
+              }}
             >
-              <button
-                type="button"
-                className="absolute inset-0 cursor-default"
-                aria-label={copy.close}
-                onClick={onCloseAssistant}
-              />
-
-              <aside
-                className={`absolute inset-y-0 flex w-full max-w-[460px] flex-col border-[var(--nc-border)] bg-[var(--nc-surface-solid)] shadow-2xl ${
-                  isArabic ? "left-0 border-r" : "right-0 border-l"
-                }`}
+              <section
+                className="orca-dialog max-w-2xl h-[min(640px,calc(100dvh-1.5rem))] sm:h-[min(640px,calc(100dvh-3rem))]"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="orca-assistant-title"
                 dir={isArabic ? "rtl" : "ltr"}
               >
-                <header className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-4">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className={dashboardVisual.iconTile}>
+                <header className="orca-dialog-header">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-accent)]">
                       <MessageCircleMore
                         className="h-5 w-5"
                         aria-hidden="true"
                       />
                     </span>
+
                     <div className="min-w-0">
                       <h2
                         id="orca-assistant-title"
@@ -654,7 +653,7 @@ export default function AgentDecisionCenter({
                       >
                         {copy.assistantTitle}
                       </h2>
-                      <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+                      <p className="mt-1 text-sm leading-6 text-[var(--nc-text-secondary)]">
                         {copy.assistantDescription}
                       </p>
                     </div>
@@ -663,22 +662,21 @@ export default function AgentDecisionCenter({
                   <button
                     type="button"
                     onClick={onCloseAssistant}
-                    className="nc-btn-secondary inline-flex min-h-11 shrink-0 items-center gap-2 px-3"
+                    className="orca-dialog-close"
                     aria-label={copy.close}
                   >
                     <X className="h-4 w-4" aria-hidden="true" />
-                    <span>{copy.close}</span>
                   </button>
                 </header>
 
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 pt-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(to_bottom,transparent_0,black_2rem,black_100%)]">
+                <div className="orca-dialog-body orca-dashboard-v1-hide-scrollbar min-h-0 flex-1">
                   <div className="flex flex-wrap gap-2">
                     {suggestions.map((suggestion) => (
                       <button
                         key={suggestion}
                         type="button"
                         onClick={() => sendMessage(suggestion)}
-                        className="min-h-9 rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 text-xs font-bold text-[var(--nc-text-secondary)] transition hover:border-[var(--nc-accent-border)] hover:text-[var(--nc-accent)]"
+                        className="min-h-9 rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 text-xs font-bold text-[var(--nc-text-secondary)] transition hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent)]"
                       >
                         {suggestion}
                       </button>
@@ -715,12 +713,16 @@ export default function AgentDecisionCenter({
 
                 <form
                   onSubmit={handleSubmit}
-                  className="shrink-0 border-t border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-4"
+                  className="shrink-0 border-t border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-4 sm:p-5"
                 >
                   <label className="sr-only" htmlFor="orca-assistant-input">
                     {copy.assistantInputLabel}
                   </label>
-                  <div className="flex items-end gap-2 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-2 focus-within:border-[var(--nc-accent-border)] focus-within:ring-2 focus-within:ring-[var(--nc-accent)]/20">
+
+                  <div
+                    dir="ltr"
+                    className="flex items-end gap-2 rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-soft)] p-2 transition focus-within:border-[var(--nc-accent-border)] focus-within:ring-2 focus-within:ring-[var(--nc-accent-soft)]"
+                  >
                     <textarea
                       id="orca-assistant-input"
                       value={draft}
@@ -728,12 +730,13 @@ export default function AgentDecisionCenter({
                       onKeyDown={handleDraftKeyDown}
                       rows={2}
                       placeholder={copy.assistantInputPlaceholder}
-                      className="min-h-[52px] flex-1 resize-none bg-transparent px-2 py-2 text-sm text-[var(--nc-text-primary)] outline-none placeholder:text-[var(--nc-text-dim)]"
+                      dir={isArabic ? "rtl" : "ltr"}
+                      className="min-h-[52px] min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-[var(--nc-text-primary)] outline-none placeholder:text-[var(--nc-text-dim)]"
                     />
                     <button
                       type="submit"
                       disabled={!draft.trim()}
-                      className="nc-btn-primary grid h-11 min-h-11 w-11 min-w-11 place-items-center rounded-xl p-0 shadow-sm transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="nc-btn-primary grid h-11 min-h-11 w-11 min-w-11 shrink-0 place-items-center rounded-xl p-0 shadow-sm transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)] disabled:cursor-not-allowed disabled:opacity-40"
                       aria-label={copy.sendMessage}
                     >
                       <SendHorizontal
@@ -743,7 +746,7 @@ export default function AgentDecisionCenter({
                     </button>
                   </div>
                 </form>
-              </aside>
+              </section>
             </div>,
             document.body,
           )

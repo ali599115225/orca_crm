@@ -47,6 +47,7 @@ export default function FinancialLifecycleProgress({
 
   return (
     <section
+      dir={isArabic ? 'rtl' : 'ltr'}
       className={`rounded-2xl border border-white/10 bg-black/10 ${compact ? 'p-3' : 'p-4'}`}
       data-financial-lifecycle-progress
     >

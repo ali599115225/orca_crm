@@ -25,7 +25,7 @@ export default function LeadPipelinePanel({
       <div
         tabIndex={0}
         aria-label={labels.pipeline}
-        className="max-h-[220px] space-y-1.5 overflow-y-auto pr-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        className="space-y-1.5"
       >
         {pipelineStages.map((stage) => {
           const count = stageCounts[stage] || 0;

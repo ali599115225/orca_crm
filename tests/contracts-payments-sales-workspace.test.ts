@@ -24,11 +24,26 @@ describe("sales contract workspace presentation truth", () => {
     );
 
     expect(workspace).toContain("const normalizedAction = action");
+    expect(workspace).toContain('CREATE: ["إنشاء", "Created"]');
     expect(workspace).toContain("CREATE_DRAFT_CONTRACT:");
     expect(workspace).toContain("CREATE_CONTRACT_DRAFT:");
     expect(workspace).toContain("ISSUE_CONTRACT:");
     expect(workspace).toContain("CONTRACT_ISSUED:");
     expect(workspace).toContain("map[normalizedAction]");
+  });
+
+  it("keeps amendments and timeline in page-owned vertical flow", () => {
+    const workspace = source(
+      "components/sales/SalesContractWorkspace.tsx",
+    );
+
+    expect(workspace).toContain('contract.amendments.length === 0');
+    expect(workspace).toContain('<OperationsEmptyState>');
+    expect(workspace).toContain('"No payment plan amendments recorded."');
+    expect(workspace).not.toContain('h-[620px]');
+    expect(workspace).not.toContain('h-[500px]');
+    expect(workspace).not.toContain('overflow-y-auto');
+    expect(workspace).not.toContain('grid h-full grid-rows-2');
   });
 
   it("localizes payment-plan lifecycle statuses", () => {

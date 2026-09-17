@@ -1,15 +1,31 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { Archive, Check, ChevronLeft, ChevronRight, Clock, MessageSquare, Plus, PlusCircle, RefreshCw, Search, Send, UserPlus } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { createWhatsAppTaskAction } from "@/app/actions/whatsapp-crm";
+import { getWhatsAppCustomerDirectoryAction, type WhatsAppCustomerDirectoryItem } from "@/app/actions/whatsapp-customer-directory";
 import { archiveChatAction, assignChatAction, getWhatsAppAssigneesAction, getWhatsAppChatsAction, sendWhatsAppMessageAction } from "@/app/actions/whatsapp";
 import { useApp } from "@/app/context/AppContext";
 import { useNotify } from "@/app/context/UIBusContext";
 import SettingsSelect from "@/components/settings/SettingsSelect";
+import {
+  OperationsDialog,
+  OperationsEmptyState,
+  OperationsExecutiveGrid,
+  OperationsFormField,
+  OperationsKpiGrid,
+  OperationsMasterList,
+  OperationsMasterRow,
+  OperationsMetricCard,
+  OperationsPageHeader,
+  OperationsPanel,
+  OperationsScrollRegion,
+  OperationsTextField,
+  OperationsTextareaField,
+} from "@/components/operations";
+import { operationsConversationTypography, operationsVisual } from "@/features/operations/visual";
 import { toArabicNumerals } from "@/lib/formatters";
 
 interface Message {
@@ -81,7 +97,17 @@ const TEXT = {
     connected: "واتساب — متصل",
     disconnected: "واتساب — غير متصل",
     testMode: "وضع اختبار Meta",
-    notConfigured: "يلزم إكمال إعدادات الربط قبل استخدام المحادثات.",
+    notConfigured: "يلزم إكمال إعدادات الربط قبل إرسال رسائل واتساب.",
+    composeDisconnectedNotice: "يمكنك تجهيز المحادثة الآن، لكن الإرسال سيبقى متوقفًا حتى يتم ربط مزود واتساب.",
+    connectToSend: "ربط واتساب للإرسال",
+    customerSearchLoading: "جاري البحث في دليل العملاء…",
+    customerSearchEmpty: "لا يوجد عميل مطابق. يمكنك إدخال الرقم يدويًا.",
+    customerSearchError: "تعذر تحميل دليل العملاء.",
+    customerUnassigned: "غير مسند",
+    customerOpenConversation: "محادثة مفتوحة",
+    customerArchivedConversation: "محادثة سابقة",
+    customerNoConversation: "بدون محادثة",
+    customerArchivedRecord: "سجل مؤرشف",
     customer: "العميل",
     owner: "المسؤول",
     priority: "الأولوية",
@@ -126,6 +152,7 @@ const TEXT = {
     archived: "تمت أرشفة المحادثة",
     unarchived: "تم إلغاء أرشفة المحادثة",
     archiveError: "تعذرت أرشفة المحادثة",
+    reopenAfterSendError: "تم إرسال الرسالة، لكن تعذر إعادة فتح المحادثة السابقة.",
     newChatTitle: "محادثة جديدة",
     newChatPhone: "رقم الجوال",
     newChatCustomerSearch: "ابحث عن عميل محفوظ (اختياري)",
@@ -177,7 +204,17 @@ const TEXT = {
     connected: "WhatsApp — Connected",
     disconnected: "WhatsApp — Disconnected",
     testMode: "Meta Test Mode",
-    notConfigured: "Connection settings must be completed before using conversations.",
+    notConfigured: "Connection settings must be completed before sending WhatsApp messages.",
+    composeDisconnectedNotice: "You can prepare the conversation now, but sending stays unavailable until a WhatsApp provider is connected.",
+    connectToSend: "Connect WhatsApp to send",
+    customerSearchLoading: "Searching the customer directory…",
+    customerSearchEmpty: "No matching customer. You can enter the number manually.",
+    customerSearchError: "Could not load the customer directory.",
+    customerUnassigned: "Unassigned",
+    customerOpenConversation: "Open conversation",
+    customerArchivedConversation: "Previous conversation",
+    customerNoConversation: "No conversation",
+    customerArchivedRecord: "Archived record",
     customer: "Customer",
     owner: "Owner",
     priority: "Priority",
@@ -222,6 +259,7 @@ const TEXT = {
     archived: "Conversation archived",
     unarchived: "Conversation unarchived",
     archiveError: "Failed to archive conversation",
+    reopenAfterSendError: "The message was sent, but the previous conversation could not be reopened.",
     newChatTitle: "New conversation",
     newChatPhone: "Mobile number",
     newChatCustomerSearch: "Search saved customer (optional)",
@@ -321,6 +359,12 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
   const [newCountryCode, setNewCountryCode] = useState("966");
   const [newPhone, setNewPhone] = useState("");
   const [newCustomerQuery, setNewCustomerQuery] = useState("");
+  const [customerResults, setCustomerResults] = useState<WhatsAppCustomerDirectoryItem[]>([]);
+  const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
+  const [customerActiveIndex, setCustomerActiveIndex] = useState(-1);
+  const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
+  const [customerSearchError, setCustomerSearchError] = useState<string | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<WhatsAppCustomerDirectoryItem | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [newChatError, setNewChatError] = useState<string | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
@@ -337,6 +381,8 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
   const createSendInFlightRef = useRef(false);
   const selectedChatRef = useRef<Chat | null>(null);
   const latestIncomingMessageRef = useRef<string | null>(null);
+  const customerPickerRef = useRef<HTMLDivElement | null>(null);
+  const customerSearchRequestRef = useRef(0);
 
   const fetchFreshChats = useCallback(async (mode: "active" | "archived" = filter === "ARCHIVED" ? "archived" : "active") => {
     if (fetchInFlightRef.current) return fetchInFlightRef.current;
@@ -381,22 +427,118 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
     return [...chats].sort((a, b) => new Date(b.time || 0).getTime() - new Date(a.time || 0).getTime());
   }, [chats]);
 
-  const customerOptions = useMemo(() => {
-    const byPhone = new Map<string, { phone: string; name: string }>();
-    for (const chat of chats) {
-      const phone = normalizeWhatsAppPhone(chat.contactPhone);
-      if (!phone || byPhone.has(phone)) continue;
-      const rawName = String(chat.contactName || "").trim();
-      const name =
-        !rawName || rawName === phone || /^[+\d\s-]{6,}$/.test(rawName) || isTechnical(rawName)
-          ? t.fallbackCustomer
-          : rawName;
-      byPhone.set(phone, { phone, name });
+  const loadCustomerDirectory = useCallback(async (searchQuery: string) => {
+    const requestId = ++customerSearchRequestRef.current;
+    setCustomerSearchLoading(true);
+    setCustomerSearchError(null);
+    try {
+      const result = await getWhatsAppCustomerDirectoryAction({ q: searchQuery, limit: 20 });
+      if (requestId !== customerSearchRequestRef.current) return;
+      if (result.success) {
+        setCustomerResults(result.customers);
+        setCustomerActiveIndex(result.customers.length > 0 ? 0 : -1);
+      } else {
+        setCustomerResults([]);
+        setCustomerActiveIndex(-1);
+        setCustomerSearchError(result.error || t.customerSearchError);
+      }
+    } catch {
+      if (requestId !== customerSearchRequestRef.current) return;
+      setCustomerResults([]);
+      setCustomerActiveIndex(-1);
+      setCustomerSearchError(t.customerSearchError);
+    } finally {
+      if (requestId === customerSearchRequestRef.current) {
+        setCustomerSearchLoading(false);
+      }
     }
-    return [...byPhone.values()].sort((left, right) =>
-      left.name.localeCompare(right.name, isArabic ? "ar" : "en"),
-    );
-  }, [chats, isArabic, t.fallbackCustomer]);
+  }, [t.customerSearchError]);
+
+  useEffect(() => {
+    if (!showNewForm || !customerPickerOpen) return;
+    const timer = window.setTimeout(() => {
+      void loadCustomerDirectory(newCustomerQuery);
+    }, 220);
+    return () => window.clearTimeout(timer);
+  }, [showNewForm, customerPickerOpen, newCustomerQuery, loadCustomerDirectory]);
+
+  useEffect(() => {
+    if (!showNewForm || !customerPickerOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!customerPickerRef.current?.contains(event.target as Node)) {
+        setCustomerPickerOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePointer);
+  }, [showNewForm, customerPickerOpen]);
+
+  useEffect(() => {
+    if (!customerPickerOpen || customerActiveIndex < 0) return;
+    document
+      .getElementById(`whatsapp-customer-option-${customerActiveIndex}`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [customerPickerOpen, customerActiveIndex]);
+
+  const customerLeadStatusLabel = (status: string | null) => {
+    if (!status) return null;
+    const labels: Record<string, string> = isArabic
+      ? {
+          NEW: "جديد",
+          CONTACTED: "تم التواصل",
+          QUALIFIED: "مؤهل",
+          VISIT_SCHEDULED: "زيارة مجدولة",
+          VISITED: "تمت الزيارة",
+          OFFER_MADE: "عرض مقدم",
+          NEGOTIATION: "تفاوض",
+          RESERVED: "محجوز",
+          CONTRACT_SIGNED: "عقد موقّع",
+          WON: "مكتمل",
+          LOST: "ملغى / غير ناجح",
+        }
+      : {
+          NEW: "New",
+          CONTACTED: "Contacted",
+          QUALIFIED: "Qualified",
+          VISIT_SCHEDULED: "Visit scheduled",
+          VISITED: "Visited",
+          OFFER_MADE: "Offer made",
+          NEGOTIATION: "Negotiation",
+          RESERVED: "Reserved",
+          CONTRACT_SIGNED: "Contract signed",
+          WON: "Completed",
+          LOST: "Closed / lost",
+        };
+    return labels[status] || status;
+  };
+
+  const customerConversationLabel = (status: WhatsAppCustomerDirectoryItem["conversationStatus"]) => {
+    if (status === "OPEN") return t.customerOpenConversation;
+    if (status === "ARCHIVED") return t.customerArchivedConversation;
+    return t.customerNoConversation;
+  };
+
+  const displayCustomerPhone = (phone: string) => {
+    const split = splitInternationalPhone(phone);
+    return split ? `+${normalizeWhatsAppPhone(phone)}` : String(phone || "").trim();
+  };
+
+  const chooseCustomer = (customer: WhatsAppCustomerDirectoryItem) => {
+    setSelectedCustomer(customer);
+    setNewCustomerQuery(customer.name);
+    setCustomerPickerOpen(false);
+    setCustomerSearchError(null);
+    setNewChatError(null);
+
+    const split = splitInternationalPhone(customer.phone);
+    if (split) {
+      setNewCountryCode(split.countryCode);
+      setNewPhone(split.localPhone);
+      return;
+    }
+
+    setNewPhone(normalizeLocalPhone(customer.phone));
+  };
 
   useEffect(() => {
     setChats(initialChats);
@@ -593,6 +735,10 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
   };
 
   async function handleSend() {
+    if (!whatsAppReachable) {
+      toast.error(t.notConfigured);
+      return;
+    }
     if (!selectedChat || !messageInput.trim() || isSending || sendInFlightRef.current) return;
     sendInFlightRef.current = true;
     const text = messageInput.trim();
@@ -623,6 +769,16 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
           )
         );
         toast.error(safeSendError(result));
+      } else if (selectedChat.archived) {
+        const reopenResult = await archiveChatAction(selectedChat.id);
+        if (reopenResult.success) {
+          setFilter("ALL");
+          setPage(1);
+          void fetchFreshChats("active");
+        } else {
+          toast.error(t.reopenAfterSendError);
+          void fetchFreshChats("archived");
+        }
       } else {
         void fetchFreshChats();
       }
@@ -732,11 +888,16 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
 
   async function handleNewChat(e: React.FormEvent) {
     e.preventDefault();
+    if (!whatsAppReachable) {
+      setNewChatError(t.notConfigured);
+      return;
+    }
     if (!isValidLocalPhone(newCountryCode, newPhone)) {
       setNewChatError(t.invalidPhone);
       return;
     }
     const normalizedPhone = composeWhatsAppPhone(newCountryCode, newPhone);
+    const customerToReopen = selectedCustomer;
     if (!normalizedPhone || !newMessage.trim() || isCreatingChat || createSendInFlightRef.current) return;
     createSendInFlightRef.current = true;
     setIsCreatingChat(true);
@@ -744,10 +905,23 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
     try {
       const result = await sendWhatsAppMessageAction(normalizedPhone, newMessage.trim());
       if (result.success && result.messageId && result.metaMessageId) {
+        if (customerToReopen?.contactId && customerToReopen.conversationStatus === "ARCHIVED") {
+          const reopenResult = await archiveChatAction(customerToReopen.contactId);
+          if (!reopenResult.success) {
+            toast.error(t.reopenAfterSendError);
+          }
+        }
         setFilter("ALL");
         setPage(1);
         setNewPhone("");
         setNewCountryCode("966");
+        customerSearchRequestRef.current += 1;
+        setNewCustomerQuery("");
+        setSelectedCustomer(null);
+        setCustomerResults([]);
+        setCustomerPickerOpen(false);
+        setCustomerActiveIndex(-1);
+        setCustomerSearchError(null);
         setNewMessage("");
         setNewChatError(null);
         setShowNewForm(false);
@@ -807,10 +981,16 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
   };
 
   const closeNewChat = () => {
+    customerSearchRequestRef.current += 1;
     setShowNewForm(false);
     setNewCountryCode("966");
     setNewPhone("");
     setNewCustomerQuery("");
+    setSelectedCustomer(null);
+    setCustomerResults([]);
+    setCustomerPickerOpen(false);
+    setCustomerActiveIndex(-1);
+    setCustomerSearchError(null);
     setNewMessage("");
     setNewChatError(null);
   };
@@ -819,135 +999,42 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
     <>
       <section
         dir={isArabic ? "rtl" : "ltr"}
-        className="nc-page nc-stack orca-container pb-4"
+        className={operationsVisual.page}
         data-whatsapp-property-workspace
         data-whatsapp-two-card-workspace
       >
-        <header className="orca-workspace-hero">
-          <div className="min-w-0">
-            <p className="text-xs font-bold text-[var(--nc-accent)]">
-              {t.flow}
-            </p>
-            <div className="mt-1 flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-black">{t.title}</h1>
-              <span
-                className={`inline-flex min-h-7 items-center justify-center rounded-full border px-3 text-xs font-black ${
-                  whatsAppReachable
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                    : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                }`}
-              >
-                {connectionLabel}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">
-              {t.description}
-            </p>
-            <p className="mt-1 text-xs text-[var(--nc-text-dim)]">
-              {tenant.companyName}
-            </p>
-          </div>
+        <OperationsPageHeader
+          eyebrow={t.flow}
+          title={t.title}
+          description={`${t.description} · ${tenant.companyName}`}
+          icon={MessageSquare}
+          meta={
+            <span className={`rounded-full border px-2.5 py-1 font-black ${operationsConversationTypography.statusBadge} ${whatsAppReachable ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"}`}>
+              {connectionLabel}
+            </span>
+          }
+          actions={
+            <>
+              {!whatsAppReachable ? <a href="/operations/settings?tab=integrations&category=MESSAGING" className={operationsVisual.secondaryButton}>{t.manageConnection}</a> : null}
+              <button type="button" onClick={() => void fetchFreshChats(filter === "ARCHIVED" ? "archived" : "active")} className={operationsVisual.iconButton} aria-label={t.refresh} title={t.refresh}><RefreshCw aria-hidden="true" /></button>
+              <button type="button" onClick={() => { setNewChatError(null); setShowNewForm(true); }} className={operationsVisual.primaryButton}><Plus aria-hidden="true" />{t.newLabel}</button>
+            </>
+          }
+        />
 
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {!whatsAppReachable ? (
-              <a
-                href="/operations/settings?tab=integrations&category=MESSAGING"
-                className="nc-btn nc-btn-secondary inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 text-xs font-black"
-              >
-                {t.manageConnection}
-              </a>
-            ) : null}
+        <OperationsKpiGrid aria-label={t.title}>
+          <OperationsMetricCard title={t.active} value={formatNumber(sortedChats.filter((chat) => !chat.archived).length)} description={t.open} icon={MessageSquare} />
+          <OperationsMetricCard title={t.unread} value={formatNumber(unreadCount)} description={t.unreadFilter} icon={MessageSquare} />
+          <OperationsMetricCard title={t.waiting} value={formatNumber(waitingCount)} description={t.waitingFilter} icon={Clock} />
+          <OperationsMetricCard title={t.responseRate} value={formatPercent(responseRate)} description={t.latestFirst} icon={Check} />
+        </OperationsKpiGrid>
 
-            <button
-              type="button"
-              onClick={() =>
-                void fetchFreshChats(
-                  filter === "ARCHIVED" ? "archived" : "active",
-                )
-              }
-              className="nc-btn nc-btn-ghost inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[var(--nc-border)] px-4 text-xs font-bold"
-            >
-              <RefreshCw size={15} />
-              {t.refresh}
-            </button>
-
-            <button
-              type="button"
-              disabled={!whatsAppReachable}
-              onClick={() => {
-                setNewChatError(null);
-                setShowNewForm(true);
-              }}
-              className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Plus size={16} />
-              {t.newLabel}
-            </button>
-          </div>
-        </header>
-
-        <div className="orca-workspace-metrics">
-          {[
-            {
-              label: t.active,
-              value: formatNumber(sortedChats.filter((chat) => !chat.archived).length),
-              icon: MessageSquare,
-            },
-            {
-              label: t.unread,
-              value: formatNumber(unreadCount),
-              icon: MessageSquare,
-            },
-            {
-              label: t.waiting,
-              value: formatNumber(waitingCount),
-              icon: Clock,
-            },
-            {
-              label: t.responseRate,
-              value: formatPercent(responseRate),
-              icon: Check,
-            },
-          ].map(({ label, value, icon: Icon }) => (
-            <div
-              key={label}
-              className="orca-workspace-metric min-h-[84px]"
-            >
-              <div className="flex items-center justify-between gap-3 text-xs font-bold text-[var(--nc-text-secondary)]">
-                <span>{label}</span>
-                <Icon size={17} />
-              </div>
-              <strong className="mt-3 block text-2xl">{value}</strong>
-            </div>
-          ))}
-        </div>
-
-        <div className="orca-workspace-note flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
-          <span className="text-[var(--nc-text-secondary)]">
-            {t.matching}:
-          </span>
-          <strong>{formatNumber(visibleSource.length)}</strong>
-          <span className="text-[var(--nc-border)]">|</span>
-          <span className="text-[var(--nc-text-secondary)]">
-            {t.unread}:
-          </span>
-          <strong>{formatNumber(unreadCount)}</strong>
-          <span className="text-[var(--nc-border)]">|</span>
-          <span className="text-[var(--nc-text-secondary)]">
-            {t.latestFirst}
-          </span>
-        </div>
-
-        <div
-          dir="ltr"
-          className="grid min-w-0 gap-3 lg:grid-cols-[340px_minmax(0,1fr)]"
-          data-four-page-two-card-workspace
-        >
-          <aside
+        <OperationsExecutiveGrid dir="ltr" data-four-page-two-card-workspace>
+          <OperationsPanel
             dir={isArabic ? "rtl" : "ltr"}
             data-whatsapp-conversation-list
             data-operational-list-card
-            className={`orca-workspace-panel min-w-0 flex-col overflow-hidden lg:flex lg:h-[520px] ${
+            className={`min-w-0 flex-col overflow-hidden lg:flex ${
               mobileDetailOpen ? "hidden lg:flex" : "flex"
             }`}
           >
@@ -967,9 +1054,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
                       setPage(1);
                     }}
                     placeholder={t.search}
-                    className={`min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] py-2.5 text-sm outline-none focus:border-[var(--nc-accent-border)] ${
-                      isArabic ? "pl-3 pr-10" : "pl-10 pr-3"
-                    }`}
+                    className={`orca-operations-input ${isArabic ? "pl-3 pr-10" : "pl-10 pr-3"}`}
                   />
                 </label>
 
@@ -1002,7 +1087,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="orca-operations-flow-region p-2">
               {pageItems.length === 0 ? (
                 <div className="flex h-full min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-[var(--nc-border)] p-6 text-center text-sm text-[var(--nc-text-secondary)]">
                   {t.noConversations}
@@ -1020,7 +1105,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
                         data-whatsapp-row
                         aria-pressed={selected}
                         onClick={() => selectChat(chat.id)}
-                        className={`group flex h-[68px] w-full items-center gap-3 rounded-2xl border px-3 text-start outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-border)] ${
+                        className={`group flex h-[60px] w-full items-center gap-3 rounded-2xl border px-3 text-start outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-border)] ${
                           selected
                             ? "border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-accent)]"
                             : "border-[var(--nc-border)] bg-[var(--nc-surface-strong)] hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent)]"
@@ -1039,26 +1124,26 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
 
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center justify-between gap-2">
-                            <strong className="truncate text-sm">
+                            <strong className={`truncate ${operationsConversationTypography.listTitle}`}>
                               {safeName(chat)}
                             </strong>
                             <time
                               dir="ltr"
-                              className="shrink-0 text-[11px] text-[var(--nc-text-dim)]"
+                              className={`shrink-0 text-[var(--nc-text-dim)] ${operationsConversationTypography.metadata}`}
                             >
                               {formatDateTime(chat.time)}
                             </time>
                           </span>
 
                           <span className="mt-1 flex items-center justify-between gap-2">
-                            <span className="min-w-0 truncate text-xs text-[var(--nc-text-secondary)]">
+                            <span className={`min-w-0 truncate text-[var(--nc-text-secondary)] ${operationsConversationTypography.listSecondary}`}>
                               {cleanDisplayText(
                                 chat.lastMessage,
                                 t.noMessages,
                               )}
                             </span>
                             <span
-                              className={`inline-flex min-w-[78px] shrink-0 justify-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${status.className}`}
+                              className={`inline-flex min-w-[78px] shrink-0 justify-center rounded-full border px-2 py-0.5 font-bold ${operationsConversationTypography.statusBadge} ${status.className}`}
                             >
                               {status.label}
                             </span>
@@ -1120,19 +1205,19 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
                 </button>
               </div>
             </div>
-          </aside>
+          </OperationsPanel>
 
-          <section
+          <OperationsPanel
             dir={isArabic ? "rtl" : "ltr"}
             data-whatsapp-conversation-detail
             data-operational-detail-card
-            className={`orca-workspace-panel min-w-0 flex-col overflow-hidden lg:flex lg:h-[520px] ${
+            className={`min-w-0 flex-col overflow-hidden lg:flex ${
               mobileDetailOpen ? "flex" : "hidden lg:flex"
             }`}
           >
             {selectedChat ? (
               <>
-                <header className="flex min-h-[72px] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--nc-border)] px-4 py-3">
+                <header className="flex min-h-[64px] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--nc-border)] px-4 py-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <button
                       type="button"
@@ -1148,15 +1233,15 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
                     </button>
 
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-[var(--nc-accent)]">
+                      <p className={`font-bold text-[var(--nc-accent)] ${operationsConversationTypography.metadata}`}>
                         {connectionLabel}
                       </p>
-                      <h2 className="mt-1 truncate text-lg font-black">
+                      <h2 className={`mt-1 truncate font-black ${operationsConversationTypography.detailTitle}`}>
                         {safeName(selectedChat)}
                       </h2>
                       <p
                         dir="ltr"
-                        className="mt-1 text-xs text-[var(--nc-text-secondary)]"
+                        className={`mt-1 text-[var(--nc-text-secondary)] ${operationsConversationTypography.metadata}`}
                       >
                         +{normalizeWhatsAppPhone(selectedChat.contactPhone)}
                         {" · "}
@@ -1200,29 +1285,29 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
 
                 <div
                   data-whatsapp-context-strip
-                  className="flex min-h-[44px] shrink-0 flex-wrap items-center gap-x-6 gap-y-2 border-b border-[var(--nc-border)] px-4 py-2.5 text-xs"
+                  className="flex min-h-[44px] shrink-0 flex-wrap items-center gap-x-6 gap-y-2 border-b border-[var(--nc-border)] px-4 py-2.5"
                 >
-                  <span className="min-w-0 text-[var(--nc-text-secondary)]">
-                    {t.customer}:{" "}
-                    <strong className="text-[var(--nc-text-primary)]">
+                  <span className="min-w-0">
+                    <span className={`text-[var(--nc-text-secondary)] ${operationsConversationTypography.fieldLabel}`}>{t.customer}:</span>{" "}
+                    <strong className={`text-[var(--nc-text-primary)] ${operationsConversationTypography.fieldValue}`}>
                       {safeName(selectedChat)}
                     </strong>
                   </span>
-                  <span className="min-w-0 text-[var(--nc-text-secondary)]">
-                    {t.owner}:{" "}
-                    <strong className="text-[var(--nc-text-primary)]">
+                  <span className="min-w-0">
+                    <span className={`text-[var(--nc-text-secondary)] ${operationsConversationTypography.fieldLabel}`}>{t.owner}:</span>{" "}
+                    <strong className={`text-[var(--nc-text-primary)] ${operationsConversationTypography.fieldValue}`}>
                       {selectedChat.assignedUserName || t.unknownAgent}
                     </strong>
                   </span>
-                  <span className="text-[var(--nc-text-secondary)]">
-                    {t.priority}:{" "}
-                    <strong className="text-[var(--nc-text-primary)]">
+                  <span>
+                    <span className={`text-[var(--nc-text-secondary)] ${operationsConversationTypography.fieldLabel}`}>{t.priority}:</span>{" "}
+                    <strong className={`text-[var(--nc-text-primary)] ${operationsConversationTypography.fieldValue}`}>
                       {priorityLabel(selectedChat.leadPriority)}
                     </strong>
                   </span>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <OperationsScrollRegion scrollRole="conversation" className="px-4 py-3">
                   {selectedChat.messages.length === 0 ? (
                     <div className="flex h-full min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-[var(--nc-border)] p-6 text-center text-sm text-[var(--nc-text-secondary)]">
                       {t.noMessages}
@@ -1248,7 +1333,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
                                   : "border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-text-primary)]"
                               }`}
                             >
-                              <p className="whitespace-pre-wrap text-sm leading-6">
+                              <p className={`whitespace-pre-wrap ${operationsConversationTypography.messageBody}`}>
                                 {cleanDisplayText(
                                   message.text,
                                   t.noData,
@@ -1256,7 +1341,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
                               </p>
                               <p
                                 dir="ltr"
-                                className={`mt-0.5 text-[10px] ${
+                                className={`mt-0.5 ${operationsConversationTypography.metadata} ${
                                   isAgent
                                     ? "text-blue-100"
                                     : "text-[var(--nc-text-dim)]"
@@ -1273,7 +1358,7 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
                       })}
                     </div>
                   )}
-                </div>
+                </OperationsScrollRegion>
 
                 <footer className="shrink-0 border-t border-[var(--nc-border)] px-4 py-3">
                   <div
@@ -1295,24 +1380,29 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
                           void handleSend();
                         }
                       }}
-                      disabled={!whatsAppReachable || isSending}
+                      disabled={isSending}
                       rows={3}
                       placeholder={t.messagePlaceholder}
-                      className="min-h-[84px] max-h-[144px] w-full resize-y rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-4 py-3 text-sm leading-6 outline-none focus:border-[var(--nc-accent-border)] disabled:cursor-not-allowed disabled:opacity-60"
+                      className={`min-h-[84px] max-h-[144px] w-full resize-y rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-4 py-3 outline-none focus:border-[var(--nc-accent-border)] disabled:cursor-not-allowed disabled:opacity-60 ${operationsConversationTypography.composer}`}
                     />
-                    <button
-                      type="button"
-                      onClick={() => void handleSend()}
-                      disabled={
-                        !whatsAppReachable ||
-                        isSending ||
-                        !messageInput.trim()
-                      }
-                      className="nc-btn-primary inline-flex h-11 min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50 sm:w-[120px]"
-                    >
-                      <Send size={16} />
-                      {isSending ? t.sending : t.send}
-                    </button>
+                    {!whatsAppReachable ? (
+                      <a
+                        href="/operations/settings?tab=integrations&category=MESSAGING"
+                        className={`${operationsVisual.primaryButton} h-11 w-full sm:w-[120px]`}
+                      >
+                        {t.connectToSend}
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void handleSend()}
+                        disabled={isSending || !messageInput.trim()}
+                        className={`${operationsVisual.primaryButton} h-11 w-full sm:w-[120px]`}
+                      >
+                        <Send size={16} />
+                        {isSending ? t.sending : t.send}
+                      </button>
+                    )}
                   </div>
                 </footer>
               </>
@@ -1332,221 +1422,203 @@ export default function WhatsAppView({ initialChats, tenant, cloudStatus, curren
                 </div>
               </div>
             )}
-          </section>
-        </div>
+          </OperationsPanel>
+        </OperationsExecutiveGrid>
       </section>
-      {showNewForm && typeof document !== "undefined"
-        ? createPortal(
-            <div
-              className="fixed inset-x-0 bottom-0 top-[88px] z-[120] flex items-center justify-center bg-black/55 p-4"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="whatsapp-new-chat-title"
-            >
-              <form
-                onSubmit={handleNewChat}
-                className="max-h-full w-full max-w-md space-y-4 overflow-y-auto rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-6 text-right shadow-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      <OperationsDialog
+        open={showNewForm}
+        onClose={closeNewChat}
+        title={t.newChatTitle}
+        description={t.newChatCustomerHint}
+        closeLabel={t.newChatCancel}
+        closeDisabled={isCreatingChat}
+        dir={isArabic ? "rtl" : "ltr"}
+        footer={
+          <>
+            <button type="button" disabled={isCreatingChat} onClick={closeNewChat} className={operationsVisual.secondaryButton}>{t.newChatCancel}</button>
+            {!whatsAppReachable ? (
+              <a href="/operations/settings?tab=integrations&category=MESSAGING" className={operationsVisual.primaryButton}>{t.connectToSend}</a>
+            ) : (
+              <button form="whatsapp-new-chat-form" type="submit" disabled={isCreatingChat} className={operationsVisual.primaryButton}>{isCreatingChat ? t.sending : t.newChatSend}</button>
+            )}
+          </>
+        }
+      >
+        <form id="whatsapp-new-chat-form" onSubmit={handleNewChat} noValidate className="space-y-4">
+          {!whatsAppReachable ? (
+            <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
+              <p className="leading-6">{t.composeDisconnectedNotice}</p>
+            </div>
+          ) : null}
+          <OperationsFormField label={t.newChatCustomerSearch} hint={t.newChatCustomerHint}>
+            <div ref={customerPickerRef} className="relative">
+              <OperationsTextField
+                value={newCustomerQuery}
+                onFocus={() => setCustomerPickerOpen(true)}
+                onChange={(event) => {
+                  setNewCustomerQuery(event.target.value);
+                  setSelectedCustomer(null);
+                  setCustomerPickerOpen(true);
+                  setCustomerActiveIndex(-1);
+                  setNewChatError(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    setCustomerPickerOpen(true);
+                    setCustomerActiveIndex((current) =>
+                      customerResults.length === 0
+                        ? -1
+                        : Math.min(current < 0 ? 0 : current + 1, customerResults.length - 1),
+                    );
+                    return;
+                  }
+                  if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    setCustomerPickerOpen(true);
+                    setCustomerActiveIndex((current) =>
+                      customerResults.length === 0
+                        ? -1
+                        : Math.max(current <= 0 ? 0 : current - 1, 0),
+                    );
+                    return;
+                  }
+                  if (event.key === "Enter" && customerPickerOpen && customerActiveIndex >= 0) {
+                    const customer = customerResults[customerActiveIndex];
+                    if (customer) {
+                      event.preventDefault();
+                      chooseCustomer(customer);
+                    }
+                    return;
+                  }
+                  if (event.key === "Escape" && customerPickerOpen) {
+                    event.preventDefault();
+                    setCustomerPickerOpen(false);
+                  }
+                }}
+                placeholder={t.newChatCustomerSearch}
                 dir={isArabic ? "rtl" : "ltr"}
-              >
-                <h2
-                  id="whatsapp-new-chat-title"
-                  className="border-b border-[var(--nc-border)] pb-2 text-base font-bold text-[var(--nc-text-primary)]"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={customerPickerOpen}
+                aria-controls="whatsapp-customer-directory-listbox"
+                aria-activedescendant={customerActiveIndex >= 0 ? `whatsapp-customer-option-${customerActiveIndex}` : undefined}
+                autoComplete="off"
+              />
+
+              {customerPickerOpen ? (
+                <div
+                  data-whatsapp-customer-directory
+                  className="mt-2 overflow-hidden rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] shadow-xl"
                 >
-                  {t.newChatTitle}
-                </h2>
-
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
-                    {t.newChatCustomerSearch}
-                  </label>
-                  <input
-                    list="whatsapp-customer-options"
-                    value={newCustomerQuery}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setNewCustomerQuery(value);
-                      const normalized = normalizeWhatsAppPhone(value);
-                      const selected = customerOptions.find(
-                        (option) => option.phone === normalized,
-                      );
-                      const split = selected ? splitInternationalPhone(selected.phone) : null;
-                      if (split) {
-                        setNewCountryCode(split.countryCode);
-                        setNewPhone(split.localPhone);
-                        setNewChatError(null);
-                      }
-                    }}
-                    placeholder={t.newChatCustomerSearch}
-                    className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 py-2.5 text-sm text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-accent-border)]"
-                    dir={isArabic ? "rtl" : "ltr"}
-                  />
-                  <datalist id="whatsapp-customer-options">
-                    {customerOptions.map((option) => (
-                      <option key={option.phone} value={option.phone}>
-                        {option.name}
-                      </option>
-                    ))}
-                  </datalist>
-                  <p className="mt-1 text-[11px] text-[var(--nc-text-secondary)]">
-                    {t.newChatCustomerHint}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
-                    {t.newChatPhone}
-                  </label>
-                  <div className="grid grid-cols-[128px_1fr] gap-2">
-                    <select
-                      value={newCountryCode}
-                      onChange={(event) => {
-                        setNewCountryCode(event.target.value);
-                        setNewChatError(null);
-                      }}
-                      aria-label={t.newChatCountry}
-                      className="min-h-[44px] rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 py-2.5 text-sm text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-accent-border)]"
-                      dir="ltr"
-                    >
-                      {PHONE_COUNTRIES.map((country) => (
-                        <option key={country.code} value={country.code}>
-                          +{country.code} {isArabic ? country.ar : country.en}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="tel"
-                      value={newPhone}
-                      onChange={(event) => {
-                        setNewPhone(
-                          normalizeLocalPhone(event.target.value),
+                  <OperationsScrollRegion
+                    id="whatsapp-customer-directory-listbox"
+                    role="listbox"
+                    scrollRole="menu"
+                    className="overflow-y-auto overscroll-y-auto p-1"
+                    style={{ maxHeight: "168px" }}
+                  >
+                    {customerSearchLoading ? (
+                      <div className={`px-3 py-3 text-[var(--nc-text-secondary)] ${operationsConversationTypography.listSecondary}`}>
+                        {t.customerSearchLoading}
+                      </div>
+                    ) : customerSearchError ? (
+                      <div role="alert" className={`px-3 py-3 text-rose-600 dark:text-rose-300 ${operationsConversationTypography.listSecondary}`}>
+                        {customerSearchError}
+                      </div>
+                    ) : customerResults.length === 0 ? (
+                      <div className={`px-3 py-3 text-[var(--nc-text-secondary)] ${operationsConversationTypography.listSecondary}`}>
+                        {t.customerSearchEmpty}
+                      </div>
+                    ) : (
+                      customerResults.map((customer, index) => {
+                        const leadStatus = customerLeadStatusLabel(customer.leadStatus);
+                        const active = index === customerActiveIndex;
+                        return (
+                          <div
+                            key={customer.key}
+                            id={`whatsapp-customer-option-${index}`}
+                            role="option"
+                            aria-selected={active}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onMouseEnter={() => setCustomerActiveIndex(index)}
+                            onClick={() => chooseCustomer(customer)}
+                            className={`cursor-pointer rounded-lg px-3 py-2.5 outline-none transition ${active ? "bg-[var(--nc-surface-soft)]" : "hover:bg-[var(--nc-surface-soft)]"}`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className={`truncate text-[var(--nc-text-primary)] ${operationsConversationTypography.listTitle}`}>{customer.name}</div>
+                                <div dir="ltr" className={`mt-0.5 text-start text-[var(--nc-text-secondary)] ${operationsConversationTypography.listSecondary}`}>{displayCustomerPhone(customer.phone)}</div>
+                              </div>
+                              <div className="flex max-w-[58%] flex-wrap justify-end gap-1.5">
+                                <span className={`rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-2 py-0.5 text-[var(--nc-text-secondary)] ${operationsConversationTypography.statusBadge}`}>{customerConversationLabel(customer.conversationStatus)}</span>
+                                <span className={`rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-2 py-0.5 text-[var(--nc-text-secondary)] ${operationsConversationTypography.statusBadge}`}>{customer.assignedUserName || t.customerUnassigned}</span>
+                                {leadStatus ? <span className={`rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-2 py-0.5 text-[var(--nc-text-secondary)] ${operationsConversationTypography.statusBadge}`}>{leadStatus}</span> : null}
+                                {customer.leadArchived ? <span className={`rounded-full border border-slate-500/30 bg-slate-500/10 px-2 py-0.5 text-slate-600 dark:text-slate-300 ${operationsConversationTypography.statusBadge}`}>{t.customerArchivedRecord}</span> : null}
+                              </div>
+                            </div>
+                          </div>
                         );
-                        setNewChatError(null);
-                      }}
-                      placeholder="551234567"
-                      required
-                      className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 py-2.5 text-sm text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-accent-border)]"
-                      dir="ltr"
-                    />
-                  </div>
+                      })
+                    )}
+                  </OperationsScrollRegion>
                 </div>
+              ) : null}
+            </div>
 
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]">
-                    {t.newChatMessage}
-                  </label>
-                  <textarea
-                    value={newMessage}
-                    onChange={(event) => {
-                      setNewMessage(event.target.value);
-                      setNewChatError(null);
-                    }}
-                    placeholder={t.messagePlaceholder}
-                    required
-                    rows={3}
-                    className="min-h-[112px] w-full resize-none rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-3 py-2.5 text-base text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-accent-border)]"
-                  />
-                </div>
+          </OperationsFormField>
+          <OperationsFormField label={t.newChatPhone} error={newChatError || undefined}>
+            <div className="grid grid-cols-[128px_1fr] gap-2">
+              <SettingsSelect
+                value={newCountryCode}
+                onChange={(value) => {
+                  setNewCountryCode(value);
+                  setSelectedCustomer(null);
+                  setNewChatError(null);
+                }}
+                aria-label={t.newChatCountry}
+                dir="ltr"
+                options={PHONE_COUNTRIES.map((country) => ({
+                  value: country.code,
+                  label: `+${country.code} ${isArabic ? country.ar : country.en}`,
+                }))}
+                className="w-full"
+              />
+              <OperationsTextField type="tel" value={newPhone} onChange={(event) => { setNewPhone(normalizeLocalPhone(event.target.value)); setSelectedCustomer(null); setNewChatError(null); }} placeholder="551234567" dir="ltr" />
+            </div>
+          </OperationsFormField>
+          <OperationsFormField label={t.newChatMessage}>
+            <OperationsTextareaField value={newMessage} onChange={(event) => { setNewMessage(event.target.value); setNewChatError(null); }} placeholder={t.messagePlaceholder} rows={3} className={operationsConversationTypography.composer} />
+          </OperationsFormField>
+        </form>
+      </OperationsDialog>
 
-                {newChatError ? (
-                  <div
-                    role="alert"
-                    className="rounded-xl border border-red-400/40 bg-red-500/10 px-3 py-2.5 text-sm text-red-700 dark:text-red-200"
-                  >
-                    <p className="font-semibold">{t.newChatErrorTitle}</p>
-                    <p className="mt-1 leading-5">{newChatError}</p>
-                  </div>
-                ) : null}
-
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="submit"
-                    disabled={isCreatingChat || !whatsAppReachable}
-                    aria-busy={isCreatingChat}
-                    className="nc-btn-primary min-h-[44px] flex-1 rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isCreatingChat ? t.sending : t.newChatSend}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isCreatingChat}
-                    onClick={closeNewChat}
-                    className="nc-btn-ghost min-h-[44px] flex-1 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-70"
-                  >
-                    {t.newChatCancel}
-                  </button>
-                </div>
-              </form>
-            </div>,
-            document.body,
-          )
-        : null}
-
-      {showAssign && selectedChat && typeof document !== "undefined"
-        ? createPortal(
-            <div
-              className="fixed inset-x-0 bottom-0 top-[88px] z-[120] flex items-center justify-center bg-black/55 p-4"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="whatsapp-assign-title"
-            >
-              <div
-                className="max-h-full w-full max-w-sm space-y-3 overflow-y-auto rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-5 shadow-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                dir={isArabic ? "rtl" : "ltr"}
-              >
-                <h2
-                  id="whatsapp-assign-title"
-                  className="border-b border-[var(--nc-border)] pb-2 text-base font-bold text-[var(--nc-text-primary)]"
-                >
-                  {t.assignTitle}
-                </h2>
-                <p className="text-xs text-[var(--nc-text-secondary)]">
-                  {safeName(selectedChat)}
-                </p>
-
-                {loadingUsers ? (
-                  <p className="py-4 text-center text-sm text-[var(--nc-text-secondary)]">
-{t.loadingTeam}
-                  </p>
-                ) : users.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-[var(--nc-text-secondary)]">
-{t.noTeam}
-                  </p>
-                ) : (
-                  <div className="max-h-64 space-y-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {users.map((user) => (
-                      <button
-                        key={user.id}
-                        type="button"
-                        onClick={() =>
-                          handleAssign(user.id, user.name)
-                        }
-                        disabled={Boolean(assigningUserId)}
-                        aria-busy={assigningUserId === user.id}
-                        className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5 text-right text-sm font-semibold text-[var(--nc-text-primary)] hover:bg-[var(--nc-surface)] disabled:cursor-wait disabled:opacity-60"
-                      >
-                        <span>{user.name}</span>
-                        {selectedChat.assignedUserId === user.id ? (
-                          <span className="text-xs text-[var(--nc-accent-text)]">
-                            ✓
-                          </span>
-                        ) : null}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setShowAssign(false)}
-                  className="nc-btn-ghost min-h-[44px] w-full rounded-xl text-sm font-semibold"
-                >
-                  {isArabic ? "إلغاء" : "Cancel"}
-                </button>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
+      <OperationsDialog
+        open={showAssign && Boolean(selectedChat)}
+        onClose={() => setShowAssign(false)}
+        title={t.assignTitle}
+        description={selectedChat ? safeName(selectedChat) : undefined}
+        closeLabel={isArabic ? "إلغاء" : "Cancel"}
+        closeDisabled={Boolean(assigningUserId)}
+        dir={isArabic ? "rtl" : "ltr"}
+        footer={<button type="button" onClick={() => setShowAssign(false)} className={operationsVisual.secondaryButton}>{isArabic ? "إلغاء" : "Cancel"}</button>}
+      >
+        {loadingUsers ? (
+          <OperationsEmptyState>{t.loadingTeam}</OperationsEmptyState>
+        ) : users.length === 0 ? (
+          <OperationsEmptyState>{t.noTeam}</OperationsEmptyState>
+        ) : (
+          <OperationsScrollRegion scrollRole="menu">
+            <OperationsMasterList>
+              {users.map((user) => (
+                <OperationsMasterRow key={user.id} selected={selectedChat?.assignedUserId === user.id} onClick={() => handleAssign(user.id, user.name)} disabled={Boolean(assigningUserId)} className="flex min-h-[44px] items-center justify-between gap-2 px-3 py-2.5 text-sm font-semibold">
+                  <span>{user.name}</span>{selectedChat?.assignedUserId === user.id ? <span className="text-xs text-[var(--nc-accent-text)]">✓</span> : null}
+                </OperationsMasterRow>
+              ))}
+            </OperationsMasterList>
+          </OperationsScrollRegion>
+        )}
+      </OperationsDialog>
 
     </>
   );

@@ -1,9 +1,28 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshCw, Search } from 'lucide-react';
+import {
+  CheckCircle2,
+  Clock3,
+  ExternalLink,
+  RefreshCw,
+  Search,
+  WalletCards,
+  XCircle,
+} from 'lucide-react';
 import SettingsSelect from '@/components/settings/SettingsSelect';
-import { Card } from '@/components/ui/orca-components';
+import {
+  OPERATIONS_TABLE_PAGE_SIZE,
+  OperationsKpiGrid,
+  OperationsMetricCard,
+  OperationsPagination,
+  OperationsPanel,
+  OperationsPanelHeader,
+  OperationsRowAction,
+  OperationsRowActions,
+  OperationsTableToolbar,
+  OperationsTextField,
+} from '@/components/operations';
 import { formatShortId } from '@/lib/ui-formatters';
 import {
   displayEntitySafe,
@@ -65,7 +84,7 @@ interface PaymentsWorkspaceProps {
   onOpenLease: (leaseId: string) => void;
 }
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = OPERATIONS_TABLE_PAGE_SIZE;
 
 export default function PaymentsWorkspace({
   locale,
@@ -148,60 +167,72 @@ export default function PaymentsWorkspace({
   };
 
   return (
-    <div className="space-y-4 fade-in-up" data-payments-workspace>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="p-4">
-          <span className="text-[10px] font-bold text-[var(--nc-text-dim)]">{L('إجمالي المحصل', 'Total collected')}</span>
-          <strong className="mt-2 block text-lg text-white">{formatMoneyValue(completedTotal, locale)}</strong>
-        </Card>
-        <Card className="p-4">
-          <span className="text-[10px] font-bold text-[var(--nc-text-dim)]">{L('دفعات مكتملة', 'Completed payments')}</span>
-          <strong className="mt-2 block text-lg text-emerald-400">{formatNumberValue(completed.length, locale)}</strong>
-        </Card>
-        <Card className="p-4">
-          <span className="text-[10px] font-bold text-[var(--nc-text-dim)]">{L('قيد المعالجة', 'In progress')}</span>
-          <strong className="mt-2 block text-lg text-warning">{formatNumberValue(pendingCount, locale)}</strong>
-        </Card>
-        <Card className="p-4">
-          <span className="text-[10px] font-bold text-[var(--nc-text-dim)]">{L('فشلت أو ألغيت', 'Failed or cancelled')}</span>
-          <strong className="mt-2 block text-lg text-rose-400">{formatNumberValue(failedCount, locale)}</strong>
-        </Card>
-      </div>
+    <div className="space-y-3" data-payments-workspace>
+      <OperationsKpiGrid>
+        <OperationsMetricCard
+          title={L('إجمالي المحصل', 'Total collected')}
+          value={formatMoneyValue(completedTotal, locale)}
+          description={L('دفعات مكتملة فعليًا', 'Completed payments only')}
+          icon={WalletCards}
+        />
+        <OperationsMetricCard
+          title={L('دفعات مكتملة', 'Completed payments')}
+          value={formatNumberValue(completed.length, locale)}
+          description={L('معاملات مكتملة أو مدفوعة', 'Completed or paid transactions')}
+          icon={CheckCircle2}
+        />
+        <OperationsMetricCard
+          title={L('قيد المعالجة', 'In progress')}
+          value={formatNumberValue(pendingCount, locale)}
+          description={L('معلقة أو قيد الإنشاء', 'Pending or processing')}
+          icon={Clock3}
+        />
+        <OperationsMetricCard
+          title={L('فشلت أو ألغيت', 'Failed or cancelled')}
+          value={formatNumberValue(failedCount, locale)}
+          description={L('تحتاج مراجعة تشغيلية', 'Needs operational review')}
+          icon={XCircle}
+        />
+      </OperationsKpiGrid>
 
-      {fetchError && (
+      {fetchError ? (
         <div className="flex items-center justify-between gap-3 rounded-xl border border-warning/20 bg-warning/10 px-4 py-3 text-xs text-warning">
           <span>{fetchError}</span>
           <button
             type="button"
             onClick={() => void retry()}
             disabled={retrying}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-warning/30 px-3 py-1.5 font-bold hover:bg-warning/10 disabled:opacity-50"
+            className="orca-operations-secondary-button"
           >
-            <RefreshCw size={12} className={retrying ? 'animate-spin' : ''} />
+            <RefreshCw size={13} className={retrying ? 'animate-spin' : ''} />
             {L('إعادة المحاولة', 'Retry')}
           </button>
         </div>
-      )}
+      ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-white/5 bg-[var(--nc-surface-strong)]">
-        <div className="flex flex-col gap-4 border-b border-white/5 bg-[var(--nc-surface-solid)] p-4 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-white">{L('سجل المدفوعات', 'Payments ledger')}</h3>
-            <p className="mt-0.5 text-[11px] text-[var(--nc-text-dim)]">{L('معاملات حقيقية مرتبطة بالفواتير والعقود وخطط الدفع والأقساط عند توفرها.', 'Real transactions linked to invoices, contracts, payment plans, and installments when available.')}</p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <div className="relative">
-              <Search className="absolute right-3 top-2.5 text-[var(--nc-text-dim)]" size={13} />
-              <input
+      <OperationsPanel className="overflow-hidden">
+        <OperationsPanelHeader
+          title={L('سجل المدفوعات', 'Payments ledger')}
+          description={L(
+            'معاملات مرتبطة بالفواتير والعقود وخطط الدفع والأقساط عند توفرها.',
+            'Transactions linked to invoices, contracts, payment plans, and installments when available.',
+          )}
+        />
+
+        <OperationsTableToolbar data-payments-toolbar>
+          <div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center">
+            <div className="relative min-w-0 lg:flex-1">
+              <Search className="absolute right-3 top-3.5 text-[var(--nc-text-dim)]" size={13} />
+              <OperationsTextField
                 type="text"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={L('بحث بالعميل أو الفاتورة أو العقد...', 'Search customer, invoice, or contract...')}
-                className="w-full rounded-xl border border-white/10 bg-[var(--nc-surface-strong)] py-2 pl-3 pr-8 text-xs text-white outline-none focus:border-[var(--nc-op-blue-border)] sm:w-64"
+                className="w-full pl-3 pr-8"
               />
             </div>
             <SettingsSelect
-              className="w-full sm:w-40"
+              className="w-full lg:w-44"
               placement="bottom"
               value={statusFilter}
               aria-label={L('تصفية حالة الدفع', 'Filter payment status')}
@@ -212,7 +243,7 @@ export default function PaymentsWorkspace({
               ]}
             />
             <SettingsSelect
-              className="w-full sm:w-40"
+              className="w-full lg:w-44"
               placement="bottom"
               value={providerFilter}
               aria-label={L('تصفية مزود الدفع', 'Filter payment provider')}
@@ -223,25 +254,25 @@ export default function PaymentsWorkspace({
               ]}
             />
           </div>
-        </div>
+        </OperationsTableToolbar>
 
-        <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <table className="nc-table nc-table-striped">
+        <div className="orca-contracts-table-scroll">
+          <table className="nc-table nc-table-striped orca-contracts-data-table">
             <thead>
               <tr>
-                <th>{L('التاريخ', 'Date')}</th>
-                <th>{L('العميل / الوحدة', 'Customer / Unit')}</th>
-                <th>{L('الفاتورة / القسط', 'Invoice / Installment')}</th>
-                <th>{L('المبلغ', 'Amount')}</th>
-                <th>{L('الطريقة / المزود', 'Method / Provider')}</th>
-                <th>{L('الحالة', 'Status')}</th>
-                <th>{L('الارتباط', 'Link')}</th>
+                <th className="orca-date-column">{L('التاريخ', 'Date')}</th>
+                <th className="orca-text-column">{L('العميل / الوحدة', 'Customer / Unit')}</th>
+                <th className="orca-reference-column">{L('الفاتورة / القسط', 'Invoice / Installment')}</th>
+                <th className="orca-number-column">{L('المبلغ', 'Amount')}</th>
+                <th className="orca-text-column">{L('الطريقة / المزود', 'Method / Provider')}</th>
+                <th className="orca-status-column">{L('الحالة', 'Status')}</th>
+                <th className="orca-single-action-column">{L('الارتباط', 'Link')}</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="!py-10 text-center text-xs font-medium text-[var(--nc-text-dim)]">
+                  <td colSpan={7} className="!py-8 text-center text-xs font-medium text-[var(--nc-text-dim)]">
                     {L('لا توجد مدفوعات مطابقة', 'No matching payments')}
                   </td>
                 </tr>
@@ -252,52 +283,55 @@ export default function PaymentsWorkspace({
                     : null;
                   const canOpenSaleContract = payment.invoice?.type === 'SALE' && Boolean(payment.contractId);
                   const canOpenLease = payment.invoice?.type === 'RENTAL' && Boolean(payment.invoice?.leaseId);
+                  const canOpenContract = canOpenSaleContract || canOpenLease;
+                  const actionLabel = canOpenSaleContract
+                    ? L('فتح عقد البيع', 'Open sales contract')
+                    : canOpenLease
+                      ? L('فتح عقد الإيجار', 'Open rental lease')
+                      : L('فتح العقد', 'Open contract');
 
                   return (
-                    <tr key={payment.id}>
-                      <td className="!py-2 whitespace-nowrap">{formatDateValue(payment.date, locale)}</td>
-                      <td className="min-w-[160px] !py-2">
-                        <div className="max-w-[180px] truncate text-white">{displayPersonSafe(payment.customerName, locale)}</div>
-                        <div className="max-w-[180px] truncate text-[10px] text-[var(--nc-text-dim)]">{displayEntitySafe(payment.unitName, 'unit', locale)}</div>
+                    <tr key={payment.id} className="orca-data-row">
+                      <td className="orca-date-column">{formatDateValue(payment.date, locale)}</td>
+                      <td className="min-w-[170px]">
+                        <div className="orca-table-primary max-w-[190px] truncate text-white">{displayPersonSafe(payment.customerName, locale)}</div>
+                        <div className="orca-table-secondary max-w-[190px] truncate text-[var(--nc-text-dim)]">{displayEntitySafe(payment.unitName, 'unit', locale)}</div>
                       </td>
-                      <td className="min-w-[140px] !py-2">
-                        <div className="font-bold text-white">{invoiceLabel || formatShortId(payment.invoiceId || payment.id)}</div>
-                        <div className="text-[10px] text-[var(--nc-text-dim)]">
+                      <td className="min-w-[150px]">
+                        <div className="orca-table-primary font-bold text-white">{invoiceLabel || formatShortId(payment.invoiceId || payment.id)}</div>
+                        <div className="orca-table-secondary text-[var(--nc-text-dim)]">
                           {payment.installment
                             ? L(`القسط ${formatNumberValue(payment.installment.installmentNumber, locale)}`, `Installment ${formatNumberValue(payment.installment.installmentNumber, locale)}`)
                             : L('دون قسط محدد', 'No installment')}
                         </div>
                       </td>
-                      <td className="!py-2 whitespace-nowrap font-bold text-white">{formatMoneyValue(payment.amount, locale)}</td>
-                      <td className="min-w-[130px] !py-2">
+                      <td className="orca-number-column font-bold text-white">{formatMoneyValue(payment.amount, locale)}</td>
+                      <td className="min-w-[140px]">
                         <div>{paymentMethodLabel(payment.method, locale)}</div>
-                        <div className="text-[10px] text-[var(--nc-text-dim)]">{paymentProviderLabel(payment.provider, locale)}</div>
+                        <div className="orca-table-secondary text-[var(--nc-text-dim)]">{paymentProviderLabel(payment.provider, locale)}</div>
                       </td>
-                      <td className="!py-2 whitespace-nowrap">
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black ${paymentStatusBadgeClass(payment.status)}`}>
+                      <td className="whitespace-nowrap">
+                        <span className={`inline-flex min-w-[86px] justify-center rounded-full px-2.5 py-1 font-black orca-table-badge ${paymentStatusBadgeClass(payment.status)}`}>
                           {paymentStatusLabel(payment.status, locale)}
                         </span>
                       </td>
-                      <td className="!py-2 whitespace-nowrap">
-                        {canOpenSaleContract && payment.contractId ? (
-                          <button
-                            type="button"
-                            onClick={() => onOpenSaleContract(payment.contractId as string)}
-                            className="rounded-lg border border-[var(--nc-op-blue)]/20 px-2.5 py-1 text-[10px] font-bold text-[var(--nc-op-blue)] hover:border-[var(--nc-op-blue)]/40"
+                      <td className="orca-single-action-column">
+                        <OperationsRowActions label={L('ارتباط الدفعة', 'Payment link')}>
+                          <OperationsRowAction
+                            icon={ExternalLink}
+                            available={canOpenContract}
+                            unavailableReason={L('لا يوجد عقد مرتبط قابل للفتح', 'No linked contract is available')}
+                            onClick={() => {
+                              if (canOpenSaleContract && payment.contractId) {
+                                onOpenSaleContract(payment.contractId);
+                              } else if (canOpenLease && payment.invoice?.leaseId) {
+                                onOpenLease(payment.invoice.leaseId);
+                              }
+                            }}
                           >
-                            {L('فتح عقد البيع', 'Open sales contract')}
-                          </button>
-                        ) : canOpenLease && payment.invoice?.leaseId ? (
-                          <button
-                            type="button"
-                            onClick={() => onOpenLease(payment.invoice?.leaseId as string)}
-                            className="rounded-lg border border-[var(--nc-op-blue)]/20 px-2.5 py-1 text-[10px] font-bold text-[var(--nc-op-blue)] hover:border-[var(--nc-op-blue)]/40"
-                          >
-                            {L('فتح عقد الإيجار', 'Open rental lease')}
-                          </button>
-                        ) : (
-                          <span className="text-[10px] text-warning">{L('ارتباط غير مكتمل', 'Incomplete link')}</span>
-                        )}
+                            {actionLabel}
+                          </OperationsRowAction>
+                        </OperationsRowActions>
                       </td>
                     </tr>
                   );
@@ -307,33 +341,15 @@ export default function PaymentsWorkspace({
           </table>
         </div>
 
-        {filteredPayments.length > PAGE_SIZE && (
-          <div className="flex flex-col gap-2 border-t border-[var(--nc-glass-border)] px-4 py-3 text-xs text-[var(--nc-text-dim)] sm:flex-row sm:items-center sm:justify-between">
-            <span className="font-bold">{formatNumberValue(rangeStart, locale)}-{formatNumberValue(rangeEnd, locale)} {L('من', 'of')} {formatNumberValue(filteredPayments.length, locale)}</span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setPage((current) => Math.max(0, current - 1))}
-                disabled={normalizedPage === 0}
-                className="rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-1.5 font-bold text-[var(--nc-foreground)] disabled:cursor-not-allowed disabled:opacity-30"
-              >
-                {L('السابق', 'Previous')}
-              </button>
-              <span className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 font-mono text-[var(--nc-foreground)]">
-                {L('صفحة', 'Page')} {formatNumberValue(normalizedPage + 1, locale)} {L('من', 'of')} {formatNumberValue(totalPages, locale)}
-              </span>
-              <button
-                type="button"
-                onClick={() => setPage((current) => Math.min(totalPages - 1, current + 1))}
-                disabled={normalizedPage >= totalPages - 1}
-                className="rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-1.5 font-bold text-[var(--nc-foreground)] disabled:cursor-not-allowed disabled:opacity-30"
-              >
-                {L('التالي', 'Next')}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+        <OperationsPagination
+          page={normalizedPage}
+          totalPages={totalPages}
+          totalItems={filteredPayments.length}
+          pageSize={PAGE_SIZE}
+          locale={locale}
+          onPageChange={setPage}
+        />
+      </OperationsPanel>
     </div>
   );
 }

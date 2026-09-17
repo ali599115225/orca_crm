@@ -5,8 +5,6 @@ import {
   Home,
   MapPin,
   FileText,
-  ChevronRight,
-  ChevronLeft,
   Activity,
   DollarSign,
   FileCheck,
@@ -19,6 +17,7 @@ import { getPropertiesAction, bookUnitActionDirect, completeHandoverActionDirect
 import { displayEntity, displayEnum, displayGeo } from '@/lib/display';
 import type { DisplayLocale } from '@/lib/display';
 import { formatDisplayDate } from '@/lib/display/dateTime';
+import { OperationsBackAction } from '@/components/operations';
 
 interface PropertyDetailProps {
   propertyId: string;
@@ -564,13 +563,13 @@ export default function PropertyDetail({
   }
 
   if (!property) {
-    const BackIcon = isArabic ? ChevronRight : ChevronLeft;
     return (
       <div className="p-6" dir={isArabic ? 'rtl' : 'ltr'}>
-        <button onClick={onBack} className={ghostButtonClass}>
-          <BackIcon size={14} />
-          {labels.backToList}
-        </button>
+        <OperationsBackAction
+          onClick={onBack}
+          label={labels.backToList}
+          locale={locale}
+        />
         <div className="mt-4 rounded-xl border border-rose-500/25 bg-rose-500/10 p-4 text-xs text-rose-600 dark:text-rose-300">
           {labels.notFound}
         </div>
@@ -582,14 +581,14 @@ export default function PropertyDetail({
     property.handoverCompleted || property.financialSettlementId || property.handovers?.some((h: any) => h.status === 'Completed')
   );
 
-  const BackIcon = isArabic ? ChevronRight : ChevronLeft;
-
   return (
     <div className="properties-page p-6 text-[var(--nc-text-primary)]" dir={isArabic ? 'rtl' : 'ltr'}>
-      <button onClick={onBack} className={`${ghostButtonClass} mb-4`}>
-        <BackIcon size={14} />
-        {labels.backToList}
-      </button>
+      <OperationsBackAction
+        onClick={onBack}
+        label={labels.backToList}
+        locale={locale}
+        className="mb-4"
+      />
 
       <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 shadow-sm mb-6">
         <div className="flex flex-col gap-5 md:flex-row md:items-start">

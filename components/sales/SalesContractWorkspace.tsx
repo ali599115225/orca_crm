@@ -1,10 +1,11 @@
 "use client";
+
+import SettingsSelect from "@/components/settings/SettingsSelect";
 import { displayUiAlias } from "@/lib/display/uiAliases";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  ArrowRight,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -26,6 +27,20 @@ import {
 import FinancialLifecycleProgress, {
   type FinancialLifecycleStage,
 } from "@/components/contracts-payments/FinancialLifecycleProgress";
+import {
+  OperationsBackAction,
+  OperationsEmptyState,
+  OperationsExecutiveGrid,
+  OperationsFormField,
+  OperationsKpiGrid,
+  OperationsMetricCard,
+  OperationsNumberField,
+  OperationsPageHeader,
+  OperationsPanel,
+  OperationsTabs,
+  OperationsTextareaField,
+} from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
 
 type Locale = "ar" | "en";
 type Tab = "overview" | "payment-plan" | "installments" | "payments" | "amendments" | "documents" | "timeline";
@@ -198,15 +213,16 @@ function remainingBalanceLabel(
   value: number,
   locale: Locale,
 ) {
-  if (!hasInvoice) {
-    return text(
-      locale,
-      "بانتظار إصدار الفاتورة",
-      "Awaiting invoice issuance",
-    );
-  }
-
+  if (!hasInvoice) return "—";
   return money(value, locale);
+}
+
+function awaitingInvoiceLabel(locale: Locale) {
+  return text(
+    locale,
+    "بانتظار إصدار الفاتورة",
+    "Awaiting invoice issuance",
+  );
 }
 
 function shortDate(value?: string | null) {
@@ -261,6 +277,7 @@ function timelineActionLabel(action: string, locale: Locale): string {
 
   const map: Record<string, [string, string]> = {
     SIGN_CONTRACT: ["توقيع العقد", "Contract signed"],
+    CREATE: ["إنشاء", "Created"],
     CREATE_CONTRACT: ["إنشاء العقد", "Contract created"],
     CREATE_DRAFT_CONTRACT: ["إنشاء مسودة العقد", "Draft contract created"],
     CREATE_CONTRACT_DRAFT: ["إنشاء مسودة العقد", "Draft contract created"],
@@ -840,149 +857,159 @@ export default function SalesContractWorkspace({
   return (
     <main
       dir={locale === "ar" ? "rtl" : "ltr"}
-      className="nc-page nc-stack orca-container pb-10"
+      className={operationsVisual.page}
+      data-sales-contract-dashboard-contract
     >
-      <div className="orca-workspace-panel orca-contract-header flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-start gap-3">
-          <button
-            type="button"
-            onClick={() => router.push("/operations/rental/sales")}
-            className="mt-0.5 rounded-xl border border-[var(--nc-glass-border)] p-2 text-[var(--nc-text-secondary)]"
-            aria-label={L("العودة", "Back")}
+      <div className={operationsVisual.pageStack}>
+        <OperationsPageHeader
+          eyebrow={contract.unit.project.name}
+          title={`${contract.unit.unitNumber} · ${contract.buyerName}`}
+          description={[
+            statusLabel(contract.status, locale),
+            contract.invoice
+              ? `${contract.invoice.invoicePrefix}-${contract.invoice.invoiceNumber}`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+          actions={
+            <>
+              <OperationsBackAction
+                href="/operations/rental/sales"
+                label={L("العودة إلى عقود البيع", "Back to sales contracts")}
+                locale={locale}
+              />
+
+              {contract.status === "PENDING_SIGNATURE" && !contract.legacyFinancial ? (
+                <button
+                  type="button"
+                  onClick={() => void signPendingContract()}
+                  disabled={busy !== ""}
+                  className={operationsVisual.primaryButton}
+                >
+                  <CheckCircle2 size={15} aria-hidden="true" />
+                  {L("تأكيد التوقيع", "Confirm signature")}
+                </button>
+              ) : null}
+
+              {nextInstallment && !contract.legacyFinancial ? (
+                <button
+                  type="button"
+                  onClick={() => void payInstallment(nextInstallment)}
+                  disabled={busy !== ""}
+                  className={operationsVisual.secondaryButton}
+                >
+                  <CreditCard size={15} aria-hidden="true" />
+                  {L("دفع القسط التالي", "Pay next installment")}
+                </button>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={() => void load()}
+                disabled={loading || busy !== ""}
+                className={operationsVisual.iconButton}
+                aria-label={L("تحديث العقد", "Refresh contract")}
+                title={L("تحديث", "Refresh")}
+              >
+                <RefreshCw
+                  size={15}
+                  className={loading ? "animate-spin" : ""}
+                  aria-hidden="true"
+                />
+              </button>
+            </>
+          }
+        />
+
+        {error ? (
+          <div
+            role="alert"
+            className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-bold text-rose-300"
           >
-            <ArrowRight size={16} className={locale === "en" ? "rotate-180" : ""} />
-          </button>
-          <div>
-            <p className="text-[11px] text-[var(--nc-text-dim)]">
-              {contract.unit.project.name}
-            </p>
-            <h1 className="mt-1 text-xl font-black text-[var(--nc-text-primary)]">
-              {contract.unit.unitNumber} · {contract.buyerName}
-            </h1>
-            <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
-              {statusLabel(contract.status, locale)}
-              {contract.invoice
-                ? ` · ${contract.invoice.invoicePrefix}-${contract.invoice.invoiceNumber}`
-                : ""}
-            </p>
+            {error}
           </div>
-        </div>
+        ) : null}
 
-        <div className="flex flex-wrap items-center gap-2">
-          {contract.status === "PENDING_SIGNATURE" && !contract.legacyFinancial && (
+        {notice ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs font-bold text-emerald-200"
+          >
+            <span>{notice}</span>
             <button
               type="button"
-              onClick={() => void signPendingContract()}
-              disabled={busy !== ""}
-              className="inline-flex items-center gap-2 rounded-xl bg-[var(--nc-accent)] px-4 py-2 text-xs font-black text-slate-950 disabled:opacity-40"
+              onClick={() => setNotice("")}
+              className={operationsVisual.ghostButton}
+              aria-label={L("إغلاق الإشعار", "Dismiss notification")}
             >
-              <CheckCircle2 size={15} />
-              {L("تأكيد التوقيع", "Confirm signature")}
+              ×
             </button>
-          )}
-          {nextInstallment && !contract.legacyFinancial && (
-            <button
-              type="button"
-              onClick={() => void payInstallment(nextInstallment)}
-              disabled={busy !== ""}
-              className="inline-flex items-center gap-2 rounded-xl bg-[var(--nc-accent)] px-4 py-2 text-xs font-black text-slate-950 disabled:opacity-40"
-            >
-              <CreditCard size={15} />
-              {L("دفع القسط التالي", "Pay next installment")}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => void load()}
-            disabled={loading || busy !== ""}
-            className="inline-flex items-center gap-2 rounded-xl border border-[var(--nc-glass-border)] px-4 py-2 text-xs font-bold text-[var(--nc-text-primary)] disabled:opacity-40"
-          >
-            <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
-            {L("تحديث", "Refresh")}
-          </button>
-        </div>
-      </div>
-      {error && (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-bold text-rose-300">
-          {error}
-        </div>
-      )}
+          </div>
+        ) : null}
 
-      {notice && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed left-6 top-24 z-[80] flex max-w-sm items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-950/95 px-4 py-3 text-xs font-bold text-emerald-200 shadow-2xl backdrop-blur"
-        >
-          <span className="flex-1">{notice}</span>
-          <button
-            type="button"
-            onClick={() => setNotice("")}
-            className="rounded-md px-1.5 text-sm leading-none text-emerald-100/80 hover:bg-white/10"
-            aria-label={L("إغلاق الإشعار", "Dismiss notification")}
-          >
-            ×
-          </button>
-        </div>
-      )}
+        {contract.legacyFinancial ? (
+          <div className="rounded-xl border border-slate-500/30 bg-slate-500/10 px-4 py-3 text-xs text-[var(--nc-text-secondary)]">
+            {L(
+              "هذا عقد تاريخي للعرض فقط ولا يقبل دفعات أو تعديلات جديدة.",
+              "This legacy contract is read-only and cannot accept new payments or amendments.",
+            )}
+          </div>
+        ) : null}
 
-      {contract.legacyFinancial && (
-        <div className="rounded-xl border border-slate-500/30 bg-slate-500/10 px-4 py-3 text-xs text-[var(--nc-text-secondary)]">
-          {L(
-            "هذا عقد تاريخي للعرض فقط ولا يقبل دفعات أو تعديلات جديدة.",
-            "This legacy contract is read-only and cannot accept new payments or amendments.",
-          )}
-        </div>
-      )}
-
-      <div className="orca-contract-kpis">
-        {[
-          [
-            L("صافي العقد", "Contract subtotal"),
-            money(contract.invoice?.subtotal || contract.totalVolumeSar, locale),
-          ],
-          [
-            L("ضريبة القيمة المضافة", "VAT"),
-            money(contract.invoice?.vatAmount || 0, locale),
-          ],
-          [
-            L("إجمالي الفاتورة", "Invoice total"),
-            money(contract.invoice?.totalAmount || contract.totalVolumeSar, locale),
-          ],
-          [
-            L("المدفوع", "Paid"),
-            money(contract.financials.totalPaid, locale),
-          ],
-          [
-            L("المتبقي", "Remaining"),
-            remainingBalanceLabel(
+        <OperationsKpiGrid>
+          <OperationsMetricCard
+            title={L("صافي العقد", "Contract subtotal")}
+            value={money(
+              contract.invoice?.subtotal || contract.totalVolumeSar,
+              locale,
+            )}
+            description={L("قبل ضريبة القيمة المضافة", "Before VAT")}
+            icon={Landmark}
+          />
+          <OperationsMetricCard
+            title={L("إجمالي الفاتورة", "Invoice total")}
+            value={
+              contract.invoice
+                ? money(contract.invoice.totalAmount, locale)
+                : "—"
+            }
+            description={
+              contract.invoice
+                ? `${L("ضريبة القيمة المضافة", "VAT")}: ${money(contract.invoice.vatAmount, locale)}`
+                : awaitingInvoiceLabel(locale)
+            }
+            trailing={
+              contract.invoice
+                ? `${contract.invoice.invoicePrefix}-${contract.invoice.invoiceNumber}`
+                : undefined
+            }
+            icon={FileText}
+          />
+          <OperationsMetricCard
+            title={L("المدفوع", "Paid")}
+            value={money(contract.financials.totalPaid, locale)}
+            description={`${contract.financials.collectionPercent}%`}
+            icon={WalletCards}
+          />
+          <OperationsMetricCard
+            title={L("المتبقي", "Remaining")}
+            value={remainingBalanceLabel(
               Boolean(contract.invoice),
               contract.financials.remainingBalance,
               locale,
-            ),
-          ],
-          [
-            L("القسط القادم", "Next installment"),
-            nextInstallment
-              ? `${money(nextInstallment.remainingAmount, locale)} · ${shortDate(nextInstallment.dueDate)}`
-              : isFinanciallyClosed
-                ? L("مغلق ماليًا", "Financially closed")
-                : "—",
-          ],
-        ].map(([label, value]) => (
-          <div
-            key={label}
-            className="orca-contract-kpi"
-          >
-            <span className="text-[11px] text-[var(--nc-text-dim)]">
-              {label}
-            </span>
-            <strong className="mt-2 block break-words text-sm leading-6 text-[var(--nc-text-primary)] 2xl:text-base">
-              {value}
-            </strong>
-          </div>
-        ))}
-      </div>
+            )}
+            description={
+              contract.invoice
+                ? nextInstallment
+                  ? `${L("القسط القادم", "Next")}: ${shortDate(nextInstallment.dueDate)}`
+                  : L("لا يوجد قسط مستحق", "No installment due")
+                : awaitingInvoiceLabel(locale)
+            }
+            icon={CreditCard}
+          />
+        </OperationsKpiGrid>
 
       <FinancialLifecycleProgress
         locale={locale}
@@ -991,37 +1018,40 @@ export default function SalesContractWorkspace({
         stages={contractLifecycleStages}
       />
 
-      <nav className="orca-workspace-tabs flex flex-wrap justify-center gap-2 rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-2">
-        {([
-          ["overview", L("نظرة عامة", "Overview"), Landmark],
-          ["payment-plan", L("خطة الدفع", "Payment plan"), CreditCard],
-          ["installments", L("الأقساط", "Installments"), ListChecks],
-          ["payments", L("المدفوعات", "Payments"), WalletCards],
-          ["amendments", L("التعديلات", "Amendments"), RotateCcw],
-          ["documents", L("المستندات", "Documents"), FileText],
-          ["timeline", L("السجل الزمني", "Timeline"), History],
-        ] as const).map(([value, label, Icon]) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => {
-              setTab(value);
-              setNotice("");
-            }}
-            className={`inline-flex min-w-fit items-center gap-2 rounded-xl px-4 py-2 text-xs font-black ${
-              tab === value
-                ? "bg-[var(--nc-accent)] text-slate-950"
-                : "border border-transparent text-[var(--nc-text-secondary)] hover:border-[var(--nc-accent)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent)]"
-            }`}
-          >
-            <Icon size={14} />
-            {label}
-          </button>
-        ))}
-      </nav>
+        <OperationsPanel className="overflow-hidden p-2">
+          <OperationsTabs dir={locale === "ar" ? "rtl" : "ltr"} className="w-full justify-start" data-sales-contract-detail-tabs>
+            {([
+              ["overview", L("نظرة عامة", "Overview"), Landmark],
+              ["payment-plan", L("خطة الدفع", "Payment plan"), CreditCard],
+              ["installments", L("الأقساط", "Installments"), ListChecks],
+              ["payments", L("المدفوعات", "Payments"), WalletCards],
+              ["amendments", L("التعديلات", "Amendments"), RotateCcw],
+              ["documents", L("المستندات", "Documents"), FileText],
+              ["timeline", L("السجل الزمني", "Timeline"), History],
+            ] as const).map(([value, label, Icon]) => {
+              const active = tab === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => {
+                    setTab(value);
+                    setNotice("");
+                  }}
+                  className={active ? operationsVisual.activeTab : operationsVisual.tab}
+                >
+                  <Icon size={14} aria-hidden="true" />
+                  {label}
+                </button>
+              );
+            })}
+          </OperationsTabs>
+        </OperationsPanel>
 
-      {tab === "overview" && (
-        <section className="space-y-4 rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4">
+        {tab === "overview" && (
+          <OperationsPanel padded className="space-y-4">
           <div>
             <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
               {L("ملخص الصفقة التشغيلي", "Operational deal summary")}
@@ -1034,7 +1064,7 @@ export default function SalesContractWorkspace({
             </p>
           </div>
 
-          <div className="orca-auto-grid">
+          <div className="orca-contract-summary-grid">
             {[
               [L("المشروع", "Project"), contract.unit.project.name],
               [L("الوحدة", "Unit"), contract.unit.unitNumber],
@@ -1106,12 +1136,12 @@ export default function SalesContractWorkspace({
               </div>
             ))}
           </div>
-        </section>
-      )}
+          </OperationsPanel>
+        )}
 
-            {tab === "payment-plan" && (
-        <section className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4">
+        {tab === "payment-plan" && (
+        <OperationsExecutiveGrid>
+          <OperationsPanel padded>
             <div className="flex items-center gap-2">
               <RotateCcw size={16} className="text-[var(--nc-accent)]" />
               <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
@@ -1132,18 +1162,15 @@ export default function SalesContractWorkspace({
                   <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
                     {L("الدفعة المقدمة المؤكدة", "Confirmed advance payment")}
                   </label>
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    max={Math.max(
-                      0,
-                      contract.financials.remainingBalance - 0.01,
-                    )}
+                  <OperationsNumberField
+                    mode="decimal"
                     value={prepaymentAmount}
-                    onChange={(event) => setPrepaymentAmount(event.target.value)}
-                    required
-                    className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
+                    onValueChange={setPrepaymentAmount}
+                    className="orca-operations-input"
+                    aria-label={L(
+                      "الدفعة المقدمة المؤكدة",
+                      "Confirmed advance payment",
+                    )}
                   />
                 </div>
 
@@ -1151,35 +1178,28 @@ export default function SalesContractWorkspace({
                   <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
                     {L("النتيجة المطلوبة", "Desired outcome")}
                   </label>
-                  <select
-                    value={restructureMode}
-                    onChange={(event) =>
-                      setRestructureMode(event.target.value as RestructureMode)
+                  <SettingsSelect value={restructureMode}
+                    onChange={(value) =>
+                      setRestructureMode(value as RestructureMode)
                     }
-                    className="w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
-                  >
-                    <option value="REDUCE_INSTALLMENT">
-                      {L("خفض قيمة الأقساط", "Reduce installment amount")}
-                    </option>
-                    <option value="REDUCE_TERM">
-                      {L(
+                    className="orca-operations-input"
+                    options={[{ value: "REDUCE_INSTALLMENT", label: L("خفض قيمة الأقساط", "Reduce installment amount") },
+                      { value: "REDUCE_TERM", label: L(
                         "تقليل مدة السداد تلقائيًا",
                         "Automatically reduce payment term",
-                      )}
-                    </option>
-                  </select>
+                      ) }]}
+                  />
                 </div>
 
                 <div>
                   <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
                     {L("سبب التعديل", "Reason")}
                   </label>
-                  <textarea
+                  <OperationsTextareaField
                     value={restructureReason}
                     onChange={(event) => setRestructureReason(event.target.value)}
                     required
                     rows={3}
-                    className="orca-form-textarea min-h-24 w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
                   />
                 </div>
 
@@ -1214,7 +1234,7 @@ export default function SalesContractWorkspace({
                 <button
                   type="submit"
                   disabled={busy !== ""}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-xs font-black text-white disabled:opacity-40"
+                  className={`${operationsVisual.primaryButton} w-full`}
                 >
                   {busy === "restructure" ? (
                     <Loader2 size={15} className="animate-spin" />
@@ -1228,9 +1248,9 @@ export default function SalesContractWorkspace({
                 </button>
               </form>
             )}
-          </div>
+          </OperationsPanel>
 
-          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+          <OperationsPanel padded className="border-amber-500/30 bg-amber-500/5">
             <div className="flex items-center gap-2">
               <WalletCards size={16} className="text-amber-300" />
               <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
@@ -1266,14 +1286,13 @@ export default function SalesContractWorkspace({
                   <label className="mb-1 block text-[11px] font-bold text-[var(--nc-text-secondary)]">
                     {L("سبب السداد المبكر", "Early settlement reason")}
                   </label>
-                  <textarea
+                  <OperationsTextareaField
                     value={earlySettlementReason}
                     onChange={(event) =>
                       setEarlySettlementReason(event.target.value)
                     }
                     required
                     rows={3}
-                    className="orca-form-textarea min-h-24 w-full rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-background)] px-3 py-2 text-xs text-[var(--nc-text-primary)]"
                   />
                 </div>
 
@@ -1301,7 +1320,7 @@ export default function SalesContractWorkspace({
                     !earlySettlementConfirmed ||
                     earlySettlementReason.trim().length === 0
                   }
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-black text-slate-950 disabled:opacity-40"
+                  className={`${operationsVisual.primaryButton} w-full`}
                 >
                   {busy === "early-settlement" ? (
                     <Loader2 size={15} className="animate-spin" />
@@ -1312,12 +1331,12 @@ export default function SalesContractWorkspace({
                 </button>
               </form>
             )}
-          </div>
-        </section>
+          </OperationsPanel>
+        </OperationsExecutiveGrid>
       )}
 
       {tab === "installments" && (
-        <section className="overflow-hidden rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)]">
+        <OperationsPanel className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="nc-table nc-table-striped min-w-[820px]">
               <thead>
@@ -1437,11 +1456,11 @@ export default function SalesContractWorkspace({
             totalPages={installmentsPaging.totalPages}
             onPage={setInstallmentPage}
           />
-        </section>
+        </OperationsPanel>
       )}
 
       {tab === "payments" && (
-        <section className="overflow-hidden rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)]">
+        <OperationsPanel className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="nc-table nc-table-striped min-w-[760px]">
               <thead>
@@ -1484,33 +1503,31 @@ export default function SalesContractWorkspace({
             totalPages={paymentsPaging.totalPages}
             onPage={setPaymentPage}
           />
-        </section>
+        </OperationsPanel>
       )}
 
       {tab === "amendments" && (
-        <section className="flex h-[620px] flex-col overflow-hidden rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)]">
+        <OperationsPanel>
           <div className="border-b border-[var(--nc-glass-border)] px-4 py-3">
             <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
               {L("سجل التعديلات", "Amendment history")}
             </h2>
           </div>
 
-          <div className="flex-1 overflow-hidden p-4">
+          <div className="p-4">
             {contract.amendments.length === 0 ? (
-              <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-[var(--nc-glass-border)] p-6 text-center">
-                <p className="text-xs text-[var(--nc-text-dim)]">
-                  {L(
-                    "لا توجد تعديلات على خطة الدفع.",
-                    "No payment plan amendments recorded.",
-                  )}
-                </p>
-              </div>
+              <OperationsEmptyState>
+                {L(
+                  "لا توجد تعديلات على خطة الدفع.",
+                  "No payment plan amendments recorded.",
+                )}
+              </OperationsEmptyState>
             ) : (
-              <div className="grid h-full grid-rows-2 gap-3">
+              <div className="grid gap-3">
                 {amendmentsPaging.rows.map((amendment) => (
                   <article
                     key={amendment.id}
-                    className="min-h-0 overflow-y-auto rounded-xl border border-[var(--nc-glass-border)] p-3"
+                    className="rounded-xl border border-[var(--nc-glass-border)] p-3"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -1618,29 +1635,31 @@ export default function SalesContractWorkspace({
             totalPages={amendmentsPaging.totalPages}
             onPage={setAmendmentPage}
           />
-        </section>
+        </OperationsPanel>
       )}
 
       {tab === "documents" && (
-        <section className="rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4">
+        <OperationsPanel padded>
           <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
             {L("المستندات المرتبطة", "Related documents")}
           </h2>
-          <div className="mt-4 rounded-xl border border-dashed border-[var(--nc-glass-border)] p-8 text-center">
-            <FileText size={24} className="mx-auto text-[var(--nc-text-dim)]" />
-            <p className="mt-3 text-xs text-[var(--nc-text-dim)]">
-              {L(
-                "لا توجد مستندات مرتبطة بهذا العقد حاليًا.",
-                "No documents are currently attached to this contract.",
-              )}
-            </p>
+          <div className="mt-4">
+            <OperationsEmptyState>
+              <span className="inline-flex flex-col items-center gap-2">
+                <FileText size={24} aria-hidden="true" />
+                {L(
+                  "لا توجد مستندات مرتبطة بهذا العقد حاليًا.",
+                  "No documents are currently attached to this contract.",
+                )}
+              </span>
+            </OperationsEmptyState>
           </div>
-        </section>
+        </OperationsPanel>
       )}
 
       {tab === "timeline" && (
-        <section className="flex h-[500px] flex-col overflow-hidden rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)]">
-          <div className="flex-1 space-y-3 overflow-hidden p-4">
+        <OperationsPanel>
+          <div className="space-y-3 p-4">
             {timelinePaging.rows.length === 0 ? (
               <div className="py-10 text-center text-xs text-[var(--nc-text-dim)]">
                 {L("لا توجد أحداث مسجلة.", "No recorded events.")}
@@ -1693,8 +1712,9 @@ export default function SalesContractWorkspace({
             totalPages={timelinePaging.totalPages}
             onPage={setTimelinePage}
           />
-        </section>
-      )}
+        </OperationsPanel>
+        )}
+      </div>
     </main>
   );
 }
@@ -1716,7 +1736,7 @@ function Pager({
         type="button"
         onClick={() => onPage(Math.max(0, page - 1))}
         disabled={page === 0}
-        className="inline-flex items-center gap-1 rounded-lg border border-[var(--nc-glass-border)] px-3 py-1.5 font-bold disabled:opacity-30"
+        className={operationsVisual.secondaryButton}
       >
         <ChevronLeft size={14} />
         {text(locale, "السابق", "Previous")}
@@ -1729,7 +1749,7 @@ function Pager({
         type="button"
         onClick={() => onPage(Math.min(totalPages - 1, page + 1))}
         disabled={page >= totalPages - 1}
-        className="inline-flex items-center gap-1 rounded-lg border border-[var(--nc-glass-border)] px-3 py-1.5 font-bold disabled:opacity-30"
+        className={operationsVisual.secondaryButton}
       >
         {text(locale, "التالي", "Next")}
         <ChevronRight size={14} />

@@ -1,0 +1,1004 @@
+/*
+  ORCA ZERO-BASE OPERATIONS SHELL
+  --------------------------------
+  This file replaces the previous incremental shell styling.
+  It is intentionally self-contained and scoped to /operations.
+
+  Visual contract:
+  - Current ORCA light/dark tokens only.
+  - Arabic = Calibri / RTL.
+  - English = Inter / LTR.
+  - Desktop = full navigation panel.
+  - Tablet = persistent icon rail.
+  - Mobile = off-canvas navigation drawer.
+  - Header and sidebar are inset surfaces, not full-bleed legacy bars.
+  - Scrollbars remain functional but visually hidden.
+*/
+
+/* RootLayout currently uses w-screen (100vw).
+   Normalize only while the operations shell is mounted. */
+body:has(.orca-v1-shell) {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.orca-v1-shell,
+.orca-v1-shell * {
+  box-sizing: border-box;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.orca-v1-shell *::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+.orca-v1-shell {
+  width: 100%;
+  height: 100dvh;
+  min-width: 0;
+  overflow: hidden;
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  background: var(--nc-bg);
+  color: var(--nc-text-primary);
+}
+
+.orca-v1-shell[dir="rtl"] {
+  /*
+    CSS Grid honors direction:rtl, so track 1 is the physical right edge.
+    Sidebar must therefore own track 1 in RTL.
+  */
+  grid-template-columns: 84px minmax(0, 1fr);
+  grid-template-areas: "sidebar main";
+}
+
+.orca-v1-shell[dir="ltr"] {
+  grid-template-columns: 84px minmax(0, 1fr);
+  grid-template-areas: "sidebar main";
+}
+
+.orca-v1-shell[dir="rtl"],
+.orca-v1-shell[dir="rtl"] button,
+.orca-v1-shell[dir="rtl"] input,
+.orca-v1-shell[dir="rtl"] select,
+.orca-v1-shell[dir="rtl"] textarea {
+  font-family: Calibri, Arial, sans-serif;
+}
+
+.orca-v1-shell[dir="ltr"],
+.orca-v1-shell[dir="ltr"] button,
+.orca-v1-shell[dir="ltr"] input,
+.orca-v1-shell[dir="ltr"] select,
+.orca-v1-shell[dir="ltr"] textarea {
+  font-family: Inter, Arial, sans-serif;
+}
+
+.orca-v1-sidebar-slot {
+  grid-area: sidebar;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  z-index: 30;
+}
+
+.orca-v1-main {
+  grid-area: main;
+  min-width: 0;
+  min-height: 0;
+  height: calc(100dvh - 24px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  overflow: hidden;
+}
+
+.orca-v1-content-scroll {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+  border-radius: 18px;
+}
+
+/* Mobile overlay exists only while the drawer is open. */
+.orca-v1-mobile-overlay {
+  display: none;
+}
+
+/* ───────────────────────────────────────────────
+   SIDEBAR — ZERO BASE
+   ─────────────────────────────────────────────── */
+
+.orca-v1-sidebar {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--nc-glass-border);
+  border-radius: 18px;
+  background: var(--nc-surface-strong);
+  color: var(--nc-foreground);
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(var(--nc-glass-blur));
+}
+
+.orca-v1-brand {
+  min-height: 68px;
+  flex: 0 0 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid var(--nc-glass-border);
+}
+
+.orca-v1-brand-mark {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--nc-accent-border);
+  border-radius: 12px;
+  background: var(--nc-accent-soft);
+  color: var(--nc-accent-text);
+  font-family: Inter, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.orca-v1-brand-copy {
+  display: none;
+  min-width: 0;
+}
+
+.orca-v1-brand-name {
+  display: block;
+  color: var(--nc-foreground);
+  font-family: Inter, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.orca-v1-brand-subtitle {
+  display: block;
+  margin-top: 2px;
+  color: var(--nc-foreground-muted);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.orca-v1-nav {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 10px 8px;
+}
+
+.orca-v1-nav-section + .orca-v1-nav-section {
+  margin-top: 8px;
+}
+
+.orca-v1-nav-title {
+  display: none;
+  padding: 8px 10px 5px;
+  color: var(--nc-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.orca-v1-nav-list {
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+}
+
+.orca-v1-nav-item {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--nc-foreground-muted);
+  text-decoration: none;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.orca-v1-nav-item:hover,
+.orca-v1-nav-item:focus-visible {
+  border-color: var(--nc-glass-border);
+  background: var(--nc-surface-soft);
+  color: var(--nc-foreground);
+  outline: none;
+}
+
+.orca-v1-nav-item.is-active {
+  border-color: var(--nc-accent-border);
+  background: var(--nc-accent-soft);
+  color: var(--nc-accent-text);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nc-accent) 8%, transparent);
+}
+
+.orca-v1-nav-icon {
+  flex: 0 0 auto;
+}
+
+.orca-v1-nav-label,
+.orca-v1-nav-badge {
+  display: none;
+}
+
+.orca-v1-nav-badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.orca-v1-nav-badge.is-preview {
+  background: var(--nc-ai-soft);
+  color: var(--nc-ai);
+}
+
+.orca-v1-nav-badge.is-soon {
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  color: var(--color-warning);
+}
+
+.orca-v1-nav-badge.is-paused {
+  background: var(--nc-surface-soft);
+  color: var(--nc-foreground-muted);
+}
+
+.orca-v1-owner-zone {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--nc-glass-border);
+  padding: 8px;
+}
+
+.orca-v1-owner-title {
+  display: none;
+}
+
+.orca-v1-owner-link {
+  color: var(--nc-accent-text);
+}
+
+.orca-v1-nav-loading {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 10px 8px;
+}
+
+.orca-v1-nav-loading-row {
+  height: 44px;
+  border-radius: 12px;
+  background: var(--nc-surface-soft);
+}
+
+/* ───────────────────────────────────────────────
+   HEADER — ZERO BASE
+   ─────────────────────────────────────────────── */
+
+.orca-v1-header {
+  min-width: 0;
+  min-height: 68px;
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(180px, 440px) minmax(0, auto);
+  grid-template-areas: "start search actions";
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--nc-glass-border);
+  border-radius: 18px;
+  background: var(--nc-surface-strong);
+  color: var(--nc-foreground);
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(var(--nc-glass-blur));
+}
+
+.orca-v1-header-start {
+  grid-area: start;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.orca-v1-header-search-zone {
+  grid-area: search;
+  width: 100%;
+  min-width: 0;
+  justify-self: center;
+}
+
+.orca-v1-header-actions {
+  grid-area: actions;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.orca-v1-breadcrumbs {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--nc-foreground-muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.orca-v1-breadcrumb-root {
+  color: var(--nc-foreground-muted);
+}
+
+.orca-v1-breadcrumb-chevron {
+  flex: 0 0 auto;
+  opacity: 0.45;
+}
+
+.orca-v1-breadcrumb-current {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--nc-accent-text);
+  font-weight: 800;
+  text-overflow: ellipsis;
+}
+
+.orca-v1-search-wrap {
+  width: 100%;
+  min-width: 0;
+  position: relative;
+}
+
+.orca-v1-search-icon {
+  position: absolute;
+  inset-inline-start: 14px;
+  top: 50%;
+  z-index: 1;
+  color: var(--nc-foreground-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.orca-v1-search {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding-inline: 40px 58px;
+  border: 1px solid var(--nc-border);
+  border-radius: 12px;
+  background: var(--nc-surface);
+  color: var(--nc-foreground);
+  font-size: 13px;
+  outline: none;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.orca-v1-search::placeholder {
+  color: var(--nc-foreground-muted);
+}
+
+.orca-v1-search:focus {
+  border-color: var(--nc-accent-border);
+  box-shadow: 0 0 0 3px var(--nc-accent-soft);
+}
+
+.orca-v1-search-clear {
+  position: absolute;
+  inset-inline-end: 7px;
+  top: 50%;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--nc-foreground-muted);
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.orca-v1-search-clear:hover,
+.orca-v1-search-clear:focus-visible {
+  background: var(--nc-surface-soft);
+  color: var(--nc-foreground);
+  outline: none;
+}
+
+.orca-v1-search-shortcut {
+  position: absolute;
+  inset-inline-end: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 1px solid var(--nc-glass-border);
+  border-radius: 8px;
+  background: var(--nc-surface-strong);
+  color: var(--nc-foreground-muted);
+  padding: 3px 6px;
+  font-family: Inter, Arial, sans-serif;
+  font-size: 9px;
+}
+
+.orca-v1-icon-button {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--nc-border);
+  border-radius: 12px;
+  background: var(--nc-surface);
+  color: var(--nc-foreground-muted);
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.orca-v1-icon-button:hover,
+.orca-v1-icon-button:focus-visible {
+  border-color: var(--nc-accent-border);
+  background: var(--nc-surface-soft);
+  color: var(--nc-foreground);
+  outline: none;
+}
+
+.orca-v1-mobile-menu {
+  display: none;
+}
+
+.orca-v1-notification-wrap {
+  position: relative;
+}
+
+.orca-v1-notification-count {
+  position: absolute;
+  inset-block-start: -5px;
+  inset-inline-end: -5px;
+  min-width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--nc-surface-strong);
+  border-radius: 999px;
+  background: var(--color-danger);
+  color: white;
+  padding-inline: 3px;
+  font-family: Inter, Arial, sans-serif;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.orca-v1-profile {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-inline: 3px;
+}
+
+.orca-v1-profile-copy {
+  display: none;
+  min-width: 0;
+}
+
+.orca-v1-profile-name {
+  max-width: 160px;
+  margin: 0;
+  overflow: hidden;
+  color: var(--nc-foreground);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orca-v1-profile-company {
+  max-width: 160px;
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: var(--nc-foreground-muted);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orca-v1-avatar {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--nc-accent-border);
+  border-radius: 12px;
+  background: var(--nc-accent-soft);
+  color: var(--nc-accent-text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.orca-v1-notification-panel {
+  position: absolute;
+  top: 52px;
+  z-index: 100;
+  width: min(360px, calc(100vw - 32px));
+  overflow: hidden;
+  padding: 12px;
+  border: 1px solid var(--nc-border);
+  border-radius: 16px;
+  background: var(--nc-surface-solid);
+  color: var(--nc-foreground);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+}
+
+.orca-v1-notification-panel.is-rtl {
+  left: 0;
+}
+
+.orca-v1-notification-panel.is-ltr {
+  right: 0;
+}
+
+.orca-v1-notification-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--nc-border);
+}
+
+.orca-v1-notification-title {
+  margin: 0;
+  color: var(--nc-foreground);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.orca-v1-notification-meta {
+  margin: 3px 0 0;
+  color: var(--nc-foreground-muted);
+  font-size: 10px;
+}
+
+.orca-v1-secondary-button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--nc-border);
+  border-radius: 11px;
+  background: var(--nc-surface-soft);
+  color: var(--nc-foreground-muted);
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.orca-v1-secondary-button:hover:not(:disabled) {
+  border-color: var(--nc-accent-border);
+  color: var(--nc-foreground);
+}
+
+.orca-v1-secondary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.orca-v1-notification-state {
+  margin: 0;
+  padding: 20px 8px;
+  text-align: center;
+  color: var(--nc-foreground-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.orca-v1-notification-list {
+  max-height: 360px;
+  overflow-y: auto;
+  display: grid;
+  gap: 6px;
+  padding-top: 10px;
+}
+
+.orca-v1-notification-item {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border: 1px solid var(--nc-border);
+  border-radius: 12px;
+  padding: 10px;
+  text-align: start;
+  color: var(--nc-foreground);
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+
+.orca-v1-notification-item.is-read {
+  background: var(--nc-surface-soft);
+}
+
+.orca-v1-notification-item.is-unread {
+  border-color: var(--nc-accent-border);
+  background: var(--nc-accent-soft);
+}
+
+.orca-v1-notification-item:hover,
+.orca-v1-notification-item:focus-visible {
+  border-color: var(--nc-accent-border);
+  outline: none;
+}
+
+.orca-v1-notification-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  margin-top: 6px;
+  border-radius: 999px;
+}
+
+.orca-v1-notification-dot.is-read {
+  background: var(--nc-border);
+}
+
+.orca-v1-notification-dot.is-unread {
+  background: var(--nc-accent);
+}
+
+.orca-v1-notification-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.orca-v1-notification-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.orca-v1-notification-row strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orca-v1-notification-source {
+  flex: 0 0 auto;
+  border: 1px solid var(--nc-border);
+  border-radius: 999px;
+  padding: 2px 6px;
+  color: var(--nc-foreground-muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.orca-v1-notification-message {
+  display: block;
+  margin-top: 4px;
+  color: var(--nc-foreground-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.orca-v1-notification-time {
+  display: block;
+  margin-top: 4px;
+  color: var(--nc-foreground-muted);
+  font-family: Inter, Arial, sans-serif;
+  font-size: 9px;
+}
+
+/* ───────────────────────────────────────────────
+   OPERATIONS-ONLY UNAVAILABLE STATE
+   ─────────────────────────────────────────────── */
+
+.orca-v1-unavailable-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--nc-bg);
+  color: var(--nc-text-primary);
+}
+
+.orca-v1-unavailable-card {
+  width: min(100%, 640px);
+  padding: 20px;
+  border: 1px solid var(--nc-border);
+  border-radius: 18px;
+  background: var(--nc-surface-solid);
+}
+
+.orca-v1-unavailable-card h1 {
+  margin: 0;
+  font-family: Calibri, Arial, sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.orca-v1-unavailable-card p {
+  margin: 10px 0 0;
+  color: var(--nc-text-dim);
+  font-family: Calibri, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+/* ───────────────────────────────────────────────
+   TABLET: 768px–1199px
+   Persistent icon rail + one-row header.
+   ─────────────────────────────────────────────── */
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .orca-v1-shell[dir="rtl"] {
+    grid-template-columns: 84px minmax(0, 1fr);
+  }
+
+  .orca-v1-shell[dir="ltr"] {
+    grid-template-columns: 84px minmax(0, 1fr);
+  }
+
+  .orca-v1-sidebar-slot {
+    position: relative;
+    transform: none !important;
+  }
+
+  .orca-v1-profile-copy {
+    display: none;
+  }
+
+  .orca-v1-header {
+    grid-template-columns: minmax(110px, auto) minmax(170px, 1fr) auto;
+  }
+
+  .orca-v1-breadcrumb-root {
+    display: none;
+  }
+}
+
+/* ───────────────────────────────────────────────
+   DESKTOP: >=1200px
+   Full navigation + full profile copy.
+   ─────────────────────────────────────────────── */
+
+@media (min-width: 1200px) {
+  .orca-v1-shell[dir="rtl"] {
+    grid-template-columns: 264px minmax(0, 1fr);
+  }
+
+  .orca-v1-shell[dir="ltr"] {
+    grid-template-columns: 264px minmax(0, 1fr);
+  }
+
+  .orca-v1-brand {
+    justify-content: flex-start;
+    gap: 10px;
+    padding-inline: 14px;
+  }
+
+  .orca-v1-brand-copy,
+  .orca-v1-nav-title,
+  .orca-v1-nav-label,
+  .orca-v1-nav-badge,
+  .orca-v1-owner-title,
+  .orca-v1-profile-copy {
+    display: block;
+  }
+
+  .orca-v1-nav-item {
+    justify-content: flex-start;
+    padding-inline: 12px;
+  }
+
+  .orca-v1-nav-label {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .orca-v1-owner-title {
+    padding: 2px 10px 7px;
+    color: var(--nc-accent-text);
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  .orca-v1-header {
+    grid-template-columns: minmax(160px, auto) minmax(240px, 440px) auto;
+  }
+}
+
+/* ───────────────────────────────────────────────
+   MOBILE: <768px
+   Off-canvas drawer + two-row header.
+   ─────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .orca-v1-shell,
+  .orca-v1-shell[dir="rtl"],
+  .orca-v1-shell[dir="ltr"] {
+    display: block;
+    padding: 8px;
+  }
+
+  .orca-v1-main {
+    height: calc(100dvh - 16px);
+    gap: 8px;
+  }
+
+  .orca-v1-sidebar-slot {
+    position: fixed;
+    inset-block: 8px;
+    z-index: 70;
+    width: min(86vw, 320px);
+    transition: transform 180ms ease;
+  }
+
+  .orca-v1-sidebar-slot.is-rtl {
+    right: 8px;
+    transform: translateX(calc(100% + 16px));
+  }
+
+  .orca-v1-sidebar-slot.is-ltr {
+    left: 8px;
+    transform: translateX(calc(-100% - 16px));
+  }
+
+  .orca-v1-sidebar-slot.is-open {
+    transform: translateX(0);
+  }
+
+  .orca-v1-mobile-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: block;
+    border: 0;
+    background: rgba(2, 6, 23, 0.62);
+    backdrop-filter: blur(2px);
+  }
+
+  .orca-v1-sidebar {
+    border-radius: 18px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.36);
+  }
+
+  .orca-v1-brand {
+    justify-content: flex-start;
+    gap: 10px;
+    padding-inline: 14px;
+  }
+
+  .orca-v1-brand-copy,
+  .orca-v1-nav-title,
+  .orca-v1-nav-label,
+  .orca-v1-nav-badge,
+  .orca-v1-owner-title {
+    display: block;
+  }
+
+  .orca-v1-nav-item {
+    justify-content: flex-start;
+    padding-inline: 12px;
+  }
+
+  .orca-v1-nav-label {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .orca-v1-owner-title {
+    padding: 2px 10px 7px;
+    color: var(--nc-accent-text);
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  .orca-v1-header {
+    min-height: 112px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "start actions"
+      "search search";
+    gap: 8px;
+    padding: 9px 10px;
+    border-radius: 16px;
+  }
+
+  .orca-v1-header-start {
+    overflow: hidden;
+  }
+
+  .orca-v1-header-actions {
+    gap: 4px;
+  }
+
+  .orca-v1-mobile-menu {
+    display: inline-flex;
+  }
+
+  .orca-v1-breadcrumb-root,
+  .orca-v1-breadcrumb-chevron {
+    display: none;
+  }
+
+  .orca-v1-breadcrumb-current {
+    max-width: 88px;
+  }
+
+  .orca-v1-profile {
+    display: none;
+  }
+
+  .orca-v1-search {
+    min-height: 44px;
+  }
+
+  .orca-v1-content-scroll {
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 359px) {
+  .orca-v1-header {
+    padding-inline: 8px;
+  }
+
+  .orca-v1-breadcrumbs {
+    display: none;
+  }
+
+  .orca-v1-header-actions {
+    gap: 3px;
+  }
+}

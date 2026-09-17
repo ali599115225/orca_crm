@@ -1,5 +1,7 @@
 "use client";
 
+import SettingsSelect from "@/components/settings/SettingsSelect";
+
 import {
   useEffect,
   useMemo,
@@ -9,6 +11,13 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import {
+  AlertTriangle,
+  Banknote,
+  ListChecks,
+  Radar,
+  ShieldAlert,
+} from "lucide-react";
 import { useApp } from "@/app/context/AppContext";
 import {
   acknowledgeRevenueRiskAction,
@@ -42,6 +51,18 @@ import type { RevenueIntegrityDashboard } from "@/lib/revenue-integrity/queries"
 import { dashboardVisual } from "@/features/dashboard/visual";
 import { leadVisual } from "@/features/leads/visual";
 import InteractiveSurface from "@/components/ui/InteractiveSurface";
+import {
+  OperationsDialog,
+  OperationsEmptyState,
+  OperationsKpiGrid,
+  OperationsMetricCard,
+  OperationsPageHeader,
+  OperationsPanel,
+  OperationsPanelHeader,
+  OperationsTabs,
+  OperationsTextareaField,
+} from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
 import { revenueVisual, revenueStatusTone } from "./visual";
 
 type Tab = "radar" | "actions" | "audit" | "predictive";
@@ -144,24 +165,21 @@ function Panel({
   className?: string;
 }) {
   return (
-    <section className={className ? `${PANEL_CLASS} ${className}` : PANEL_CLASS}>
-      <div className="shrink-0 border-b border-[var(--nc-border)] px-4 py-3">
-        <h2 className={revenueVisual.sectionTitle}>{title}</h2>
-        {description ? (
-          <p className={revenueVisual.sectionDescription}>{description}</p>
-        ) : null}
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <OperationsPanel
+      className={["flex min-w-0 flex-col overflow-hidden", className || ""]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <OperationsPanelHeader title={title} description={description} />
+      <div className="min-h-0 p-3" data-operations-scroll-owner="page">
         {children}
       </div>
-    </section>
+    </OperationsPanel>
   );
 }
 
 function EmptyState({ children }: { children: ReactNode }) {
-  return (
-    <div className={revenueVisual.emptyState}>{children}</div>
-  );
+  return <OperationsEmptyState>{children}</OperationsEmptyState>;
 }
 
 function Pager({
@@ -459,7 +477,7 @@ function PredictiveTab({
                           <strong className="text-[var(--nc-accent)]">
                             {displayRevenueIntegrityValue(item.recommendedAction, lang)}
                           </strong>
-                          <p className="mt-1 text-[10px] text-[var(--nc-text-secondary)]">
+                          <p className="mt-1 text-[11px] text-[var(--nc-text-secondary)]">
                             {L(
                               "اقتراح فقط ولا يُنفذ تلقائيًا.",
                               "Suggestion only; it is never auto-executed.",
@@ -501,7 +519,7 @@ function PredictiveTab({
                         </div>
                       ) : null}
 
-                      <div className="flex flex-wrap gap-4 border-t border-[var(--nc-border)] pt-3 text-[10px] text-[var(--nc-text-secondary)]">
+                      <div className="flex flex-wrap gap-4 border-t border-[var(--nc-border)] pt-3 text-[11px] text-[var(--nc-text-secondary)]">
                         <span>
                           {L("وقت التوليد:", "Generated:")}{" "}
                           {formatDate(item.generatedAt, locale)}
@@ -585,7 +603,6 @@ export default function RevenueIntegrityView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData]);
 
-  const dialogRef = useRef<HTMLDivElement | null>(null);
   const dialogReturnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -648,40 +665,6 @@ export default function RevenueIntegrityView({
     closeLinkDialog();
   }
 
-  useEffect(() => {
-    if (!reasonDialog && !linkDialog) return;
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        if (reasonDialog) closeReasonDialog();
-        else closeLinkDialog();
-        return;
-      }
-      if (event.key !== "Tab" || !dialogRef.current) return;
-
-      const focusables = Array.from(
-        dialogRef.current.querySelectorAll<HTMLElement>(
-          "button:not([disabled]), textarea, select",
-        ),
-      );
-      if (focusables.length === 0) return;
-
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reasonDialog, linkDialog]);
 
   const visibleTabs = useMemo(() => {
     const tabs: Tab[] = ["radar"];
@@ -727,25 +710,35 @@ export default function RevenueIntegrityView({
   }
 
   const metrics = [
-    capabilities.canReadRisks
-      ? [L("مخاطر مفتوحة", "Open risks"), initialData.summary.openRisks]
-      : null,
-    capabilities.canReadRisks
-      ? [L("حرجة", "Critical"), initialData.summary.criticalRisks]
-      : null,
-    capabilities.canReadRisks
-      ? [
-          L("إيراد معرض للخطر", "Revenue at risk"),
-          formatMoneyCompact(initialData.summary.revenueAtRisk, locale),
-        ]
-      : null,
-    capabilities.canReadActions
-      ? [L("اقتراحات معلقة", "Pending actions"), initialData.summary.pendingSuggestions]
-      : null,
-    capabilities.canReadAudit
-      ? [L("رسائل ميتة", "Dead letters"), initialData.summary.deadLetters]
-      : null,
-  ].filter(Boolean) as Array<[string, string | number]>;
+    {
+      label: L("مخاطر مفتوحة", "Open risks"),
+      value: capabilities.canReadRisks ? initialData.summary.openRisks : "—",
+      description: L("إشارات تحتاج معالجة", "Signals needing action"),
+      icon: ShieldAlert,
+    },
+    {
+      label: L("حرجة", "Critical"),
+      value: capabilities.canReadRisks ? initialData.summary.criticalRisks : "—",
+      description: L("أعلى أولوية", "Highest priority"),
+      icon: AlertTriangle,
+    },
+    {
+      label: L("إيراد معرض للخطر", "Revenue at risk"),
+      value: capabilities.canReadRisks
+        ? formatMoneyCompact(initialData.summary.revenueAtRisk, locale)
+        : "—",
+      description: L("قيمة مرتبطة بالمخاطر", "Value tied to risks"),
+      icon: Banknote,
+    },
+    {
+      label: L("اقتراحات معلقة", "Pending actions"),
+      value: capabilities.canReadActions
+        ? initialData.summary.pendingSuggestions
+        : "—",
+      description: L("بانتظار الإجراء أو الاعتماد", "Awaiting action or approval"),
+      icon: ListChecks,
+    },
+  ];
 
   const riskPages = Math.max(
     1,
@@ -803,97 +796,98 @@ export default function RevenueIntegrityView({
   }
 
   return (
-    <main className={revenueVisual.page} dir={isArabic ? "rtl" : "ltr"}>
-      <div className={revenueVisual.shell}>
-      <header className={revenueVisual.workspaceHero}>
-        <div>
-          <p className="text-xs font-bold text-[var(--nc-accent)]">
-            {L(
-              "المخاطر ← الإجراء ← التدقيق ← التنبؤ",
-              "Risk → action → audit → prediction",
-            )}
-          </p>
-          <h1 className={revenueVisual.pageTitle}>
-            {L("سلامة الإيراد العقاري", "Real Estate Revenue Integrity")}
-          </h1>
-          <p className={revenueVisual.pageDescription}>
-            {L(
-              "تشغيل المخاطر والإجراءات والتدقيق والتنبؤ من سجل واحد محكوم بالصلاحيات.",
-              "Operate risks, actions, audit, and prediction from one permission-governed record.",
-            )}
-          </p>
-        </div>
-        {capabilities.canManageRisks ? (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() =>
-              execute(
-                runRevenueRadarAction,
-                L(
-                  "اكتمل تقييم قواعد تسرب الإيراد.",
-                  "Revenue leakage rules were evaluated.",
-                ),
-                () => setRiskPage(1),
-              )
-            }
-            className={`${PRIMARY_BUTTON_CLASS} shrink-0`}
-          >
-            {pending
-              ? L("جارٍ التشغيل...", "Running...")
-              : L("تشغيل الرادار الآن", "Run radar now")}
-          </button>
-        ) : null}
-      </header>
-
-      {notice ? (
-        <div
-          role={notice.type === "error" ? "alert" : "status"}
-          className={
-            notice.type === "error"
-              ? revenueVisual.errorNotice
-              : revenueVisual.successNotice
+    <main
+      className={operationsVisual.page}
+      dir={isArabic ? "rtl" : "ltr"}
+      data-revenue-dashboard-contract
+    >
+      <div className={operationsVisual.pageStack}>
+        <OperationsPageHeader
+          eyebrow={L(
+            "المخاطر ← الإجراء ← التدقيق ← التنبؤ",
+            "Risk → action → audit → prediction",
+          )}
+          title={L("سلامة الإيراد العقاري", "Real Estate Revenue Integrity")}
+          description={L(
+            "تشغيل المخاطر والإجراءات والتدقيق والتنبؤ من سجل واحد محكوم بالصلاحيات.",
+            "Operate risks, actions, audit, and prediction from one permission-governed record.",
+          )}
+          icon={Radar}
+          actions={
+            capabilities.canManageRisks ? (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() =>
+                  execute(
+                    runRevenueRadarAction,
+                    L(
+                      "اكتمل تقييم قواعد تسرب الإيراد.",
+                      "Revenue leakage rules were evaluated.",
+                    ),
+                    () => setRiskPage(1),
+                  )
+                }
+                className={operationsVisual.primaryButton}
+              >
+                <Radar size={15} aria-hidden="true" />
+                {pending
+                  ? L("جارٍ التشغيل...", "Running...")
+                  : L("تشغيل الرادار الآن", "Run radar now")}
+              </button>
+            ) : null
           }
-        >
-          {notice.text}
-        </div>
-      ) : null}
+        />
 
-      <div className={revenueVisual.workspaceMetrics}>
-        {metrics.map(([label, value]) => (
-          <div key={label} className={`${revenueVisual.metricCard} h-full`}>
-            <div className="text-xs font-bold text-[var(--nc-text-secondary)]">
-              {label}
-            </div>
-            <div className="mt-3 break-words text-xl font-black leading-tight text-[var(--nc-text-primary)]">
-              {value}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <nav
-        className={revenueVisual.workspaceTabs}
-        aria-label={L("أقسام سلامة الإيراد", "Revenue integrity sections")}
-      >
-        {visibleTabs.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => {
-              setActiveTab(tab);
-              setNotice(null);
-              resetListPages();
-            }}
-            aria-current={activeTab === tab ? "page" : undefined}
+        {notice ? (
+          <div
+            role={notice.type === "error" ? "alert" : "status"}
             className={
-              activeTab === tab ? revenueVisual.activeTab : revenueVisual.tab
+              notice.type === "error"
+                ? revenueVisual.errorNotice
+                : revenueVisual.successNotice
             }
           >
-            {isArabic ? TAB_LABELS[tab].ar : TAB_LABELS[tab].en}
-          </button>
-        ))}
-      </nav>
+            {notice.text}
+          </div>
+        ) : null}
+
+        <OperationsKpiGrid>
+          {metrics.map((metric) => (
+            <OperationsMetricCard
+              key={metric.label}
+              title={metric.label}
+              value={metric.value}
+              description={metric.description}
+              icon={metric.icon}
+            />
+          ))}
+        </OperationsKpiGrid>
+
+        <OperationsPanel className="overflow-hidden p-2">
+          <OperationsTabs className="flex-wrap justify-center">
+            {visibleTabs.map((tab) => {
+              const active = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(tab);
+                    setNotice(null);
+                    resetListPages();
+                  }}
+                  role="tab"
+                  aria-selected={active}
+                  aria-current={active ? "page" : undefined}
+                  className={active ? operationsVisual.activeTab : operationsVisual.tab}
+                >
+                  {isArabic ? TAB_LABELS[tab].ar : TAB_LABELS[tab].en}
+                </button>
+              );
+            })}
+          </OperationsTabs>
+        </OperationsPanel>
 
       {activeTab === "radar" ? (
         <div data-revenue-tab-layout="radar" className={revenueVisual.tabWorkspaceGrid}>
@@ -916,7 +910,7 @@ export default function RevenueIntegrityView({
               <>
                 <div className="min-w-0 overflow-hidden">
                   <div
-                    className={`grid items-center border-b border-[var(--nc-border)] px-2 py-2 text-center text-[10px] font-bold text-[var(--nc-text-secondary)] ${
+                    className={`orca-platform-grid-header grid items-center border-b border-[var(--nc-border)] px-2 py-2 text-center font-bold text-[var(--nc-text-secondary)] ${
                       capabilities.canManageRisks
                         ? "grid-cols-[22%_29%_16%_9%_9%_15%]"
                         : "grid-cols-[24%_38%_18%_10%_10%]"
@@ -932,11 +926,11 @@ export default function RevenueIntegrityView({
                     ) : null}
                   </div>
 
-                  <div className="min-h-0 overflow-y-auto overscroll-contain [scrollbar-width:none] [scrollbar-color:transparent_transparent] [&::-webkit-scrollbar]:hidden">
+                  <div className="min-h-0" data-operations-scroll-owner="page">
                     {riskItems.map((risk: any) => (
                       <div
                         key={risk.id}
-                        className={`mx-1 mb-1 grid min-h-[76px] items-center rounded-xl border border-transparent px-2 py-2 text-center transition-colors hover:border-[var(--nc-border)] hover:bg-[var(--nc-accent-soft)] ${
+                        className={`orca-platform-grid-row mx-1 mb-1 grid min-h-[76px] items-center rounded-xl border border-transparent px-2 py-2 text-center transition-colors hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)] ${
                           capabilities.canManageRisks
                             ? "grid-cols-[22%_29%_16%_9%_9%_15%]"
                             : "grid-cols-[24%_38%_18%_10%_10%]"
@@ -946,7 +940,7 @@ export default function RevenueIntegrityView({
                           {displayRevenueIntegrityValue(risk.ruleCode, langEnum)}
                         </div>
 
-                        <div className="line-clamp-2 border-s border-[var(--nc-border)] px-2 text-[10px] leading-5 text-[var(--nc-text-secondary)]">
+                        <div className="line-clamp-2 border-s border-[var(--nc-border)] px-2 text-[11px] leading-5 text-[var(--nc-text-secondary)]">
                           {isArabic ? risk.reasonAr : risk.reasonEn}
                         </div>
 
@@ -977,7 +971,7 @@ export default function RevenueIntegrityView({
                                     L("تم استلام الخطر.", "Risk acknowledged."),
                                   )
                                 }
-                                className={`${SECONDARY_BUTTON_CLASS} !min-h-9 !w-full !justify-center !px-2 !text-[10px]`}
+                                className={`${SECONDARY_BUTTON_CLASS} !min-h-11 !w-full !justify-center !px-2 !text-[12px]`}
                               >
                                 {L("استلام", "Acknowledge")}
                               </button>
@@ -989,7 +983,7 @@ export default function RevenueIntegrityView({
                               onClick={() =>
                                 openReasonDialog("resolve-risk", risk.id)
                               }
-                              className={`${revenueVisual.successGhostButton} !min-h-9 !w-full !justify-center !px-2 !text-[10px]`}
+                              className={`${revenueVisual.successGhostButton} !min-h-11 !w-full !justify-center !px-2 !text-[12px]`}
                             >
                               {L("إغلاق", "Resolve")}
                             </button>
@@ -1104,7 +1098,7 @@ export default function RevenueIntegrityView({
                               )}
                             </h3>
                             <StatusBadge value={suggestion.status} lang={langEnum} />
-                            <span className="text-[10px] text-[var(--nc-text-secondary)]">
+                            <span className="text-[11px] text-[var(--nc-text-secondary)]">
                               {displayRevenueIntegrityValue(
                                 suggestion.sourceType,
                                 langEnum,
@@ -1116,7 +1110,7 @@ export default function RevenueIntegrityView({
                               ? suggestion.rationaleAr
                               : suggestion.rationaleEn}
                           </p>
-                          <time className="mt-1 block text-[10px] text-[var(--nc-text-secondary)]">
+                          <time className="mt-1 block text-[11px] text-[var(--nc-text-secondary)]">
                             {formatDate(suggestion.createdAt, locale)}
                           </time>
                           {executionError ? (
@@ -1266,19 +1260,17 @@ export default function RevenueIntegrityView({
             >
               <label className={revenueVisual.label}>
                 {L("المصدر", "Source")}
-                <select
-                  value={sourceType}
-                  onChange={(event) => {
-                    setSourceType(event.target.value as typeof sourceType);
+                <SettingsSelect value={sourceType}
+                  onChange={(value) => {
+                    setSourceType(value as typeof sourceType);
                     setSourceId("");
                   }}
                   className={revenueVisual.select}
-                >
-                  <option value="MANUAL">{L("يدوي", "Manual")}</option>
-                  <option value="WHATSAPP">{L("واتساب", "WhatsApp")}</option>
-                  <option value="EMAIL">{L("البريد الإلكتروني", "Email")}</option>
-                  <option value="SUPPORT">{L("الدعم", "Support")}</option>
-                </select>
+                  options={[{ value: "MANUAL", label: L("يدوي", "Manual") },
+                    { value: "WHATSAPP", label: L("واتساب", "WhatsApp") },
+                    { value: "EMAIL", label: L("البريد الإلكتروني", "Email") },
+                    { value: "SUPPORT", label: L("الدعم", "Support") }]}
+                />
               </label>
 
               {sourceType !== "MANUAL" ? (
@@ -1344,11 +1336,11 @@ export default function RevenueIntegrityView({
                           langEnum,
                         )}
                       </strong>
-                      <time className="whitespace-nowrap text-[10px] text-[var(--nc-text-dim)]">
+                      <time className="whitespace-nowrap text-[11px] text-[var(--nc-text-dim)]">
                         {formatDate(event.occurredAt, locale)}
                       </time>
                     </div>
-                    <div className="mt-2 text-[10px] text-[var(--nc-text-dim)]">
+                    <div className="mt-2 text-[11px] text-[var(--nc-text-dim)]">
                       {displayRevenueIntegrityValue(
                         event.aggregateType,
                         langEnum,
@@ -1430,11 +1422,11 @@ export default function RevenueIntegrityView({
                           langEnum,
                         )}
                       </strong>
-                      <time className="whitespace-nowrap text-[10px] text-[var(--nc-text-dim)]">
+                      <time className="whitespace-nowrap text-[11px] text-[var(--nc-text-dim)]">
                         {formatDate(entry.createdAt, locale)}
                       </time>
                     </div>
-                    <div className="mt-2 text-[10px] text-[var(--nc-text-dim)]">
+                    <div className="mt-2 text-[11px] text-[var(--nc-text-dim)]">
                       {displayRevenueIntegrityValue(
                         entry.resourceType,
                         langEnum,
@@ -1472,124 +1464,113 @@ export default function RevenueIntegrityView({
         />
       ) : null}
 
-      {linkDialog ? (
-        <div className={revenueVisual.modalOverlay} role="presentation">
-          <div
-            ref={dialogRef}
-            className={revenueVisual.modal}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="revenue-link-lead-title"
-          >
-            <h2
-              id="revenue-link-lead-title"
-              className="text-lg font-black text-[var(--nc-text-primary)]"
-            >
-              {L("ربط بعميل محتمل", "Link to lead")}
-            </h2>
-            <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
-              {L(
-                "اختر عميلًا من منشأتك الحالية. الربط لا ينفذ الاقتراح تلقائيًا.",
-                "Choose a lead from your current company. Linking never auto-executes the suggestion.",
-              )}
-            </p>
-            <label className={`${revenueVisual.label} mt-3`}>
-              {L("العميل المحتمل", "Lead")}
-              <select
-                autoFocus
-                value={linkLeadId}
-                onChange={(event) => setLinkLeadId(event.target.value)}
-                disabled={leadsLoading}
-                className={revenueVisual.select}
+        <OperationsDialog
+          open={Boolean(linkDialog)}
+          onClose={closeLinkDialog}
+          title={L("ربط بعميل محتمل", "Link to lead")}
+          description={L(
+            "اختر عميلًا من منشأتك الحالية. الربط لا ينفذ الاقتراح تلقائيًا.",
+            "Choose a lead from your current company. Linking never auto-executes the suggestion.",
+          )}
+          closeLabel={L("إغلاق", "Close")}
+          closeDisabled={pending || leadsLoading}
+          dir={isArabic ? "rtl" : "ltr"}
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={closeLinkDialog}
+                disabled={pending || leadsLoading}
+                className={operationsVisual.secondaryButton}
               >
-                <option value="">
-                  {leadsLoading
-                    ? L("جارٍ التحميل...", "Loading...")
-                    : L("اختر عميلًا", "Select a lead")}
-                </option>
-                {linkableLeads.map((lead) => (
-                  <option key={lead.id} value={lead.id}>
-                    {lead.name || safeDisplayId(lead.id, langEnum)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {!leadsLoading && linkableLeads.length === 0 ? (
-              <p className="mt-2 text-xs text-[var(--nc-text-secondary)]">
-                {L(
-                  "لا يوجد عملاء محتملون متاحون للربط.",
-                  "No leads are available to link.",
-                )}
-              </p>
-            ) : null}
-            <div className="mt-4 grid grid-cols-2 gap-2">
+                {L("إلغاء", "Cancel")}
+              </button>
               <button
                 type="button"
                 disabled={!linkLeadId || pending || leadsLoading}
                 onClick={submitLinkLead}
-                className={`${PRIMARY_BUTTON_CLASS} w-full`}
+                className={operationsVisual.primaryButton}
               >
                 {L("ربط", "Link")}
               </button>
+            </>
+          }
+        >
+          <label className="orca-operations-form-field">
+            <span className="orca-operations-form-label">
+              {L("العميل المحتمل", "Lead")}
+            </span>
+            <SettingsSelect autoFocus
+              value={linkLeadId}
+              onChange={(value) => setLinkLeadId(value)}
+              disabled={leadsLoading}
+              className="orca-operations-input"
+              options={[{ value: "", label: leadsLoading
+                  ? L("جارٍ التحميل...", "Loading...")
+                  : L("اختر عميلًا", "Select a lead") },
+                ...linkableLeads.map((lead) => (
+                ({ value: lead.id, label: lead.name || safeDisplayId(lead.id, langEnum) })
+              ))]}
+            />
+          </label>
+          {!leadsLoading && linkableLeads.length === 0 ? (
+            <OperationsEmptyState>
+              {L(
+                "لا يوجد عملاء محتملون متاحون للربط.",
+                "No leads are available to link.",
+              )}
+            </OperationsEmptyState>
+          ) : null}
+        </OperationsDialog>
+
+        <OperationsDialog
+          open={Boolean(reasonDialog)}
+          onClose={closeReasonDialog}
+          title={
+            reasonDialog?.mode === "resolve-risk"
+              ? L("سبب إغلاق الخطر", "Risk resolution reason")
+              : L("سبب رفض الاقتراح", "Suggestion rejection reason")
+          }
+          description={L(
+            "السبب إلزامي ويحفظ ضمن سجل التدقيق.",
+            "A reason is required and stored in the audit trail.",
+          )}
+          closeLabel={L("إغلاق", "Close")}
+          closeDisabled={pending}
+          dir={isArabic ? "rtl" : "ltr"}
+          footer={
+            <>
               <button
                 type="button"
-                onClick={closeLinkDialog}
-                className={`${SECONDARY_BUTTON_CLASS} min-h-11 w-full`}
+                onClick={closeReasonDialog}
+                disabled={pending}
+                className={operationsVisual.secondaryButton}
               >
                 {L("إلغاء", "Cancel")}
               </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {reasonDialog ? (
-        <div className={revenueVisual.modalOverlay} role="presentation">
-          <div
-            ref={dialogRef}
-            className={revenueVisual.modal}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="revenue-reason-title"
-          >
-            <h2
-              id="revenue-reason-title"
-              className="text-lg font-black text-[var(--nc-text-primary)]"
-            >
-              {reasonDialog.mode === "resolve-risk"
-                ? L("سبب إغلاق الخطر", "Risk resolution reason")
-                : L("سبب رفض الاقتراح", "Suggestion rejection reason")}
-            </h2>
-            <label className={`${revenueVisual.label} mt-3`}>
-              {L("السبب (إلزامي)", "Reason (required)")}
-              <textarea
-                autoFocus
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-                rows={5}
-                className={`${revenueVisual.textarea} h-28`}
-              />
-            </label>
-            <div className="mt-4 grid grid-cols-2 gap-2">
               <button
                 type="button"
                 disabled={reason.trim().length < 3 || pending}
                 onClick={submitReason}
-                className={`${PRIMARY_BUTTON_CLASS} w-full`}
+                className={operationsVisual.primaryButton}
               >
                 {L("تأكيد", "Confirm")}
               </button>
-              <button
-                type="button"
-                onClick={closeReasonDialog}
-                className={`${SECONDARY_BUTTON_CLASS} min-h-11 w-full`}
-              >
-                {L("إلغاء", "Cancel")}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+            </>
+          }
+        >
+          <label className="orca-operations-form-field">
+            <span className="orca-operations-form-label">
+              {L("السبب", "Reason")}
+            </span>
+            <OperationsTextareaField
+              autoFocus
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              rows={5}
+            />
+          </label>
+        </OperationsDialog>
       </div>
     </main>
   );

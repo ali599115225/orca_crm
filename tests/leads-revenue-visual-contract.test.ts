@@ -15,7 +15,7 @@ describe("Leads and Revenue Integrity visual closure", () => {
     expect(workspace).toContain("leadVisual.workspaceMetrics");
     expect(workspace).toContain("leadVisual.workspacePanel");
     expect(workspace).toContain("data-operational-list-card");
-    expect(workspace).toContain('lg:h-[560px]');
+    expect(workspace).toContain('lg:max-h-[560px]');
     expect(workspace).toContain("[scrollbar-width:none]");
     expect(visual).toContain("orca-workspace-hero");
     expect(visual).toContain("orca-workspace-metrics");
@@ -26,10 +26,12 @@ describe("Leads and Revenue Integrity visual closure", () => {
     const detail = read("features/leads/components/LeadDetailClient.tsx");
     const visual = read("features/leads/visual.ts");
 
-    expect(detail).toContain("leadVisual.detailHero");
+    expect(detail).toContain("leadVisual.page");
+    expect(detail).toContain("leadVisual.softPanel");
+    expect(detail).toContain("leadVisual.workspacePanel");
     expect(detail).toContain("leadVisual.workspaceTabs");
-    expect(detail).toContain('lg:h-[620px]');
-    expect(detail).toContain("overflow-y-auto");
+    expect(detail).not.toContain('lg:h-[620px]');
+    expect(detail).toContain("data-leads-hide-scrollbar");
     expect(visual).toContain("min-h-[44px]");
   });
 
@@ -60,10 +62,12 @@ describe("Leads and Revenue Integrity visual closure", () => {
     expect(view).toContain("revenueVisual.workspaceHero");
     expect(view).toContain("revenueVisual.workspaceMetrics");
     expect(view).toContain("revenueVisual.workspaceTabs");
-    expect(view).toContain("grid items-stretch gap-3");
+    expect(view).toContain("revenueVisual.tabWorkspaceGrid");
+    expect(visual).toContain("grid min-h-0 items-stretch gap-3");
     expect(view).not.toContain("self-start h-fit");
     expect(visual).toContain("orca-workspace-panel");
-    expect(visual).toContain('lg:h-[560px]');
+    expect(visual).toContain('lg:h-[430px]');
+    expect(visual).not.toContain('lg:h-[560px]');
     expect(visual).toContain("min-h-[44px]");
   });
 

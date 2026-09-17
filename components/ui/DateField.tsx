@@ -1,56 +1,64 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { Calendar, AlertCircle } from 'lucide-react';
+"use client";
 
-// ─── Utility Formatters & Parsers ───────────────────────────────────────────
+import React, { useEffect, useRef, useState } from "react";
+import { AlertCircle, Calendar } from "lucide-react";
 
 export function formatDateToDDMMYYYY(date: Date): string {
-  const dd = String(date.getDate()).padStart(2, '0');
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
   const yyyy = date.getFullYear();
   return `${dd}/${mm}/${yyyy}`;
 }
 
-export function parseNativeValueToDate(val: string): Date | null {
-  if (!val) return null;
-  const parts = val.split('-');
-  if (parts.length !== 3) return null;
-  const y = Number(parts[0]);
-  const m = Number(parts[1]) - 1;
-  const d = Number(parts[2]);
-  if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
-  return new Date(y, m, d);
+export function parseNativeValueToDate(value: string): Date | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() + 1 !== month ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+  return date;
 }
 
-export function parseVisibleToNative(val: string): string {
-  if (!val) return '';
-  const parts = val.trim().split('/');
-  if (parts.length !== 3) return '';
-  const dd = parts[0].padStart(2, '0');
-  const mm = parts[1].padStart(2, '0');
-  const yyyy = parts[2];
-  if (isNaN(Number(dd)) || isNaN(Number(mm)) || isNaN(Number(yyyy))) return '';
+export function parseVisibleToNative(value: string): string {
+  if (!isValidDDMMYYYY(value)) return "";
+  const [dd, mm, yyyy] = value.trim().split("/");
   return `${yyyy}-${mm}-${dd}`;
 }
 
-export function isValidDDMMYYYY(val: string): boolean {
-  const clean = val.trim();
-  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(clean)) return false;
-  const parts = clean.split('/');
-  const dd = Number(parts[0]);
-  const mm = Number(parts[1]);
-  const yyyy = Number(parts[2]);
-  if (yyyy < 1900 || yyyy > 2100) return false;
-  if (mm < 1 || mm > 12) return false;
-  const daysInMonth = new Date(yyyy, mm, 0).getDate();
-  if (dd < 1 || dd > daysInMonth) return false;
-  return true;
+export function isValidDDMMYYYY(value: string): boolean {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
+  if (!match) return false;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  if (year < 1900 || year > 2100 || month < 1 || month > 12) return false;
+  const date = new Date(year, month - 1, day);
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() + 1 === month &&
+    date.getDate() === day
+  );
 }
 
-// ─── DateField Component ────────────────────────────────────────────────────
+function formatVisibleInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
 
 interface DateFieldProps {
-  value: string; // YYYY-MM-DD
-  onChange: (val: string) => void;
+  value: string;
+  onChange: (value: string) => void;
   label?: string;
   placeholder?: string;
   disabled?: boolean;
@@ -64,156 +72,106 @@ export const DateField: React.FC<DateFieldProps> = ({
   value,
   onChange,
   label,
-  placeholder = 'DD/MM/YYYY',
+  placeholder = "DD/MM/YYYY",
   disabled = false,
   min,
   max,
   error: customError,
-  className = ''
+  className = "",
 }) => {
-  const nativeRef = useRef<HTMLInputElement>(null);
-  const [visibleVal, setVisibleVal] = useState('');
-  const [error, setError] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [visibleValue, setVisibleValue] = useState("");
+  const [localError, setLocalError] = useState("");
 
-  // Sync visible input when value prop changes (Native YYYY-MM-DD -> Visible DD/MM/YYYY)
   useEffect(() => {
-    if (value) {
-      const d = parseNativeValueToDate(value);
-      if (d) {
-        setVisibleVal(formatDateToDDMMYYYY(d));
-        setError('');
-      }
-    } else {
-      setVisibleVal('');
-    }
+    const date = parseNativeValueToDate(value);
+    setVisibleValue(date ? formatDateToDDMMYYYY(date) : "");
+    setLocalError("");
   }, [value]);
 
-  const openNativePicker = async () => {
-    if (disabled || !nativeRef.current) return;
-    try {
-      if (typeof nativeRef.current.showPicker === 'function') {
-        nativeRef.current.showPicker();
-        return;
-      }
-    } catch (err) {
-      console.warn('Native showPicker is not supported in this browser, falling back to focus/click.');
-    }
-    nativeRef.current.focus();
-    nativeRef.current.click();
-  };
-
-  // Sync native value and visible text on native picker change
-  const handleNativeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    onChange(val);
-  };
-
-  // Handles manual keyboard entry and auto-formatting
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/[^\d/]/g, ''); // keep numbers and slashes
-    
-    // Auto-inserts slashes
-    if (val.length === 2 && !val.includes('/')) {
-      val = val + '/';
-    } else if (val.length === 5 && val.split('/').length === 2) {
-      val = val + '/';
-    }
-    
-    // Cap length to DD/MM/YYYY (10 chars)
-    if (val.length > 10) {
-      val = val.substring(0, 10);
-    }
-    
-    setVisibleVal(val);
-
-    if (val.length === 10) {
-      if (isValidDDMMYYYY(val)) {
-        const nativeVal = parseVisibleToNative(val);
-        setError('');
-        onChange(nativeVal);
-      } else {
-        setError('التاريخ غير صحيح');
-      }
-    } else {
-      setError('');
-    }
-  };
-
-  const handleBlur = () => {
-    if (!visibleVal) {
-      onChange('');
-      setError('');
+  const validateAndCommit = (text: string) => {
+    if (!text) {
+      setLocalError("");
+      onChange("");
       return;
     }
-    
-    if (visibleVal.length < 10 || !isValidDDMMYYYY(visibleVal)) {
-      setError('يرجى كتابة التاريخ بصيغة DD/MM/YYYY');
-      // Highlight element briefly
-    } else {
-      setError('');
+
+    if (!isValidDDMMYYYY(text)) {
+      setLocalError("يرجى كتابة التاريخ بصيغة DD/MM/YYYY");
+      return;
     }
+
+    const nativeValue = parseVisibleToNative(text);
+    if (min && nativeValue < min) {
+      setLocalError("التاريخ أقدم من الحد المسموح");
+      return;
+    }
+    if (max && nativeValue > max) {
+      setLocalError("التاريخ أحدث من الحد المسموح");
+      return;
+    }
+
+    setLocalError("");
+    onChange(nativeValue);
   };
 
   return (
-    <div className={`flex flex-col gap-1.5 w-full ${className}`}>
-      {label && <label className="text-xs text-[var(--nc-text-dim)] font-medium font-bold">{label}</label>}
-      
-      <div className="relative flex items-center w-full">
-        {/* Visible Text Field */}
+    <div className={`w-full space-y-1.5 ${className}`}>
+      {label ? (
+        <label className="block text-[11px] font-bold text-[var(--nc-text-dim)]">
+          {label}
+        </label>
+      ) : null}
+
+      <div className="relative">
         <input
+          ref={inputRef}
           type="text"
-          value={visibleVal}
-          onChange={handleTextChange}
-          onBlur={handleBlur}
+          inputMode="numeric"
+          autoComplete="off"
+          value={visibleValue}
+          onChange={(event) => {
+            const next = formatVisibleInput(event.target.value);
+            setVisibleValue(next);
+            if (next.length === 10) validateAndCommit(next);
+            else {
+              setLocalError("");
+              if (!next) onChange("");
+            }
+          }}
+          onBlur={() => validateAndCommit(visibleValue)}
           disabled={disabled}
           placeholder={placeholder}
-          className={`w-full bg-[var(--nc-surface-strong)] border rounded-xl py-2 px-3 pl-10 text-xs text-[var(--nc-text-primary)] outline-none transition-all text-center font-mono tracking-wider ${
-            error || customError
-              ? 'border-rose-500 focus:border-rose-500 shadow-[0_0_8px_rgba(239,68,68,0.25)]'
-              : 'border-[var(--nc-border)] focus:border-[var(--nc-accent-border)]/50'
-          }`}
+          maxLength={10}
           dir="ltr"
+          className={`orca-operations-form-control w-full pe-11 text-center font-mono tracking-wider ${
+            localError || customError ? "!border-rose-500/70" : ""
+          }`}
         />
-
-        {/* Hidden Native Picker Trigger Input */}
-        <input
-          type="date"
-          ref={nativeRef}
-          value={value || ''}
-          onChange={handleNativeChange}
-          disabled={disabled}
-          min={min}
-          max={max}
-          className="absolute inset-0 opacity-0 pointer-events-none w-0 h-0"
-        />
-
-        {/* Icon click trigger */}
         <button
           type="button"
-          onClick={openNativePicker}
+          onClick={() => inputRef.current?.focus()}
           disabled={disabled}
-          className="absolute left-3.5 top-2.5 text-[var(--nc-text-dim)] font-medium hover:text-[var(--nc-text-primary)] transition-colors cursor-pointer"
-          aria-label="فتح التقويم"
+          className="absolute inset-y-0 end-0 grid min-h-11 w-11 place-items-center rounded-e-xl text-[var(--nc-text-dim)] transition-colors hover:text-[var(--nc-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)] disabled:opacity-40"
+          aria-label="إدخال التاريخ بصيغة يوم/شهر/سنة"
         >
-          <Calendar size={15} />
+          <Calendar size={15} aria-hidden="true" />
         </button>
       </div>
 
-      {(error || customError) && (
-        <span className="text-[10px] text-rose-400 flex items-center gap-1">
-          <AlertCircle size={10} />
-          {error || customError}
+      {localError || customError ? (
+        <span className="flex items-center gap-1 text-[11px] font-bold text-rose-300">
+          <AlertCircle size={11} aria-hidden="true" />
+          {localError || customError}
         </span>
-      )}
+      ) : null}
     </div>
   );
 };
 
-// ─── DateRangeField Component ───────────────────────────────────────────────
-
 interface DateRangeProps {
-  fromDate: string; // YYYY-MM-DD
-  toDate: string; // YYYY-MM-DD
+  fromDate: string;
+  toDate: string;
   onChange: (from: string, to: string) => void;
   labelFrom?: string;
   labelTo?: string;
@@ -223,66 +181,42 @@ export const DateRangeField: React.FC<DateRangeProps> = ({
   fromDate,
   toDate,
   onChange,
-  labelFrom = 'تاريخ البداية',
-  labelTo = 'تاريخ النهاية'
+  labelFrom = "تاريخ البداية",
+  labelTo = "تاريخ النهاية",
 }) => {
-  const [rangeWarning, setRangeWarning] = useState('');
+  const [rangeWarning, setRangeWarning] = useState("");
 
-  const handleFromChange = (newFrom: string) => {
-    if (newFrom && toDate) {
-      const fromD = parseNativeValueToDate(newFrom);
-      const toD = parseNativeValueToDate(toDate);
-      if (fromD && toD && fromD > toD) {
-        // Swap values and issue alert warning
-        onChange(toDate, newFrom);
-        setRangeWarning('تم تبديل التواريخ تلقائياً للحفاظ على الترتيب الصحيح.');
-        setTimeout(() => setRangeWarning(''), 3000);
-        return;
-      }
+  const updateRange = (nextFrom: string, nextTo: string) => {
+    if (nextFrom && nextTo && nextFrom > nextTo) {
+      onChange(nextTo, nextFrom);
+      setRangeWarning("تم تبديل التواريخ تلقائيًا للحفاظ على الترتيب الصحيح.");
+      window.setTimeout(() => setRangeWarning(""), 3000);
+      return;
     }
-    setRangeWarning('');
-    onChange(newFrom, toDate);
-  };
-
-  const handleToChange = (newTo: string) => {
-    if (fromDate && newTo) {
-      const fromD = parseNativeValueToDate(fromDate);
-      const toD = parseNativeValueToDate(newTo);
-      if (fromD && toD && fromD > toD) {
-        // Swap values and issue alert warning
-        onChange(newTo, fromDate);
-        setRangeWarning('تم تبديل التواريخ تلقائياً للحفاظ على الترتيب الصحيح.');
-        setTimeout(() => setRangeWarning(''), 3000);
-        return;
-      }
-    }
-    setRangeWarning('');
-    onChange(fromDate, newTo);
+    setRangeWarning("");
+    onChange(nextFrom, nextTo);
   };
 
   return (
-    <div className="flex flex-col gap-2 w-full">
-      <div className="flex flex-row gap-3 w-full">
+    <div className="w-full space-y-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <DateField
           value={fromDate}
-          onChange={handleFromChange}
+          onChange={(next) => updateRange(next, toDate)}
           label={labelFrom}
-          className="flex-1"
         />
         <DateField
           value={toDate}
-          onChange={handleToChange}
+          onChange={(next) => updateRange(fromDate, next)}
           label={labelTo}
-          className="flex-1"
         />
       </div>
-
-      {rangeWarning && (
-        <span className="text-[10px] text-amber-400 flex items-center gap-1 font-bold">
-          <AlertCircle size={11} className="shrink-0" />
+      {rangeWarning ? (
+        <span className="flex items-center gap-1 text-[11px] font-bold text-amber-300">
+          <AlertCircle size={11} aria-hidden="true" />
           {rangeWarning}
         </span>
-      )}
+      ) : null}
     </div>
   );
 };

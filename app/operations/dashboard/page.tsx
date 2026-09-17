@@ -1,3 +1,5 @@
+import "./orca-dashboard-v1.css";
+
 import { getSession } from "@/lib/session";
 import { getActiveTenant } from "@/lib/tenant";
 import DashboardView from "./DashboardView";

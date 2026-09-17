@@ -1,25 +1,34 @@
-'use client';
+"use client";
 
-import type { ReactNode } from 'react';
-import type { LucideIcon } from 'lucide-react';
+import type { ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   FileText,
   Landmark,
   PenLine,
   Receipt,
   Wallet,
-} from 'lucide-react';
+  CircleDollarSign,
+} from "lucide-react";
+import {
+  OperationsKpiGrid,
+  OperationsMetricCard,
+  OperationsPageHeader,
+  OperationsPanel,
+  OperationsTabs,
+} from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
 
 export type ContractsPaymentsPane =
-  | 'leases'
-  | 'sales'
-  | 'invoices'
-  | 'payments'
-  | 'reconciliation'
-  | 'settlements';
+  | "leases"
+  | "sales"
+  | "invoices"
+  | "payments"
+  | "reconciliation"
+  | "settlements";
 
-type MetricTone = 'default' | 'success' | 'warning' | 'danger';
-type AlertTone = 'info' | 'warning' | 'danger';
+type MetricTone = "default" | "success" | "warning" | "danger";
+type AlertTone = "info" | "warning" | "danger";
 
 export interface ContractsPaymentsMetric {
   label: string;
@@ -34,7 +43,7 @@ export interface ContractsPaymentsAlert {
 }
 
 interface ContractsPaymentsShellProps {
-  locale: 'ar' | 'en';
+  locale: "ar" | "en";
   activePane: ContractsPaymentsPane;
   onPaneChange: (pane: ContractsPaymentsPane) => void;
   loading: boolean;
@@ -43,20 +52,23 @@ interface ContractsPaymentsShellProps {
   metrics: ContractsPaymentsMetric[];
   alerts?: ContractsPaymentsAlert[];
   actions?: ReactNode;
+  showWorkspaceNavigation?: boolean;
   children: ReactNode;
 }
 
 const metricToneClass: Record<MetricTone, string> = {
-  default: 'border-white/10 bg-white/[0.035] text-white',
-  success: 'border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-300',
-  warning: 'border-warning/20 bg-warning/[0.07] text-warning',
-  danger: 'border-rose-500/20 bg-rose-500/[0.07] text-rose-300',
+  default: "text-[var(--nc-text-primary)]",
+  success: "text-emerald-700 dark:text-emerald-300",
+  warning: "text-amber-700 dark:text-amber-300",
+  danger: "text-rose-700 dark:text-rose-300",
 };
 
 const alertToneClass: Record<AlertTone, string> = {
-  info: 'border-sky-500/20 bg-sky-500/10 text-sky-300',
-  warning: 'border-warning/20 bg-warning/10 text-warning',
-  danger: 'border-rose-500/20 bg-rose-500/10 text-rose-300',
+  info: "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  warning:
+    "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  danger:
+    "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300",
 };
 
 export default function ContractsPaymentsShell({
@@ -69,117 +81,129 @@ export default function ContractsPaymentsShell({
   metrics,
   alerts = [],
   actions,
+  showWorkspaceNavigation = true,
   children,
 }: ContractsPaymentsShellProps) {
-  const isArabic = locale === 'ar';
+  const isArabic = locale === "ar";
+
   const tabs: Array<{
     id: ContractsPaymentsPane;
     label: string;
     Icon: LucideIcon;
   }> = [
-    { id: 'sales', label: isArabic ? 'عقود البيع' : 'Sales contracts', Icon: PenLine },
-    { id: 'leases', label: isArabic ? 'عقود الإيجار' : 'Rental leases', Icon: FileText },
-    { id: 'invoices', label: isArabic ? 'الفواتير' : 'Invoices', Icon: Receipt },
-    { id: 'payments', label: isArabic ? 'المدفوعات' : 'Payments', Icon: Wallet },
-    { id: 'reconciliation', label: isArabic ? 'المصالحة البنكية' : 'Bank reconciliation', Icon: Landmark },
-    { id: 'settlements', label: isArabic ? 'التسويات' : 'Settlements', Icon: Wallet },
+    {
+      id: "sales",
+      label: isArabic ? "عقود البيع" : "Sales contracts",
+      Icon: PenLine,
+    },
+    {
+      id: "leases",
+      label: isArabic ? "عقود الإيجار" : "Rental leases",
+      Icon: FileText,
+    },
+    {
+      id: "invoices",
+      label: isArabic ? "الفواتير" : "Invoices",
+      Icon: Receipt,
+    },
+    {
+      id: "payments",
+      label: isArabic ? "المدفوعات" : "Payments",
+      Icon: Wallet,
+    },
+    {
+      id: "reconciliation",
+      label: isArabic ? "المصالحة البنكية" : "Bank reconciliation",
+      Icon: Landmark,
+    },
+    {
+      id: "settlements",
+      label: isArabic ? "التسويات" : "Settlements",
+      Icon: Wallet,
+    },
   ];
 
   return (
     <div
-      className="nc-page nc-stack orca-container overflow-x-hidden"
-      dir={isArabic ? 'rtl' : 'ltr'}
+      className={operationsVisual.page}
+      dir={isArabic ? "rtl" : "ltr"}
       data-contracts-payments-shell
     >
-      <section className="relative overflow-hidden rounded-[28px] border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.16)] sm:p-6">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-[var(--nc-accent-soft)] to-transparent opacity-50" />
-
-        <div className="relative flex flex-col gap-5">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div className="max-w-3xl">
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] px-3 py-1 text-[10px] font-black tracking-wide text-[var(--nc-foreground)]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--orca-action-gold)]" />
-                {isArabic ? 'مركز تشغيلي ومالي موحد' : 'Unified operational and financial center'}
-              </div>
-              <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
-                {title}
-              </h1>
-              <p className="mt-2 max-w-2xl text-xs leading-6 text-[var(--nc-text-dim)] sm:text-sm">
-                {description}
-              </p>
-            </div>
-
-            {actions && (
-              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/10 p-2">
-                {actions}
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {metrics.map((metric) => {
-              const tone = metric.tone || 'default';
-              return (
-                <div
-                  key={metric.label}
-                  className={`orca-contract-shell-metric rounded-2xl border p-4 text-center ${metricToneClass[tone]}`}
-                >
-                  <span className="block text-[10px] font-bold text-[var(--nc-text-dim)]">
-                    {metric.label}
-                  </span>
-                  <strong className="mt-2 block text-xl font-black">
-                    {loading ? '…' : metric.value}
-                  </strong>
-                  <span className="mt-1 block text-[10px] text-[var(--nc-text-dim)]">
-                    {metric.hint}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-        </div>
-      </section>
-
-      <section className="overflow-hidden rounded-[28px] border border-[var(--nc-border)] bg-[var(--nc-surface-strong)]">
-        <div className="border-b border-white/10 bg-[var(--nc-surface-solid)] px-3 py-3">
-          <div className="orca-workspace-tabs flex flex-wrap items-center justify-center gap-2">
-            {tabs.map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => onPaneChange(id)}
-                aria-current={activePane === id ? 'page' : undefined}
-                className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border px-4 text-xs font-black transition-all ${
-                  activePane === id
-                    ? 'border-[var(--orca-action-gold)] bg-[var(--orca-action-gold-soft)] text-[var(--orca-action-gold)] shadow-sm'
-                    : 'border-transparent bg-transparent text-[var(--nc-foreground-muted)] hover:border-[var(--orca-action-gold)] hover:bg-[var(--orca-action-gold-soft)] hover:text-[var(--orca-action-gold)]'
-                }`}
-              >
-                <Icon size={14} />
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {alerts.length > 0 && (
-          <div className="flex flex-wrap gap-2 border-b border-white/5 px-4 py-3">
+      <OperationsPageHeader
+        eyebrow={isArabic ? "العقود والمدفوعات" : "Contracts & Payments"}
+        title={title}
+        description={description}
+        actions={
+          <>
+            {actions}
             {alerts.map((alert) => (
               <span
                 key={`${alert.tone}:${alert.label}`}
-                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-bold ${alertToneClass[alert.tone]}`}
+                className={`inline-flex min-h-7 items-center rounded-full border px-2.5 text-[10px] font-bold ${alertToneClass[alert.tone]}`}
               >
                 {alert.label}
               </span>
             ))}
-          </div>
-        )}
+          </>
+        }
+      />
 
-        <div className="p-3 sm:p-4">
-          {children}
-        </div>
-      </section>
+      <OperationsKpiGrid>
+        {metrics.map((metric, index) => {
+          const tone = metric.tone || "default";
+          const MetricIcon = [FileText, Receipt, Wallet, CircleDollarSign][index % 4];
+
+          return (
+            <OperationsMetricCard
+              key={metric.label}
+              title={metric.label}
+              value={loading ? "…" : metric.value}
+              description={metric.hint}
+              icon={MetricIcon}
+              className={metricToneClass[tone]}
+            />
+          );
+        })}
+      </OperationsKpiGrid>
+
+      <OperationsPanel className="overflow-hidden">
+        {showWorkspaceNavigation ? (
+          <div
+            className="orca-contracts-payments-tabs border-b border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-2 py-1.5"
+            data-contracts-payments-tabs
+          >
+            <OperationsTabs
+              dir={isArabic ? "rtl" : "ltr"}
+              className="w-full justify-start"
+            >
+              {tabs.map(({ id, label, Icon }) => {
+                const active = activePane === id;
+
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => onPaneChange(id)}
+                    className={
+                      active
+                        ? operationsVisual.activeTab
+                        : operationsVisual.tab
+                    }
+                  >
+                    <Icon size={14} aria-hidden="true" />
+                    {label}
+                  </button>
+                );
+              })}
+            </OperationsTabs>
+          </div>
+        ) : null}
+
+        <div className="p-2">{children}</div>
+      </OperationsPanel>
     </div>
   );
 }

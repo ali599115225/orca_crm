@@ -1,5 +1,8 @@
 "use client";
 
+import { OperationsTabs } from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
+
 export type SettingsSection =
   "organization" | "staff" | "billing" | "ai" | "integrations" | "advertising" | "compliance";
 
@@ -69,22 +72,11 @@ export default function SettingsNavigation({
   const isArabic = lang === "AR";
 
   return (
-    <nav
-      aria-label={isArabic ? "أقسام الإعدادات" : "Settings sections"}
-      className="orca-settings-tabs"
-    >
-      <div className="orca-settings-tabs-track">
+    <nav aria-label={isArabic ? "أقسام الإعدادات" : "Settings sections"}>
+      <OperationsTabs className="flex-wrap justify-center">
         {ITEMS.filter((item) => !(hideBilling && item.id === "billing")).map(
           (item) => {
             const active = item.id === activeSection;
-
-            const buttonClassName = [
-              "orca-settings-tab flex h-11 min-w-0 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition-all duration-150",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-border)]",
-              active
-                ? "border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)] shadow-sm"
-                : "border-transparent text-[var(--nc-foreground-secondary)] hover:border-[var(--nc-border)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-foreground)]",
-            ].join(" ");
 
             return (
               <button
@@ -92,7 +84,8 @@ export default function SettingsNavigation({
                 type="button"
                 onClick={() => onChange(item.id)}
                 aria-current={active ? "page" : undefined}
-                className={buttonClassName}
+                aria-selected={active}
+                className={active ? operationsVisual.activeTab : operationsVisual.tab}
               >
                 <i
                   className={"ph-bold " + item.icon + " text-base"}
@@ -103,7 +96,7 @@ export default function SettingsNavigation({
             );
           },
         )}
-      </div>
+      </OperationsTabs>
     </nav>
   );
 }

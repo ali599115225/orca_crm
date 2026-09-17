@@ -9,7 +9,10 @@ import {
 } from "./tenant-prisma-enforcement";
 
 function createRawPrismaClient(): PrismaClient {
-  const rawUrl = (process.env.DATABASE_URL ?? "").replace(/[&?]channel_binding=require/gi, "");
+  const configuredUrl = process.env.DATABASE_URL ?? "";
+  const parsedUrl = configuredUrl ? new URL(configuredUrl) : null;
+  parsedUrl?.searchParams.delete("channel_binding");
+  const rawUrl = parsedUrl?.toString() ?? configuredUrl;
   const isProduction = process.env.NODE_ENV === "production" || rawUrl.includes("neon.tech") || rawUrl.includes("sslmode=require");
 
   const sslConfig = isProduction

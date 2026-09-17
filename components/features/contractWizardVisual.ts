@@ -8,7 +8,7 @@
   overlay:
     "fixed inset-0 z-[1000] flex items-center justify-center bg-black/[0.62] p-3 backdrop-blur-sm sm:p-6",
   dialog:
-    "relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-y-auto overscroll-contain rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-solid)] p-5 shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:p-6",
+    "relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-y-auto overscroll-y-auto rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-solid)] p-5 shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:p-6",
   header:
     "mb-5 flex items-start justify-between gap-4 border-b border-[var(--nc-glass-border)] pb-4",
   iconTile:

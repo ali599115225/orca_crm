@@ -1,0 +1,11 @@
+{
+  "files": {
+    "ORCA-VISUAL-CONTRACT-AUDIT.ps1": "b9162334c238acd0da277d6d0176b4d5a26196c6d7a2ec37f250b2fced6a9a3d",
+    "scripts/orca-visual-contract-audit.mjs": "fe3b801aaa0d5fad9140d25a2bf1f66303984d21a1d7932f45456ca3fdcc16a9",
+    "README-ORCA-VISUAL-CONTRACT-AUDITOR.md": "88a154557e784c7582d166ed275db2d93a60df4d9daae00e19a540b53a90b415"
+  },
+  "nodeSyntaxCheck": "PASS",
+  "productFilesModified": false,
+  "dbMigration": false,
+  "commitPushDeploy": false
+}

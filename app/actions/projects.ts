@@ -4,6 +4,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getActiveTenant } from "@/lib/tenant";
+import { runWithTenantContext } from "@/lib/tenant-context";
 import { getSession } from "@/lib/session";
 import { assertServerActionRole } from "@/lib/api-auth-guard";
 import { writeAuditLog } from "@/lib/audit";
@@ -30,7 +31,9 @@ async function requireProjectSession(writerRole = false) {
 export async function getDetailedProjectsAction(page = 1, limit = 50) {
   try {
     const { tenant } = await requireProjectSession(false);
-    const skip = (page - 1) * limit;
+
+    return await runWithTenantContext({ tenantId: tenant.id }, async () => {
+      const skip = (page - 1) * limit;
 
     const [projects, total] = await Promise.all([
       prisma.project.findMany({
@@ -66,7 +69,8 @@ export async function getDetailedProjectsAction(page = 1, limit = 50) {
       };
     });
 
-    return { data, page, limit, total, totalPages: Math.ceil(total / limit) };
+      return { data, page, limit, total, totalPages: Math.ceil(total / limit) };
+    });
   } catch (error) {
     console.error("فشل جلب تفاصيل المشاريع:", error);
     return { data: [], page, limit, total: 0, totalPages: 0 };
@@ -80,7 +84,10 @@ export async function createProjectAction(formData: FormData) {
   try {
     const { session, tenant } = await requireProjectSession(true);
 
-    const name = formData.get("name") as string;
+    return await runWithTenantContext(
+      { tenantId: tenant.id, userId: session.userId },
+      async () => {
+        const name = formData.get("name") as string;
     const city = formData.get("city") as string;
     const status = formData.get("status") as any;
     const unitsTotal = parseInt(formData.get("unitsTotal") as string) || 0;
@@ -118,14 +125,16 @@ export async function createProjectAction(formData: FormData) {
       details: JSON.stringify({ name, city, status }),
     });
 
-    revalidatePath("/operations/projects");
-    return { success: true };
+        revalidatePath("/operations/projects");
+        return { success: true as const };
+      },
+    );
   } catch (error: any) {
     if (error instanceof PlanLimitError) {
       await logPlanBlockedAttempt({ tenantId: "", error }).catch(() => {});
-      return { success: false, error: error.message, code: error.code };
+      return { success: false as const, error: error.message, code: error.code };
     }
-    return { success: false, error: error.message };
+    return { success: false as const, error: error.message };
   }
 }
 
@@ -141,7 +150,10 @@ export async function createProjectActionDirect(data: {
   try {
     const { session, tenant } = await requireProjectSession(true);
 
-    const statusMap: Record<string, any> = {
+    return await runWithTenantContext(
+      { tenantId: tenant.id, userId: session.userId },
+      async () => {
+        const statusMap: Record<string, any> = {
       PLANNING: "PLANNING",
       UNDER_CONSTRUCTION: "UNDER_CONSTRUCTION",
       COMPLETED: "COMPLETED",
@@ -191,13 +203,15 @@ export async function createProjectActionDirect(data: {
         createdAt: newProject.createdAt.toISOString(),
       },
     };
+      },
+    );
   } catch (error: any) {
     if (error instanceof PlanLimitError) {
       await logPlanBlockedAttempt({ tenantId: "", error }).catch(() => {});
-      return { success: false, error: error.message, code: error.code };
+      return { success: false as const, error: error.message, code: error.code };
     }
     console.error("فشل إنشاء المشروع:", error);
-    return { success: false, error: error.message };
+    return { success: false as const, error: error.message };
   }
 }
 
@@ -208,7 +222,8 @@ export async function getProjectUnitsAction(projectId: string) {
   try {
     const { tenant } = await requireProjectSession(false);
 
-    const project = await prisma.project.findFirst({
+    return await runWithTenantContext({ tenantId: tenant.id }, async () => {
+      const project = await prisma.project.findFirst({
       where: { id: projectId, tenantId: tenant.id },
       select: { id: true },
     });
@@ -219,14 +234,15 @@ export async function getProjectUnitsAction(projectId: string) {
       orderBy: { unitNumber: "asc" },
     });
 
-    return units.map(u => ({
-      id: u.id,
-      no: u.unitNumber,
-      type: u.type || "شقة",
-      area: u.area || "120 م²",
-      price: Number(u.priceSar),
-      status: u.status,
-    }));
+      return units.map(u => ({
+        id: u.id,
+        no: u.unitNumber,
+        type: u.type || "شقة",
+        area: u.area || "120 م²",
+        price: Number(u.priceSar),
+        status: u.status,
+      }));
+    });
   } catch (error) {
     console.error("فشل جلب وحدات المشروع:", error);
     return [];
@@ -240,7 +256,10 @@ export async function toggleUnitStatusAction(unitId: string, currentStatus: stri
   try {
     const { session, tenant } = await requireProjectSession(true);
 
-    const unit = await prisma.unit.findFirst({
+    return await runWithTenantContext(
+      { tenantId: tenant.id, userId: session.userId },
+      async () => {
+        const unit = await prisma.unit.findFirst({
       where: { id: unitId, project: { tenantId: tenant.id } },
     });
     if (!unit) throw new Error("الوحدة غير موجودة أو لا تنتمي لمنشأتك.");
@@ -261,10 +280,12 @@ export async function toggleUnitStatusAction(unitId: string, currentStatus: stri
       details: JSON.stringify({ from: currentStatus, to: nextStatus }),
     });
 
-    revalidatePath("/operations/projects");
-    return { success: true, status: updatedUnit.status };
+        revalidatePath("/operations/projects");
+        return { success: true as const, status: updatedUnit.status };
+      },
+    );
   } catch (error: any) {
     console.error("فشل تعديل حالة الوحدة العقارية:", error);
-    return { success: false, error: error.message };
+    return { success: false as const, error: error.message };
   }
 }

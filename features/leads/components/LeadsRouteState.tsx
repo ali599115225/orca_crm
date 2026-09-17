@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowLeft, ArrowRight, ShieldX } from "lucide-react";
+import { AlertTriangle, ShieldX } from "lucide-react";
 import { useApp } from "@/app/context/AppContext";
 import { leadsCopy } from "@/features/leads/copy/leadsCopy";
 import { leadVisual } from "@/features/leads/visual";
+import { OperationsBackAction } from "@/components/operations";
 
 interface LeadsRouteStateProps {
   state: "forbidden" | "error";
@@ -12,11 +12,9 @@ interface LeadsRouteStateProps {
 }
 
 export default function LeadsRouteState({ state, onRetry }: LeadsRouteStateProps) {
-  const router = useRouter();
   const { lang } = useApp();
   const isArabic = lang === "AR";
   const labels = isArabic ? leadsCopy.ar : leadsCopy.en;
-  const BackIcon = isArabic ? ArrowRight : ArrowLeft;
   const StateIcon = state === "forbidden" ? ShieldX : AlertTriangle;
 
   return (
@@ -40,14 +38,11 @@ export default function LeadsRouteState({ state, onRetry }: LeadsRouteStateProps
             : labels.routeErrorDescription}
         </p>
         <div className="mt-5 flex flex-col-reverse justify-center gap-2 sm:flex-row">
-          <button
-            type="button"
-            onClick={() => router.push("/operations/dashboard")}
-            className={leadVisual.secondaryButton}
-          >
-            <BackIcon className="h-4 w-4" aria-hidden="true" />
-            {labels.returnToDashboard}
-          </button>
+          <OperationsBackAction
+            href="/operations/dashboard"
+            label={labels.returnToDashboard}
+            locale={isArabic ? "ar" : "en"}
+          />
           {state === "error" && onRetry && (
             <button type="button" onClick={onRetry} className={leadVisual.primaryButton}>
               {labels.retry}

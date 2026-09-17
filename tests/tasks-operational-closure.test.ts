@@ -17,6 +17,8 @@ describe("Tasks operational and property-identity closure", () => {
   const properties = source(
     "components/real-estate/properties/PropertiesWorkspace.tsx",
   );
+  const operationsDialog = source("components/operations/OperationsDialog.tsx");
+  const operationsVisual = source("features/operations/visual.ts");
 
   it("keeps the task page on the canonical TasksView", () => {
     const page = source("app/operations/tasks/page.tsx");
@@ -67,18 +69,17 @@ describe("Tasks operational and property-identity closure", () => {
     expect(actions).toContain('action: "TASK_UPDATED"');
   });
 
-  it("supports a complete modal create and edit workflow", () => {
+  it("supports a complete shared-dialog create and edit workflow", () => {
     expect(view).toContain("updateTaskAction");
     expect(view).toContain("beginEdit(selectedTask)");
     expect(view).toContain('formData.append("assignedTo", newAssignedTo)');
     expect(view).toContain('formData.append("dueAt", dueAt.toISOString())');
-    expect(view).toContain("orca-dialog-overlay");
-    expect(view).toContain('role="dialog"');
-    expect(view).toContain('aria-modal="true"');
-    expect(view).toContain('createPortal(');
-    expect(view).toContain('document.body');
-    expect(view).toContain('paddingTop: "5.5rem"');
-    expect(view).toContain('maxHeight: "calc(100dvh - 6.5rem)"');
+    expect(view).toContain("OperationsDialog");
+    expect(operationsDialog).toContain("createPortal(");
+    expect(operationsDialog).toContain('role="dialog"');
+    expect(operationsDialog).toContain('aria-modal="true"');
+    expect(operationsDialog).toContain('event.key === "Escape"');
+    expect(operationsDialog).toContain("document.body");
   });
 
   it("uses working searchable customer and owner fields", () => {
@@ -130,28 +131,25 @@ describe("Tasks operational and property-identity closure", () => {
   it("uses the approved fixed five-item task list card", () => {
     expect(view).toContain("const PAGE_SIZE = 5");
     expect(view).toContain("data-operational-list-card");
-    expect(view).toContain('className={`group flex h-[68px]');
+    expect(view).toContain('className={`group flex h-[60px]');
     expect(view).toContain("orca-workspace-pagination");
     expect(view).not.toContain("<table");
   });
 
-  it("adopts the approved property workspace identity without changing the property page", () => {
+  it("adopts the shared Dashboard workspace identity without changing the property page", () => {
     for (const token of [
-      "orca-container",
-      "orca-workspace-hero",
-      "orca-workspace-metrics",
-      "orca-workspace-metric",
-      "orca-workspace-note",
-      "orca-workspace-panel",
-      "orca-workspace-toolbar",
-      "orca-info-cell",
+      "OperationsPageHeader",
+      "OperationsKpiGrid",
+      "OperationsMetricCard",
+      "OperationsExecutiveGrid",
+      "OperationsPanel",
     ]) {
       expect(properties).toContain(token);
       expect(view).toContain(token);
     }
 
     expect(view).toContain("data-tasks-property-workspace");
-    expect(view).toContain("orca-container pb-4");
+    expect(view).toContain("operationsVisual.page");
     expect(view).not.toContain("UnifiedOperationsWorkspace");
   });
 
@@ -164,11 +162,13 @@ describe("Tasks operational and property-identity closure", () => {
     expect(view).toContain("onClick={beginCreate}");
   });
 
-  it("preserves the approved upper page identity while changing only the two lower cards", () => {
-    expect(view).toContain("orca-workspace-hero");
-    expect(view).toContain("orca-workspace-metrics");
-    expect(view).toContain("orca-workspace-note");
+  it("preserves the approved shared upper page identity", () => {
+    expect(view).toContain("OperationsPageHeader");
+    expect(view).toContain("OperationsKpiGrid");
+    expect(view).toContain("OperationsMetricCard");
     expect(view).toContain("data-four-page-two-card-workspace");
+    expect(operationsVisual).toContain('hero: "orca-workspace-hero"');
+    expect(operationsVisual).toContain('metrics: "orca-workspace-metrics"');
   });
 
   it("uses rounded gold task rows inside the list card", () => {
@@ -180,13 +180,12 @@ describe("Tasks operational and property-identity closure", () => {
     expect(view).not.toContain("orca-data-row");
   });
 
-  it("uses only the approved two lower operational cards", () => {
+  it("uses only the approved shared two-card operational grid", () => {
     expect(view).toContain("data-four-page-two-card-workspace");
     expect(view).toContain("data-operational-list-card");
     expect(view).toContain("data-operational-detail-card");
-    expect(view).toContain("lg:grid-cols-[340px_minmax(0,1fr)]");
-    expect(view).toContain("lg:h-[520px]");
-    expect(view).toContain("gap-3");
+    expect(view).toContain("OperationsExecutiveGrid");
+    expect(view).not.toContain('lg:h-[500px]');
     expect(view).not.toContain('className="space-y-3"');
   });
 
@@ -195,11 +194,13 @@ describe("Tasks operational and property-identity closure", () => {
     expect(view).not.toMatch(/<select\b/i);
   });
 
-  it("enforces 44px controls and hidden internal scrollbars", () => {
+  it("enforces 44px controls and shared bounded menu scrolling", () => {
     expect(view).toContain("min-h-[44px]");
-    expect(view).toContain("[scrollbar-width:none]");
-    expect(view).toContain("[&::-webkit-scrollbar]:hidden");
-    expect(view).toContain("overflow-y-auto");
+    expect(view).toContain("OperationsScrollRegion");
+    expect(view.match(/scrollRole="menu"/g)?.length).toBe(3);
+    expect(view).not.toContain("overflow-y-auto");
+    expect(view).not.toContain("[scrollbar-width:none]");
+    expect(view).not.toContain("[&::-webkit-scrollbar]:hidden");
   });
 
   it("does not expose UUID labels or technical identifiers in task copy", () => {

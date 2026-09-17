@@ -1,38 +1,24 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { Banknote, FileCheck2, Funnel, Plug, RefreshCw, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/app/context/AppContext";
+import { operationsVisual } from "@/features/operations/visual";
+import {
+  OperationsEmptyState,
+  OperationsKpiGrid,
+  OperationsMasterList,
+  OperationsMasterRow,
+  OperationsMetricCard,
+  OperationsPageHeader,
+  OperationsPanel,
+  OperationsPanelHeader,
+} from "@/components/operations";
 import {
   getMarketingOverviewAction,
   MarketingOverview,
 } from "@/app/actions/marketing";
-
-/* ─── visual tokens (mirrors dashboardVisual) ──────────────────────────── */
-const V = {
-  page: "nc-page nc-stack orca-container orca-marketing-final pb-10",
-  shell: "space-y-4",
-  hero: "orca-workspace-hero",
-  metrics: "orca-workspace-metrics",
-  metric:
-    "orca-workspace-metric group flex min-h-[98px] flex-col justify-between text-start transition-[border-color,background-color,box-shadow] duration-150 hover:!border-[var(--nc-accent-border)] hover:!bg-[var(--nc-surface-soft)] hover:!shadow-sm",
-  metricIconTile:
-    "grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] text-[var(--nc-text-secondary)] transition-colors duration-150 group-hover:border-[var(--nc-accent-border)] group-hover:bg-[var(--nc-surface-strong)] group-hover:text-[var(--nc-accent)]",
-  panel: "orca-workspace-panel",
-  sectionTitle: "text-sm font-bold text-[var(--nc-text-primary)]",
-  sectionDesc: "mt-0.5 text-xs text-[var(--nc-text-secondary)]",
-  eyebrow: "text-xs font-bold text-[var(--nc-accent)]",
-  title: "mt-1 text-2xl font-black text-[var(--nc-text-primary)]",
-  desc: "mt-1 text-sm text-[var(--nc-text-secondary)]",
-  headerSecondaryButton:
-    "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-4 text-sm font-bold text-[var(--nc-text-primary)] transition-colors duration-150 hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)] disabled:cursor-not-allowed disabled:opacity-50",
-  primaryButton:
-    "nc-btn-primary inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)] disabled:cursor-not-allowed disabled:opacity-50",
-  statusBadge:
-    "inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-black",
-  dataRow:
-    "orca-data-row border-t border-[var(--nc-border)] transition-colors duration-150",
-} as const;
 
 /* ─── copy ───────────────────────────────────────────────────────────────── */
 const COPY = {
@@ -192,16 +178,16 @@ export default function MarketingPerformanceWorkspace({
   if (loading) {
     return (
       <div
-        className={V.page}
+        className={operationsVisual.page}
         dir={isArabic ? "rtl" : "ltr"}
         aria-busy="true"
         aria-label={t.loading}
       >
-        <div className={V.shell}>
+        <div className={operationsVisual.pageStack}>
           {/* hero skeleton */}
-          <div className="orca-workspace-panel h-[88px] animate-pulse bg-[var(--nc-surface-strong)]" />
+          <div className={`${operationsVisual.panel} h-[88px] animate-pulse`} />
           {/* metrics skeleton */}
-          <div className={V.metrics}>
+          <div className={operationsVisual.metrics}>
             {[0, 1, 2, 3].map((i) => (
               <div
                 key={i}
@@ -220,11 +206,11 @@ export default function MarketingPerformanceWorkspace({
   if (failed || !data) {
     return (
       <div
-        className={V.page}
+        className={operationsVisual.page}
         dir={isArabic ? "rtl" : "ltr"}
       >
-        <div className={V.shell}>
-          <div className="orca-workspace-panel flex flex-col items-center justify-center gap-4 p-12 text-center">
+        <div className={operationsVisual.pageStack}>
+          <div className={`${operationsVisual.panelPadded} flex flex-col items-center justify-center gap-4 text-center`}>
             <span
               className="grid h-14 w-14 place-items-center rounded-2xl border border-amber-500/30 bg-amber-500/10 text-2xl text-amber-500"
               aria-hidden="true"
@@ -243,7 +229,7 @@ export default function MarketingPerformanceWorkspace({
               id="marketing-retry-btn"
               type="button"
               onClick={() => void load()}
-              className={V.primaryButton}
+              className={operationsVisual.primaryButton}
             >
               {t.retry}
             </button>
@@ -272,242 +258,105 @@ export default function MarketingPerformanceWorkspace({
       label: t.leads,
       desc: t.leadsDesc,
       value: number(data.totals.leads),
-      icon: "ph-users",
+      icon: UsersRound,
     },
     {
       id: "marketing-kpi-converted",
       label: t.converted,
       desc: t.convertedDesc,
       value: number(data.totals.convertedLeads),
-      icon: "ph-funnel",
+      icon: Funnel,
     },
     {
       id: "marketing-kpi-contracts",
       label: t.contracts,
       desc: t.contractsDesc,
       value: number(data.totals.signedContracts),
-      icon: "ph-file-text",
+      icon: FileCheck2,
     },
     {
       id: "marketing-kpi-value",
       label: t.value,
       desc: t.valueDesc,
       value: money(data.totals.contractValue),
-      icon: "ph-currency-circle-dollar",
+      icon: Banknote,
     },
   ];
 
   return (
-    <main
-      className={V.page}
-      dir={isArabic ? "rtl" : "ltr"}
-    >
-      <div className={V.shell}>
+    <main className={`${operationsVisual.page} orca-marketing-final`} dir={isArabic ? "rtl" : "ltr"} data-marketing-contract="dashboard-v2">
+      <div className={operationsVisual.pageStack}>
+        <OperationsPageHeader
+          eyebrow={eyebrow}
+          title={title}
+          description={description}
+          icon={Funnel}
+          meta={<span className={operationsVisual.statusBadge}>{t.live}</span>}
+          actions={
+            <button type="button" onClick={() => void load()} className={operationsVisual.iconButton} aria-label={t.retry} title={t.retry}>
+              <RefreshCw aria-hidden="true" />
+            </button>
+          }
+        />
 
-        {/* ── 1. Header ────────────────────────────────────────────────── */}
-        <header className={V.hero} data-marketing-card="title">
-          <div className="min-w-0 flex-1">
-            <p className={V.eyebrow}>{eyebrow}</p>
-            <h1 className={V.title}>{title}</h1>
-            <p className={V.desc}>{description}</p>
-          </div>
-
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
-            {/* live badge */}
-            <span
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] px-3 py-1 text-xs font-bold text-[var(--nc-accent)]"
-              aria-label={t.live}
-            >
-              <i className="ph-bold ph-database" aria-hidden="true" />
-              {t.live}
-            </span>
-          </div>
-        </header>
-
-        {/* ── 2. KPI Cards ─────────────────────────────────────────────── */}
-        <section className={V.metrics} aria-label={t.leads}>
+        <OperationsKpiGrid aria-label={t.leads}>
           {kpiItems.map((kpi) => (
-            <div
-              key={kpi.id}
-              id={kpi.id}
-              className={V.metric}
-              data-marketing-card="kpi"
-            >
-              {/* top row: label + icon */}
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-[var(--nc-text-primary)]">
-                    {kpi.label}
-                  </p>
-                  <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-[var(--nc-text-secondary)]">
-                    {kpi.desc}
-                  </p>
-                </div>
-                <span className={V.metricIconTile} aria-hidden="true">
-                  <i className={`ph-bold ${kpi.icon} text-[18px]`} />
-                </span>
-              </div>
-
-              {/* bottom: value */}
-              <div className="mt-3">
-                <strong className="text-3xl font-black leading-none text-[var(--nc-text-primary)]">
-                  {kpi.value}
-                </strong>
-              </div>
-            </div>
+            <OperationsMetricCard key={kpi.id} id={kpi.id} data-marketing-card="kpi" title={kpi.label} value={kpi.value} description={kpi.desc} icon={kpi.icon} />
           ))}
-        </section>
+        </OperationsKpiGrid>
 
-        {/* ── 3. Lead source performance table ─────────────────────────── */}
-        <div className={`${V.panel} overflow-hidden`}>
-          {/* panel header */}
-          <div className="border-b border-[var(--nc-border)] px-5 py-4">
-            <h2 className={V.sectionTitle}>{t.sourcesTitle}</h2>
-            <p className={V.sectionDesc}>{t.sourcesDesc}</p>
-          </div>
-
+        <OperationsPanel className="overflow-hidden">
+          <OperationsPanelHeader title={t.sourcesTitle} description={t.sourcesDesc} icon={Funnel} />
           {data.sources.length === 0 ? (
-            <p className="p-8 text-center text-sm text-[var(--nc-text-secondary)]">
-              {t.noSources}
-            </p>
+            <div className="p-3"><OperationsEmptyState>{t.noSources}</OperationsEmptyState></div>
           ) : (
-            <div
-              className="overflow-x-auto [&::-webkit-scrollbar]:hidden"
-              style={{ scrollbarWidth: "none" }}
-            >
-              <table className="w-full min-w-[760px] text-sm">
-                <thead className="bg-[var(--nc-surface-solid)] text-[10px] uppercase tracking-wider text-[var(--nc-text-dim)]">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="px-5 py-3 text-start font-bold"
-                    >
-                      {t.source}
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-center font-bold">
-                      {t.leads}
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-center font-bold">
-                      {t.reservations}
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-center font-bold">
-                      {t.won}
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-center font-bold">
-                      {t.contracts}
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-center font-bold">
-                      {t.conversion}
-                    </th>
-                    <th scope="col" className="px-5 py-3 text-end font-bold">
-                      {t.value}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.sources.map((source) => (
-                    <tr
-                      key={source.source}
-                      className={V.dataRow}
-                    >
-                      <td className="px-5 py-3.5 font-black text-[var(--nc-text-primary)]">
-                        {source.source}
-                      </td>
-                      <td className="px-4 py-3.5 text-center text-[var(--nc-text-primary)]">
-                        {number(source.leads)}
-                      </td>
-                      <td className="px-4 py-3.5 text-center text-[var(--nc-text-primary)]">
-                        {number(source.reservations)}
-                      </td>
-                      <td className="px-4 py-3.5 text-center text-[var(--nc-text-primary)]">
-                        {number(source.wonLeads)}
-                      </td>
-                      <td className="px-4 py-3.5 text-center text-[var(--nc-text-primary)]">
-                        {number(source.signedContracts)}
-                      </td>
-                      <td className="px-4 py-3.5 text-center font-bold text-[var(--nc-accent)]">
-                        {number(source.conversionRate, 1)}%
-                      </td>
-                      <td className="px-5 py-3.5 text-end font-black text-[var(--nc-text-primary)]">
-                        {money(source.contractValue)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* ── 4. Platform connections ───────────────────────────────────── */}
-        {mode === "marketing" && (
-          <div className={`${V.panel} overflow-hidden`}>
-            {/* panel header */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--nc-border)] px-5 py-4">
-              <div>
-                <h2 className={V.sectionTitle}>{t.connectionsTitle}</h2>
-                <p className={V.sectionDesc}>{t.connectionsDesc}</p>
+            <OperationsMasterList>
+              <div className="orca-platform-grid-header hidden grid-cols-[minmax(150px,1.2fr)_repeat(4,minmax(80px,.7fr))_100px_minmax(120px,1fr)] gap-3 px-3 py-2 font-black text-[var(--nc-text-dim)] lg:grid" aria-hidden="true">
+                <span>{t.source}</span><span>{t.leads}</span><span>{t.reservations}</span><span>{t.won}</span><span>{t.contracts}</span><span>{t.conversion}</span><span>{t.value}</span>
               </div>
-              <button
-                id="marketing-manage-integrations-btn"
-                type="button"
-                onClick={() =>
-                  router.push("/operations/settings?tab=advertising")
-                }
-                className={V.headerSecondaryButton}
-              >
-                <i className="ph-bold ph-plug" aria-hidden="true" />
-                {t.settings}
-              </button>
-            </div>
+              {data.sources.map((source) => (
+                <div key={source.source} className="orca-platform-grid-row grid min-h-[58px] grid-cols-2 items-center gap-2 rounded-xl border border-transparent px-3 py-2 hover:border-[var(--nc-border)] hover:bg-[var(--nc-surface-soft)] lg:grid-cols-[minmax(150px,1.2fr)_repeat(4,minmax(80px,.7fr))_100px_minmax(120px,1fr)] lg:gap-3">
+                  <strong className="truncate text-xs text-[var(--nc-text-primary)]">{source.source}</strong>
+                  <span className="text-xs">{number(source.leads)}</span>
+                  <span className="text-xs">{number(source.reservations)}</span>
+                  <span className="text-xs">{number(source.wonLeads)}</span>
+                  <span className="text-xs">{number(source.signedContracts)}</span>
+                  <span className="text-xs font-bold text-[var(--nc-accent)]">{number(source.conversionRate, 1)}%</span>
+                  <strong className="text-xs text-[var(--nc-text-primary)]">{money(source.contractValue)}</strong>
+                </div>
+              ))}
+            </OperationsMasterList>
+          )}
+        </OperationsPanel>
 
+        {mode === "marketing" ? (
+          <OperationsPanel className="overflow-hidden">
+            <OperationsPanelHeader
+              title={t.connectionsTitle}
+              description={t.connectionsDesc}
+              icon={Plug}
+              actions={
+                <button id="marketing-manage-integrations-btn" type="button" onClick={() => router.push("/operations/settings?tab=advertising")} className={operationsVisual.secondaryButton}>
+                  <Plug aria-hidden="true" />{t.settings}
+                </button>
+              }
+            />
             {data.connections.length === 0 ? (
-              <p className="p-8 text-center text-sm text-[var(--nc-text-secondary)]">
-                {t.noConnections}
-              </p>
+              <div className="p-3"><OperationsEmptyState>{t.noConnections}</OperationsEmptyState></div>
             ) : (
-              <div
-                className="divide-y divide-[var(--nc-border)]"
-                role="list"
-                aria-label={t.connectionsTitle}
-              >
+              <OperationsMasterList role="list" aria-label={t.connectionsTitle}>
                 {data.connections.map((connection) => (
-                  <div
-                    key={connection.id}
-                    role="listitem"
-                    className="grid grid-cols-1 gap-x-4 gap-y-2 px-5 py-4 sm:grid-cols-2 md:grid-cols-4 md:items-center"
-                  >
-                    {/* platform name */}
-                    <strong className="text-sm font-bold text-[var(--nc-text-primary)]">
-                      {connection.platform}
-                    </strong>
-
-                    {/* masked account */}
-                    <span className="font-mono text-xs text-[var(--nc-text-secondary)]">
-                      {maskAccount(connection.accountId)}
-                    </span>
-
-                    {/* status badge — translated */}
-                    <span
-                      className={`${V.statusBadge} w-fit ${statusBadgeClass(connection.status)}`}
-                    >
-                      {statusLabel(connection.status, t)}
-                    </span>
-
-                    {/* last updated */}
-                    <span className="text-xs text-[var(--nc-text-dim)] md:text-end">
-                      {new Intl.DateTimeFormat(
-                        isArabic ? "ar-SA" : "en-US",
-                        { dateStyle: "medium" },
-                      ).format(new Date(connection.updatedAt))}
-                    </span>
+                  <div key={connection.id} role="listitem" className="grid min-h-[58px] grid-cols-2 items-center gap-2 rounded-xl border border-transparent px-3 py-2 hover:border-[var(--nc-border)] hover:bg-[var(--nc-surface-soft)] md:grid-cols-[minmax(140px,1fr)_minmax(120px,1fr)_110px_140px]">
+                    <strong className="truncate text-xs">{connection.platform}</strong>
+                    <span className="font-mono text-xs text-[var(--nc-text-secondary)]">{maskAccount(connection.accountId)}</span>
+                    <span className={`w-fit rounded-full border px-2.5 py-1 text-[10px] font-black ${statusBadgeClass(connection.status)}`}>{statusLabel(connection.status, t)}</span>
+                    <span className="text-xs text-[var(--nc-text-dim)] md:text-end">{new Intl.DateTimeFormat(isArabic ? "ar-SA" : "en-US", { dateStyle: "medium" }).format(new Date(connection.updatedAt))}</span>
                   </div>
                 ))}
-              </div>
+              </OperationsMasterList>
             )}
-          </div>
-        )}
-
+          </OperationsPanel>
+        ) : null}
       </div>
     </main>
   );

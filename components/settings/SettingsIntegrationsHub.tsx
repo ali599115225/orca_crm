@@ -1,8 +1,9 @@
 "use client";
+
+import SettingsSelect from "@/components/settings/SettingsSelect";
 import { displayUiAlias } from "@/lib/display/uiAliases";
 
 import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
-import { createPortal } from "react-dom";
 import {
   disconnectRevenueProviderAction,
   getRevenueTrustStateAction,
@@ -10,8 +11,15 @@ import {
   submitRevenueProviderApplicationAction,
   testRevenueProviderAction,
 } from "@/app/actions/revenue-integrity";
-import { SmartCard } from "@/components/ui/SmartCard";
-import SettingsButton from "@/components/settings/SettingsButton";
+import {
+  OperationsDialog,
+  OperationsKpiGrid,
+  OperationsMetricCard,
+  OperationsPanel,
+  OperationsPanelHeader,
+  OperationsTabs,
+} from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
 import WhatsAppIntegrationSettings from "@/components/settings/WhatsAppIntegrationSettings";
 
 type ProviderId =
@@ -378,8 +386,6 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showRequiredErrors, setShowRequiredErrors] = useState(false);
   const [browserOrigin, setBrowserOrigin] = useState("");
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const lastFocusedRef = useRef<HTMLElement | null>(null);
   const autoOpenHandledRef = useRef(false);
 
   const definition = PROVIDERS.find((item) => item.id === activeProvider)!;
@@ -628,7 +634,6 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
   }
 
   function openProvider(providerId: ProviderId) {
-    lastFocusedRef.current = document.activeElement as HTMLElement | null;
     setActiveProvider(providerId);
     setMode("CONNECT");
     setShowRequiredErrors(false);
@@ -637,7 +642,6 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
 
   function closeDrawer() {
     setDrawerOpen(false);
-    lastFocusedRef.current?.focus();
   }
 
   const isDirty = useMemo(() => {
@@ -655,41 +659,9 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
     );
   }, [activeProvider, mode, baseUrl, connection, definition, form, isDefault, company, documents, notes]);
 
-  function handleOverlayClick() {
-    if (isDirty) return;
-    closeDrawer();
-  }
-
   useEffect(() => {
     setBrowserOrigin(window.location.origin);
   }, []);
-
-  useEffect(() => {
-    if (!drawerOpen) return;
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") closeDrawer();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drawerOpen]);
-
-  useEffect(() => {
-    if (drawerOpen) titleRef.current?.focus();
-  }, [drawerOpen, activeProvider]);
-
-  useEffect(() => {
-    if (!drawerOpen) return;
-    const scrollContainer = document.querySelector('[class*="overflow-y-auto"]') as HTMLElement | null;
-    const previousContainerOverflow = scrollContainer?.style.overflow;
-    const previousBodyOverflow = document.body.style.overflow;
-    if (scrollContainer) scrollContainer.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
-    return () => {
-      if (scrollContainer) scrollContainer.style.overflow = previousContainerOverflow || "";
-      document.body.style.overflow = previousBodyOverflow;
-    };
-  }, [drawerOpen]);
 
   // Header KPI summary — current in-memory data only, no new fetch.
   const trackedProviders = providers.filter((item) => item.provider !== "WHATSAPP");
@@ -780,58 +752,36 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
 
   return (
     <div className="orca-settings-section orca-settings-integrations-section">
-      <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-5 py-4">
-        <h2 className="text-lg font-black text-[var(--nc-foreground)]">
-          {L("التكاملات والامتثال", "Integrations & Compliance")}
-        </h2>
-        <p className="mt-1 text-sm text-[var(--nc-foreground-muted)]">
-          {L(
+      <OperationsPanel>
+        <OperationsPanelHeader
+          title={L("التكاملات والامتثال", "Integrations & Compliance")}
+          description={L(
             "إدارة مزودي الخدمة المعتمدين وحالة ربطهم من مكان واحد.",
             "Manage approved service providers and their connection status in one place.",
           )}
-        </p>
-      </div>
+        />
+      </OperationsPanel>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-          <i className="ph-bold ph-check-circle text-xl text-emerald-700 dark:text-emerald-300" aria-hidden="true" />
-          <div>
-            <div className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{L("المتصلة", "Connected")}</div>
-            <div className="text-lg font-black text-emerald-700 dark:text-emerald-300">{summary.connected}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-4">
-          <i className="ph-bold ph-circle-dashed text-xl text-[var(--nc-foreground-muted)]" aria-hidden="true" />
-          <div>
-            <div className="text-xs font-bold text-[var(--nc-foreground-muted)]">{L("غير المهيأة", "Not configured")}</div>
-            <div className="text-lg font-black text-[var(--nc-foreground)]">{notConfigured}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-          <i className="ph-bold ph-warning-circle text-xl text-amber-700 dark:text-amber-300" aria-hidden="true" />
-          <div>
-            <div className="text-xs font-bold text-amber-700 dark:text-amber-300">{L("تحتاج إجراء", "Needs action")}</div>
-            <div className="text-lg font-black text-amber-700 dark:text-amber-300">{summary.needsAction}</div>
-          </div>
-        </div>
-      </div>
+      <OperationsKpiGrid className="orca-workspace-metrics-3">
+        <OperationsMetricCard title={L("المتصلة", "Connected")} value={summary.connected} />
+        <OperationsMetricCard title={L("غير المهيأة", "Not configured")} value={notConfigured} />
+        <OperationsMetricCard title={L("تحتاج إجراء", "Needs action")} value={summary.needsAction} />
+      </OperationsKpiGrid>
 
-      <div className="flex gap-2 overflow-x-auto">
+      <OperationsTabs className="flex-wrap">
         {CATEGORY_FILTERS.map((filter) => (
           <button
             key={filter.id}
             type="button"
             onClick={() => setCategoryFilter(filter.id)}
-            className={`h-11 shrink-0 rounded-xl border px-4 text-xs font-black transition-colors ${
-              categoryFilter === filter.id
-                ? "border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]"
-                : "border-[var(--nc-border)] text-[var(--nc-foreground-secondary)] hover:border-[var(--nc-border-strong)] hover:bg-[var(--nc-surface-strong)] hover:text-[var(--nc-foreground)]"
-            }`}
+            role="tab"
+            aria-selected={categoryFilter === filter.id}
+            className={categoryFilter === filter.id ? operationsVisual.activeTab : operationsVisual.tab}
           >
             {L(filter.ar, filter.en)}
           </button>
         ))}
-      </div>
+      </OperationsTabs>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {visibleProviders.map((provider, providerIndex) => {
@@ -841,9 +791,10 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
           const categoryLabel = CATEGORY_FILTERS.find((c) => c.id === provider.category);
 
           return (
-            <div
+            <OperationsPanel
               key={provider.id}
-              className={`orca-settings-card flex min-h-[230px] flex-col rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 transition-all duration-150 hover:border-[var(--nc-border-strong)] hover:bg-[var(--nc-surface-strong)] ${visibleProviders.length % 3 === 1 && providerIndex === visibleProviders.length - 1 ? "md:col-span-2 xl:col-span-3" : ""}`}
+              padded
+              className={`flex min-h-[230px] flex-col ${visibleProviders.length % 3 === 1 && providerIndex === visibleProviders.length - 1 ? "md:col-span-2 xl:col-span-3" : ""}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <h3 className="min-w-0 truncate text-base font-black text-[var(--nc-foreground)]">
@@ -895,49 +846,85 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
               )}
 
               <div className="mt-auto pt-2">
-                <SettingsButton className="w-[132px] justify-center" variant="primary" onClick={() => openProvider(provider.id)}>
+                <button type="button" className={operationsVisual.primaryButton} onClick={() => openProvider(provider.id)}>
                   {isWhatsApp
                     ? L("إدارة واتساب", "Manage WhatsApp")
                     : state?.status === "CONNECTED"
                       ? L("إدارة", "Manage")
                       : L("ربط", "Connect")}
-                </SettingsButton>
+                </button>
               </div>
-            </div>
+            </OperationsPanel>
           );
         })}
       </div>
 
-      {drawerOpen &&
-        createPortal(
-          <div className="fixed inset-x-0 bottom-0 top-[88px] z-[100] flex">
-            <div
-              onClick={handleOverlayClick}
-              className="absolute inset-0 bg-black/60"
-            />
-
-            <div
-              className={`absolute inset-y-4 left-4 z-[110] flex w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] shadow-2xl ${
-                activeProvider === "WHATSAPP" ? "sm:w-[640px]" : "sm:w-[min(720px,calc(100vw-2rem))]"
-              }`}
-            >
-              <div className="flex shrink-0 items-center justify-between border-b border-[var(--nc-border)] p-5">
-                <h2 ref={titleRef} tabIndex={-1} className="text-lg font-black text-[var(--nc-foreground)] outline-none">
-                  {providerDisplayName(definition)}
-                </h2>
-                <SettingsButton variant="icon" onClick={closeDrawer} aria-label={L("إغلاق", "Close")}>
-                  ×
-                </SettingsButton>
-              </div>
-
+      <OperationsDialog
+        open={drawerOpen}
+        onClose={closeDrawer}
+        title={providerDisplayName(definition)}
+        description={isArabic ? definition.ar : definition.en}
+        closeLabel={L("إغلاق", "Close")}
+        closeDisabled={pending}
+        closeOnBackdrop={!isDirty}
+        dir={isArabic ? "rtl" : "ltr"}
+        className={activeProvider === "WHATSAPP" ? "max-w-2xl" : "max-w-3xl"}
+        footer={
+          activeProvider === "WHATSAPP" ? null : mode === "CONNECT" ? (
+            <>
+              <button type="button" className={operationsVisual.secondaryButton} onClick={closeDrawer} disabled={pending}>
+                {L("إلغاء", "Cancel")}
+              </button>
+              <button type="submit" form="settings-integration-connect-form" className={operationsVisual.primaryButton} disabled={pending}>
+                {connection?.id ? L("تدوير بيانات الاعتماد", "Rotate credentials") : L("حفظ مشفر", "Save encrypted")}
+              </button>
+              <button
+                type="button"
+                className={operationsVisual.secondaryButton}
+                disabled={pending || !connection?.id || connection.status === "DISCONNECTED"}
+                onClick={() =>
+                  run(
+                    () => testRevenueProviderAction(activeProvider),
+                    activeProvider === "CUSTOM_PAYMENT"
+                      ? L("تم التحقق من اكتمال وصحة إعداد المزود.", "Provider configuration validated.")
+                      : L("نجح اختبار الاتصال وتم اعتماد الحالة متصل.", "Connection test passed and status is now connected."),
+                  )
+                }
+              >
+                {activeProvider === "CUSTOM_PAYMENT" ? L("التحقق من الإعداد", "Validate configuration") : L("اختبار الاتصال", "Test connection")}
+              </button>
+              <button
+                type="button"
+                className="orca-operations-secondary-button border-rose-500/40 text-rose-400"
+                disabled={pending || !connection?.id}
+                onClick={() => run(() => disconnectRevenueProviderAction(activeProvider), L("تم فصل المزود.", "Provider disconnected."))}
+              >
+                {L("فصل", "Disconnect")}
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" className={operationsVisual.secondaryButton} onClick={closeDrawer} disabled={pending}>
+                {L("إلغاء", "Cancel")}
+              </button>
+              <button
+                type="submit"
+                form="settings-integration-request-form"
+                className={operationsVisual.primaryButton}
+                disabled={pending || Object.values(company).some((value) => !String(value).trim())}
+              >
+                {L("إرسال الطلب", "Submit application")}
+              </button>
+            </>
+          )
+        }
+      >
               {activeProvider === "WHATSAPP" ? (
-                <div className="min-w-0 flex-1 overflow-y-auto p-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  <WhatsAppIntegrationSettings lang={lang} />
-                </div>
+                <WhatsAppIntegrationSettings lang={lang} />
               ) : mode === "CONNECT" ? (
-                <form onSubmit={submitConnection} className="flex min-h-0 flex-1 flex-col">
-                  <div className="min-w-0 flex-1 space-y-4 overflow-y-auto p-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <SmartCard className="p-5">
+                <form id="settings-integration-connect-form" onSubmit={submitConnection} noValidate className="grid gap-4">
+                  <div className="grid gap-4">
+                    <OperationsPanel padded>
                       {statusBlock}
 
                       <div className="mt-6 space-y-4">
@@ -957,17 +944,15 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
 
                             <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
                               {L("طريقة الربط", "Integration method")} *
-                              <select
-                                required
+                              <SettingsSelect required
                                 value={form.integrationMode || "API"}
-                                onChange={(event) =>
-                                  setForm((current) => ({ ...current, integrationMode: event.target.value }))
+                                onChange={(value) =>
+                                  setForm((current) => ({ ...current, integrationMode: value }))
                                 }
                                 className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
-                              >
-                                <option value="API">{L("تكامل API", "API integration")}</option>
-                                <option value="PAYMENT_LINK">{L("رابط دفع خارجي", "External payment link")}</option>
-                              </select>
+                                options={[{ value: "API", label: L("تكامل API", "API integration") },
+                                  { value: "PAYMENT_LINK", label: L("رابط دفع خارجي", "External payment link") }]}
+                              />
                             </label>
 
                             {customPaymentMode === "PAYMENT_LINK" ? (
@@ -1015,18 +1000,16 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
 
                                 <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
                                   {L("نوع المصادقة", "Authentication scheme")} *
-                                  <select
-                                    required
+                                  <SettingsSelect required
                                     value={form.authScheme || "BEARER"}
-                                    onChange={(event) =>
-                                      setForm((current) => ({ ...current, authScheme: event.target.value }))
+                                    onChange={(value) =>
+                                      setForm((current) => ({ ...current, authScheme: value }))
                                     }
                                     className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
-                                  >
-                                    <option value="BEARER">Bearer</option>
-                                    <option value="BASIC">Basic</option>
-                                    <option value="API_KEY">API Key</option>
-                                  </select>
+                                    options={[{ value: "BEARER", label: "Bearer" },
+                                      { value: "BASIC", label: "Basic" },
+                                      { value: "API_KEY", label: "API Key" }]}
+                                  />
                                 </label>
 
                                 <label className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
@@ -1160,7 +1143,7 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                                 <input
                                   value={baseUrl}
                                   onChange={(event) => setBaseUrl(event.target.value)}
-                                  className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                                  className="orca-operations-input"
                                   placeholder={definition.defaultBaseUrl || "https://"}
                                   dir="ltr"
                                 />
@@ -1180,42 +1163,36 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                                   {isArabic ? field.ar : field.en}
                                   {field.required ? " *" : ""}
                                   {field.key === "security" ? (
-                                    <select
-                                      value={form[field.key] || "STARTTLS"}
-                                      onChange={(event) =>
+                                    <SettingsSelect value={form[field.key] || "STARTTLS"}
+                                      onChange={(value) =>
                                         setForm((current) => ({
                                           ...current,
-                                          [field.key]: event.target.value,
+                                          [field.key]: value,
                                           ...(field.key === "security"
                                             ? {
                                                 port:
-                                                  event.target.value === "TLS"
+                                                  value === "TLS"
                                                     ? "465"
                                                     : "587",
                                               }
                                             : {}),
                                         }))
                                       }
-                                      className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                                      className="orca-operations-input"
                                       dir="ltr"
-                                    >
-                                      <option value="STARTTLS">STARTTLS — 587</option>
-                                      <option value="TLS">TLS — 465</option>
-                                    </select>
+                                      options={[{ value: "STARTTLS", label: "STARTTLS — 587" },
+                                        { value: "TLS", label: "TLS — 465" }]}
+                                    />
                                   ) : (
                                     <input
                                       type={
                                         field.secret
                                           ? "password"
-                                          : field.key === "port"
-                                            ? "number"
-                                            : field.key === "fromEmail" ||
-                                                field.key === "replyTo"
-                                              ? "email"
-                                              : "text"
+                                          : field.key === "fromEmail" || field.key === "replyTo"
+                                            ? "email"
+                                            : "text"
                                       }
-                                      min={field.key === "port" ? 1 : undefined}
-                                      max={field.key === "port" ? 65535 : undefined}
+                                      inputMode={field.key === "port" ? "numeric" : undefined}
                                       value={form[field.key] || ""}
                                       onChange={(event) =>
                                         setForm((current) => ({
@@ -1230,7 +1207,7 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                                            ? L("24 حرفًا على الأقل", "24+ characters")
                                            : field.placeholder
                                        }
-                                      className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                                      className="orca-operations-input"
                                       dir="ltr"
                                     />
                                   )}
@@ -1284,10 +1261,10 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                           </div>
                         ) : null}
                       </div>
-                    </SmartCard>
+                    </OperationsPanel>
 
                     {providerApplications.length > 0 ? (
-                      <SmartCard className="p-5">
+                      <OperationsPanel padded>
                         <h3 className="text-base font-black text-[var(--nc-foreground)]">
                           {L("سجل طلبات المزود", "Provider application history")}
                         </h3>
@@ -1311,48 +1288,15 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                             </div>
                           ))}
                         </div>
-                      </SmartCard>
+                      </OperationsPanel>
                     ) : null}
                   </div>
 
-                  <div className="flex shrink-0 flex-wrap gap-2 border-t border-[var(--nc-border)] p-4">
-                    <SettingsButton variant="primary" type="submit" disabled={pending}>
-                      {connection?.id ? L("تدوير بيانات الاعتماد", "Rotate credentials") : L("حفظ مشفر", "Save encrypted")}
-                    </SettingsButton>
-                    <SettingsButton
-                      variant="secondary"
-                      disabled={pending || !connection?.id || connection.status === "DISCONNECTED"}
-                      onClick={() =>
-                        run(
-                          () => testRevenueProviderAction(activeProvider),
-                          activeProvider === "CUSTOM_PAYMENT"
-                            ? L("تم التحقق من اكتمال وصحة إعداد المزود.", "Provider configuration validated.")
-                            : L("نجح اختبار الاتصال وتم اعتماد الحالة متصل.", "Connection test passed and status is now connected."),
-                        )
-                      }
-                    >
-                      {activeProvider === "CUSTOM_PAYMENT"
-                        ? L("التحقق من الإعداد", "Validate configuration")
-                        : L("اختبار الاتصال", "Test connection")}
-                    </SettingsButton>
-                    <SettingsButton
-                      variant="danger"
-                      disabled={pending || !connection?.id}
-                      onClick={() =>
-                        run(
-                          () => disconnectRevenueProviderAction(activeProvider),
-                          L("تم فصل المزود.", "Provider disconnected."),
-                        )
-                      }
-                    >
-                      {L("فصل", "Disconnect")}
-                    </SettingsButton>
-                  </div>
                 </form>
               ) : (
-                <form onSubmit={submitApplication} className="flex min-h-0 flex-1 flex-col">
-                  <div className="min-w-0 flex-1 space-y-4 overflow-y-auto p-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <SmartCard className="p-5">
+                <form id="settings-integration-request-form" onSubmit={submitApplication} noValidate className="grid gap-4">
+                  <div className="grid gap-4">
+                    <OperationsPanel padded>
                       {statusBlock}
 
                       <div className="mt-6 space-y-4">
@@ -1373,7 +1317,7 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                                 onChange={(event) =>
                                   setCompany((current) => ({ ...current, [key]: event.target.value }))
                                 }
-                                className="mt-2 h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
+                                className="orca-operations-input"
                               />
                             </label>
                           ))}
@@ -1384,7 +1328,7 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                             value={documents}
                             onChange={(event) => setDocuments(event.target.value)}
                             rows={4}
-                            className="mt-2 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-3 text-[var(--nc-foreground)]"
+                            className="orca-operations-textarea"
                             dir="ltr"
                           />
                         </label>
@@ -1394,14 +1338,14 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                             value={notes}
                             onChange={(event) => setNotes(event.target.value)}
                             rows={3}
-                            className="mt-2 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] p-3 text-[var(--nc-foreground)]"
+                            className="orca-operations-textarea"
                           />
                         </label>
                       </div>
-                    </SmartCard>
+                    </OperationsPanel>
 
                     {providerApplications.length > 0 ? (
-                      <SmartCard className="p-5">
+                      <OperationsPanel padded>
                         <h3 className="text-base font-black text-[var(--nc-foreground)]">
                           {L("سجل طلبات المزود", "Provider application history")}
                         </h3>
@@ -1425,25 +1369,13 @@ export default function SettingsIntegrationsHub({ lang }: { lang: "AR" | "EN" })
                             </div>
                           ))}
                         </div>
-                      </SmartCard>
+                      </OperationsPanel>
                     ) : null}
                   </div>
 
-                  <div className="flex shrink-0 gap-2 border-t border-[var(--nc-border)] p-4">
-                    <SettingsButton
-                      variant="primary"
-                      type="submit"
-                      disabled={pending || Object.values(company).some((value) => !String(value).trim())}
-                    >
-                      {L("إرسال الطلب", "Submit application")}
-                    </SettingsButton>
-                  </div>
                 </form>
               )}
-            </div>
-          </div>,
-          document.body,
-        )}
+      </OperationsDialog>
     </div>
   );
 }

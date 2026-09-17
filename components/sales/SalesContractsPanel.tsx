@@ -7,11 +7,19 @@ import {
   shouldInvalidateFromSync,
 } from "@/lib/realtime/client-runtime";
 import {
-  ChevronLeft,
-  ChevronRight,
   ExternalLink,
   RefreshCw,
 } from "lucide-react";
+import {
+  OPERATIONS_TABLE_PAGE_SIZE,
+  OperationsEmptyState,
+  OperationsMasterList,
+  OperationsPagination,
+  OperationsMasterRow,
+  OperationsPanel,
+  OperationsPanelHeader,
+} from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
 
 type Locale = "ar" | "en";
 
@@ -37,7 +45,7 @@ type SalesContract = {
   }>;
 };
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = OPERATIONS_TABLE_PAGE_SIZE;
 const COLLECTIBLE = new Set(["Pending", "Partial", "Overdue"]);
 
 function text(locale: Locale, ar: string, en: string) {
@@ -54,12 +62,16 @@ function money(value: number, locale: Locale) {
 
 function shortDate(value?: string | null) {
   if (!value) return "—";
+  const raw = String(value).trim();
+  const isoDate = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoDate) return `${isoDate[3]}/${isoDate[2]}/${isoDate[1]}`;
+
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
   const dd = String(date.getDate()).padStart(2, "0");
   const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const yy = String(date.getFullYear()).slice(-2);
-  return `${dd}-${mm}-${yy}`;
+  const yyyy = String(date.getFullYear());
+  return `${dd}/${mm}/${yyyy}`;
 }
 
 function contractStatus(status: string, locale: Locale) {
@@ -151,154 +163,130 @@ export default function SalesContractsPanel({ locale }: { locale: Locale }) {
   );
 
   return (
-    <section className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)] p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-sm font-black text-[var(--nc-text-primary)]">
-            {L("عقود البيع", "Sales contracts")}
-          </h2>
-          <p className="mt-1 text-[11px] text-[var(--nc-text-dim)]">
-            {L(
-              "افتح العقد لإدارة خطته وأقساطه ومدفوعاته في صفحة مستقلة.",
-              "Open a contract to manage its plan, installments, and payments in a dedicated workspace.",
-            )}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          disabled={loading}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--nc-glass-border)] px-3 py-2 text-xs font-bold text-[var(--nc-text-primary)] disabled:opacity-40"
-        >
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-          {L("تحديث", "Refresh")}
-        </button>
-      </div>
+    <OperationsPanel
+      className="overflow-hidden"
+      data-sales-contracts-workspace
+    >
+      <OperationsPanelHeader
+        title={L("عقود البيع", "Sales contracts")}
+        description={L(
+          "افتح العقد لإدارة خطته وأقساطه ومدفوعاته في صفحة مستقلة.",
+          "Open a contract to manage its plan, installments, and payments in a dedicated workspace.",
+        )}
+        actions={
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={loading}
+            className={operationsVisual.iconButton}
+            aria-label={L("تحديث عقود البيع", "Refresh sales contracts")}
+            title={L("تحديث", "Refresh")}
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+          </button>
+        }
+      />
 
-      {error && (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-bold text-rose-300">
+      {error ? (
+        <div
+          role="alert"
+          className="m-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-bold text-rose-300"
+        >
           {error}
         </div>
+      ) : null}
+
+      {loading ? (
+        <div className="grid min-h-48 place-items-center text-xs text-[var(--nc-text-dim)]">
+          {L("جارٍ التحميل…", "Loading…")}
+        </div>
+      ) : rowData.length === 0 ? (
+        <div className="p-3">
+          <OperationsEmptyState>
+            {L("لا توجد عقود بيع.", "No sales contracts.")}
+          </OperationsEmptyState>
+        </div>
+      ) : (
+        <>
+          <div className="hidden grid-cols-[minmax(130px,.8fr)_minmax(160px,1fr)_minmax(24ch,.8fr)_130px_minmax(170px,1fr)_44px] gap-3 border-b border-[var(--nc-border)] px-4 py-2 font-black text-[var(--nc-text-dim)] lg:grid orca-contracts-grid-header">
+            <span>{L("الوحدة", "Unit")}</span>
+            <span>{L("المشتري", "Buyer")}</span>
+            <span>{L("القيمة", "Value")}</span>
+            <span>{L("الحالة", "Status")}</span>
+            <span>{L("القسط التالي", "Next installment")}</span>
+            <span aria-hidden="true" />
+          </div>
+
+          <OperationsMasterList>
+            {rowData.map(({ contract, next }) => (
+              <OperationsMasterRow
+                key={contract.id}
+                onClick={() =>
+                  router.push(`/operations/rental/sales/contracts/${contract.id}`)
+                }
+                className="orca-contracts-grid-row grid min-h-[68px] items-center gap-3 px-4 py-3 lg:grid-cols-[minmax(130px,.8fr)_minmax(160px,1fr)_minmax(24ch,.8fr)_130px_minmax(170px,1fr)_44px]"
+                aria-label={L(
+                  `فتح عقد ${contract.buyerName}`,
+                  `Open ${contract.buyerName} contract`,
+                )}
+              >
+                <span className="min-w-0">
+                  <strong className="orca-table-primary block truncate text-[var(--nc-text-primary)]">
+                    {contract.unit.unitNumber}
+                  </strong>
+                  <span className="orca-table-secondary block truncate text-[var(--nc-text-dim)]">
+                    {contract.unit.project.name}
+                  </span>
+                </span>
+
+                <span className="min-w-0">
+                  <strong className="orca-table-primary block truncate text-[var(--nc-text-primary)]">
+                    {contract.buyerName}
+                  </strong>
+                  <span className="orca-table-secondary block text-[var(--nc-text-dim)] lg:hidden">
+                    {money(contract.totalVolumeSar, locale)}
+                  </span>
+                </span>
+
+                <strong className="orca-table-primary orca-number-column hidden text-[var(--nc-text-primary)] lg:block">
+                  {money(contract.totalVolumeSar, locale)}
+                </strong>
+
+                <span
+                  className={`inline-flex w-fit min-w-[104px] justify-center rounded-full px-2.5 py-1 font-black orca-table-badge ${
+                    contract.status === "SIGNED"
+                      ? "bg-emerald-500/15 text-emerald-300"
+                      : "bg-amber-500/15 text-amber-300"
+                  }`}
+                >
+                  {contractStatus(contract.status, locale)}
+                </span>
+
+                <span className="orca-table-secondary min-w-0 text-[var(--nc-text-secondary)]">
+                  {next
+                    ? `${money(next.remainingAmount, locale)} · ${shortDate(next.dueDate)}`
+                    : contract.legacyFinancial
+                      ? L("للعرض فقط", "Read-only")
+                      : L("لا يوجد قسط مستحق", "No installment due")}
+                </span>
+
+                <span className="hidden h-10 w-10 place-items-center rounded-xl border border-[var(--nc-border)] text-[var(--nc-text-secondary)] lg:grid">
+                  <ExternalLink size={14} aria-hidden="true" />
+                </span>
+              </OperationsMasterRow>
+            ))}
+          </OperationsMasterList>
+        </>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface)]">
-        <div className="overflow-x-auto">
-          <table className="nc-table nc-table-striped min-w-[760px]">
-            <thead>
-              <tr>
-                <th>{L("الوحدة", "Unit")}</th>
-                <th>{L("المشتري", "Buyer")}</th>
-                <th>{L("القيمة", "Value")}</th>
-                <th>{L("الحالة", "Status")}</th>
-                <th>{L("القسط التالي", "Next installment")}</th>
-                <th>{L("فتح", "Open")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="py-10 text-center text-xs text-[var(--nc-text-dim)]"
-                  >
-                    {L("جارٍ التحميل…", "Loading…")}
-                  </td>
-                </tr>
-              ) : rowData.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="py-10 text-center text-xs text-[var(--nc-text-dim)]"
-                  >
-                    {L("لا توجد عقود بيع.", "No sales contracts.")}
-                  </td>
-                </tr>
-              ) : (
-                rowData.map(({ contract, next }) => (
-                  <tr
-                    key={contract.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() =>
-                      router.push(`/operations/rental/sales/contracts/${contract.id}`)
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        router.push(
-                          `/operations/rental/sales/contracts/${contract.id}`,
-                        );
-                      }
-                    }}
-                    className="cursor-pointer"
-                  >
-                    <td>
-                      <div className="text-xs font-black text-[var(--nc-text-primary)]">
-                        {contract.unit.unitNumber}
-                      </div>
-                      <div className="text-[10px] text-[var(--nc-text-dim)]">
-                        {contract.unit.project.name}
-                      </div>
-                    </td>
-                    <td className="text-xs text-[var(--nc-text-primary)]">
-                      {contract.buyerName}
-                    </td>
-                    <td className="whitespace-nowrap text-xs font-bold text-[var(--nc-text-primary)]">
-                      {money(contract.totalVolumeSar, locale)}
-                    </td>
-                    <td>
-                      <span
-                        className={`inline-flex min-w-[110px] justify-center rounded-full px-2.5 py-1 text-[10px] font-black ${
-                          contract.status === "SIGNED"
-                            ? "bg-emerald-500/15 text-emerald-300"
-                            : "bg-amber-500/15 text-amber-300"
-                        }`}
-                      >
-                        {contractStatus(contract.status, locale)}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap text-xs text-[var(--nc-text-dim)]">
-                      {next
-                        ? `${money(next.remainingAmount, locale)} · ${shortDate(next.dueDate)}`
-                        : "—"}
-                    </td>
-                    <td>
-                      <ExternalLink size={15} className="text-[var(--nc-accent)]" />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex items-center justify-between border-t border-[var(--nc-glass-border)] px-4 py-3 text-xs text-[var(--nc-text-dim)]">
-          <button
-            type="button"
-            onClick={() => setPage((value) => Math.max(0, value - 1))}
-            disabled={normalizedPage === 0}
-            className="inline-flex items-center gap-1 rounded-lg border border-[var(--nc-glass-border)] px-3 py-1.5 font-bold disabled:opacity-30"
-          >
-            <ChevronLeft size={14} />
-            {L("السابق", "Previous")}
-          </button>
-          <span>
-            {L("صفحة", "Page")} {normalizedPage + 1} {L("من", "of")}{" "}
-            {totalPages}
-          </span>
-          <button
-            type="button"
-            onClick={() =>
-              setPage((value) => Math.min(totalPages - 1, value + 1))
-            }
-            disabled={normalizedPage >= totalPages - 1}
-            className="inline-flex items-center gap-1 rounded-lg border border-[var(--nc-glass-border)] px-3 py-1.5 font-bold disabled:opacity-30"
-          >
-            {L("التالي", "Next")}
-            <ChevronRight size={14} />
-          </button>
-        </div>
-      </div>
-    </section>
+      <OperationsPagination
+        page={normalizedPage}
+        totalPages={totalPages}
+        totalItems={contracts.length}
+        pageSize={PAGE_SIZE}
+        locale={locale}
+        onPageChange={setPage}
+      />
+    </OperationsPanel>
   );
 }

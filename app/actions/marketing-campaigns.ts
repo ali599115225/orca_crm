@@ -4,7 +4,8 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { getActiveTenant } from "@/lib/tenant";
+import { getActiveTenant, TenantResolutionError } from "@/lib/tenant";
+import { runWithTenantContext } from "@/lib/tenant-context";
 import { assertServerActionRole } from "@/lib/api-auth-guard";
 import { decryptText } from "@/lib/crypto";
 import {
@@ -37,6 +38,35 @@ function commandTypeIsValid(
   return CAMPAIGN_COMMANDS.includes(
     value as (typeof CAMPAIGN_COMMANDS)[number],
   );
+}
+
+function campaignActionErrorCode(
+  scope: string,
+  error: unknown,
+  fallback: string,
+): string {
+  if (error instanceof MarketingProviderError) {
+    return error.code;
+  }
+
+  if (error instanceof TenantResolutionError) {
+    return error.code;
+  }
+
+  if (
+    error instanceof Error &&
+    ["UNAUTHORIZED", "FORBIDDEN", "TENANT_CONTEXT_REQUIRED"].includes(
+      error.message,
+    )
+  ) {
+    return error.message;
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    console.error(`[MarketingCampaigns:${scope}]`, error);
+  }
+
+  return fallback;
 }
 
 export interface MarketingCampaignRow {
@@ -107,11 +137,14 @@ async function requireMarketingContext() {
   const session = await getSession();
   if (!session) throw new MarketingProviderError("UNAUTHORIZED");
 
-  await assertServerActionRole(session, CAMPAIGN_ROLES);
+  const verifiedSession = await assertServerActionRole(
+    session,
+    CAMPAIGN_ROLES,
+  );
   const tenant = await getActiveTenant();
 
   return {
-    session,
+    session: verifiedSession,
     tenant,
   };
 }
@@ -122,35 +155,44 @@ export async function listMarketingCampaignsAction(): Promise<{
   error?: string;
 }> {
   try {
-    const { tenant } = await requireMarketingContext();
+    const { session, tenant } = await requireMarketingContext();
 
-    const campaigns = await prisma.marketingCampaign.findMany({
-      where: {
+    return await runWithTenantContext(
+      {
         tenantId: tenant.id,
+        userId: session.userId,
       },
-      include: {
-        channels: {
-          orderBy: {
-            provider: "asc",
+      async () => {
+        const campaigns = await prisma.marketingCampaign.findMany({
+          where: {
+            tenantId: tenant.id,
           },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+          include: {
+            channels: {
+              orderBy: {
+                provider: "asc",
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        });
 
-    return {
-      success: true,
-      data: campaigns.map(serializeCampaign),
-    };
+        return {
+          success: true,
+          data: campaigns.map(serializeCampaign),
+        };
+      },
+    );
   } catch (error) {
     return {
       success: false,
-      error:
-        error instanceof MarketingProviderError
-          ? error.code
-          : "MARKETING_CAMPAIGNS_LOAD_FAILED",
+      error: campaignActionErrorCode(
+        "list",
+        error,
+        "MARKETING_CAMPAIGNS_LOAD_FAILED",
+      ),
     };
   }
 }
@@ -166,83 +208,126 @@ export async function createMarketingCampaignAction(input: {
   try {
     const { session, tenant } = await requireMarketingContext();
 
-    assertCampaignDraft(input.draft);
+    return await runWithTenantContext(
+      {
+        tenantId: tenant.id,
+        userId: session.userId,
+      },
+      async () => {
+        assertCampaignDraft(input.draft);
 
-    const providers = Array.from(new Set(input.providers));
+        const providers = Array.from(new Set(input.providers));
 
-    if (
-      providers.length === 0 ||
-      providers.some((provider) => !providerIsValid(provider))
-    ) {
-      throw new MarketingProviderError("CAMPAIGN_PROVIDER_REQUIRED");
-    }
+        if (
+          providers.length === 0 ||
+          providers.some((provider) => !providerIsValid(provider))
+        ) {
+          throw new MarketingProviderError("CAMPAIGN_PROVIDER_REQUIRED");
+        }
 
-    const campaign = await prisma.$transaction(async (tx) => {
-      const created = await tx.marketingCampaign.create({
-        data: {
-          tenantId: tenant.id,
-          createdById: session.userId as string,
-          name: input.draft.name.trim(),
-          objective: input.draft.objective,
-          budgetKind: input.draft.budget.kind,
-          budgetAmount: new Prisma.Decimal(input.draft.budget.amount),
-          currency: input.draft.budget.currency,
-          audience: input.draft.audience as unknown as Prisma.InputJsonValue,
-          creative: input.draft.creative as unknown as Prisma.InputJsonValue,
-          tracking: input.draft.tracking
-            ? (input.draft.tracking as unknown as Prisma.InputJsonValue)
-            : undefined,
-          startAt: input.draft.startAt
-            ? new Date(input.draft.startAt)
-            : null,
-          endAt: input.draft.endAt
-            ? new Date(input.draft.endAt)
-            : null,
-          status: "DRAFT",
-          channels: {
-            create: providers.map((provider) => ({
+        const campaign = await prisma.$transaction(async (tx) => {
+          /*
+           * Keep the campaign row and channel rows as separate scalar writes.
+           *
+           * Prisma create inputs are XOR checked/unchecked shapes. Mixing a raw
+           * relation scalar such as tenantId with a nested relation write such
+           * as channels.create can select incompatible input branches and fail
+           * at runtime with "Unknown argument `tenantId`".
+           *
+           * The database transaction still preserves all-or-nothing behavior.
+           */
+          const created = await tx.marketingCampaign.create({
+            data: {
               tenantId: tenant.id,
+              createdById: session.userId,
+              name: input.draft.name.trim(),
+              objective: input.draft.objective,
+              budgetKind: input.draft.budget.kind,
+              budgetAmount: new Prisma.Decimal(input.draft.budget.amount),
+              currency: input.draft.budget.currency,
+              audience:
+                input.draft.audience as unknown as Prisma.InputJsonValue,
+              creative:
+                input.draft.creative as unknown as Prisma.InputJsonValue,
+              tracking: input.draft.tracking
+                ? (input.draft.tracking as unknown as Prisma.InputJsonValue)
+                : undefined,
+              startAt: input.draft.startAt
+                ? new Date(input.draft.startAt)
+                : null,
+              endAt: input.draft.endAt
+                ? new Date(input.draft.endAt)
+                : null,
+              status: "DRAFT",
+            },
+          });
+
+          await tx.marketingCampaignChannel.createMany({
+            data: providers.map((provider) => ({
+              tenantId: tenant.id,
+              campaignId: created.id,
               provider,
               status: "DRAFT",
-              providerOptions: input.draft.providerOptions
-                ? (input.draft.providerOptions as unknown as Prisma.InputJsonValue)
-                : undefined,
+              ...(input.draft.providerOptions
+                ? {
+                    providerOptions:
+                      input.draft.providerOptions as unknown as Prisma.InputJsonValue,
+                  }
+                : {}),
             })),
-          },
-        },
-        include: {
-          channels: true,
-        },
-      });
+          });
 
-      await tx.auditLog.create({
-        data: {
-          tenantId: tenant.id,
-          userId: session.userId as string,
-          action: "MARKETING_CAMPAIGN_CREATED",
-          tableName: "marketing_campaigns",
-          recordId: created.id,
-          details: `Created campaign draft with ${providers.length} provider channel(s).`,
-        },
-      });
+          await tx.auditLog.create({
+            data: {
+              tenantId: tenant.id,
+              userId: session.userId,
+              action: "MARKETING_CAMPAIGN_CREATED",
+              tableName: "marketing_campaigns",
+              recordId: created.id,
+              details: `Created campaign draft with ${providers.length} provider channel(s).`,
+            },
+          });
 
-      return created;
-    });
+          const hydrated = await tx.marketingCampaign.findFirst({
+            where: {
+              tenantId: tenant.id,
+              id: created.id,
+            },
+            include: {
+              channels: {
+                orderBy: {
+                  provider: "asc",
+                },
+              },
+            },
+          });
 
-    revalidatePath("/operations/marketing");
-    revalidatePath("/operations/campaigns");
+          if (!hydrated) {
+            throw new MarketingProviderError(
+              "MARKETING_CAMPAIGN_CREATE_READBACK_FAILED",
+            );
+          }
 
-    return {
-      success: true,
-      data: serializeCampaign(campaign),
-    };
+          return hydrated;
+        });
+
+        revalidatePath("/operations/marketing");
+        revalidatePath("/operations/campaigns");
+
+        return {
+          success: true,
+          data: serializeCampaign(campaign),
+        };
+      },
+    );
   } catch (error) {
     return {
       success: false,
-      error:
-        error instanceof MarketingProviderError
-          ? error.code
-          : "MARKETING_CAMPAIGN_CREATE_FAILED",
+      error: campaignActionErrorCode(
+        "create",
+        error,
+        "MARKETING_CAMPAIGN_CREATE_FAILED",
+      ),
     };
   }
 }
@@ -351,167 +436,186 @@ export async function executeMarketingCampaignCommandAction(input: {
   error?: string;
 }> {
   let tenantId = "";
+  let userId = "";
   let channelId = "";
 
   try {
     const { session, tenant } = await requireMarketingContext();
     tenantId = tenant.id;
+    userId = session.userId;
 
-    if (!providerIsValid(input.provider)) {
-      throw new MarketingProviderError("CAMPAIGN_PROVIDER_INVALID");
-    }
-
-    if (!commandTypeIsValid(input.type)) {
-      throw new MarketingProviderError("CAMPAIGN_COMMAND_INVALID");
-    }
-
-    const channel = await prisma.marketingCampaignChannel.findFirst({
-      where: {
-        tenantId: tenant.id,
-        campaignId: input.campaignId,
-        provider: input.provider,
-      },
-      include: {
-        campaign: true,
-      },
-    });
-
-    if (!channel || channel.campaign.tenantId !== tenant.id) {
-      throw new MarketingProviderError("CAMPAIGN_CHANNEL_NOT_FOUND");
-    }
-
-    channelId = channel.id;
-
-    const connection = await prisma.platformConnection.findUnique({
-      where: {
-        tenantId_platform: {
-          tenantId: tenant.id,
-          platform: input.provider,
-        },
-      },
-    });
-
-    if (
-      !connection ||
-      !connection.accountId ||
-      !connection.encryptedApiKey
-    ) {
-      await prisma.marketingCampaignChannel.update({
-        where: {
-          id: channel.id,
-        },
-        data: {
-          status: "CONNECTION_REQUIRED",
-          lastErrorCode: "MARKETING_CONNECTION_REQUIRED",
-        },
-      });
-
-      await refreshCampaignStatus(channel.campaignId, tenant.id);
-
-      throw new MarketingProviderError(
-        "MARKETING_CONNECTION_REQUIRED",
-        input.provider,
-      );
-    }
-
-    const apiKey = decryptText(connection.encryptedApiKey);
-
-    if (!apiKey) {
-      throw new MarketingProviderError(
-        "MARKETING_CREDENTIALS_INVALID",
-        input.provider,
-      );
-    }
-
-    registerProductionMarketingAdapters();
-
-    const snapshot = await executeCampaignCommand(
+    return await runWithTenantContext(
       {
-        tenantId: tenant.id,
-        userId: session.userId as string,
-        connectionId: connection.id,
-        provider: input.provider,
-        accountId: connection.accountId,
-        credentials: {
-          apiKey,
-        },
+        tenantId,
+        userId,
       },
-      commandForChannel(
-        input.type,
-        channel.campaign,
-        channel.providerCampaignId,
-      ),
-    );
+      async () => {
+        if (!providerIsValid(input.provider)) {
+          throw new MarketingProviderError("CAMPAIGN_PROVIDER_INVALID");
+        }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.marketingCampaignChannel.update({
-        where: {
-          id: channel.id,
-        },
-        data: {
-          connectionId: connection.id,
-          providerCampaignId: snapshot.providerCampaignId,
+        if (!commandTypeIsValid(input.type)) {
+          throw new MarketingProviderError("CAMPAIGN_COMMAND_INVALID");
+        }
+
+        const channel = await prisma.marketingCampaignChannel.findFirst({
+          where: {
+            tenantId,
+            campaignId: input.campaignId,
+            provider: input.provider,
+          },
+          include: {
+            campaign: true,
+          },
+        });
+
+        if (!channel || channel.campaign.tenantId !== tenantId) {
+          throw new MarketingProviderError("CAMPAIGN_CHANNEL_NOT_FOUND");
+        }
+
+        channelId = channel.id;
+
+        const connection = await prisma.platformConnection.findUnique({
+          where: {
+            tenantId_platform: {
+              tenantId,
+              platform: input.provider,
+            },
+          },
+        });
+
+        if (
+          !connection ||
+          !connection.accountId ||
+          !connection.encryptedApiKey
+        ) {
+          await prisma.marketingCampaignChannel.update({
+            where: {
+              id: channel.id,
+            },
+            data: {
+              status: "CONNECTION_REQUIRED",
+              lastErrorCode: "MARKETING_CONNECTION_REQUIRED",
+            },
+          });
+
+          await refreshCampaignStatus(channel.campaignId, tenantId);
+
+          throw new MarketingProviderError(
+            "MARKETING_CONNECTION_REQUIRED",
+            input.provider,
+          );
+        }
+
+        const apiKey = decryptText(connection.encryptedApiKey);
+
+        if (!apiKey) {
+          throw new MarketingProviderError(
+            "MARKETING_CREDENTIALS_INVALID",
+            input.provider,
+          );
+        }
+
+        registerProductionMarketingAdapters();
+
+        const snapshot = await executeCampaignCommand(
+          {
+            tenantId,
+            userId,
+            connectionId: connection.id,
+            provider: input.provider,
+            accountId: connection.accountId,
+            credentials: {
+              apiKey,
+            },
+          },
+          commandForChannel(
+            input.type,
+            channel.campaign,
+            channel.providerCampaignId,
+          ),
+        );
+
+        await prisma.$transaction(async (tx) => {
+          await tx.marketingCampaignChannel.update({
+            where: {
+              id: channel.id,
+            },
+            data: {
+              connectionId: connection.id,
+              providerCampaignId: snapshot.providerCampaignId,
+              status: snapshot.status,
+              remoteUrl: snapshot.remoteUrl ?? null,
+              lastErrorCode: null,
+              lastSyncedAt: new Date(snapshot.synchronizedAt),
+              publishedAt:
+                input.type === "PUBLISH" ? new Date() : channel.publishedAt,
+              pausedAt:
+                input.type === "PAUSE"
+                  ? new Date()
+                  : input.type === "RESUME"
+                    ? null
+                    : channel.pausedAt,
+            },
+          });
+
+          await tx.auditLog.create({
+            data: {
+              tenantId,
+              userId,
+              action: `MARKETING_CAMPAIGN_${input.type}`,
+              tableName: "marketing_campaign_channels",
+              recordId: channel.id,
+              details: `${input.type} command executed for ${input.provider}.`,
+            },
+          });
+        });
+
+        await refreshCampaignStatus(channel.campaignId, tenantId);
+
+        revalidatePath("/operations/marketing");
+        revalidatePath("/operations/campaigns");
+
+        return {
+          success: true,
           status: snapshot.status,
-          remoteUrl: snapshot.remoteUrl ?? null,
-          lastErrorCode: null,
-          lastSyncedAt: new Date(snapshot.synchronizedAt),
-          publishedAt:
-            input.type === "PUBLISH" ? new Date() : channel.publishedAt,
-          pausedAt:
-            input.type === "PAUSE"
-              ? new Date()
-              : input.type === "RESUME"
-                ? null
-                : channel.pausedAt,
-        },
-      });
-
-      await tx.auditLog.create({
-        data: {
-          tenantId: tenant.id,
-          userId: session.userId as string,
-          action: `MARKETING_CAMPAIGN_${input.type}`,
-          tableName: "marketing_campaign_channels",
-          recordId: channel.id,
-          details: `${input.type} command executed for ${input.provider}.`,
-        },
-      });
-    });
-
-    await refreshCampaignStatus(channel.campaignId, tenant.id);
-
-    revalidatePath("/operations/marketing");
-    revalidatePath("/operations/campaigns");
-
-    return {
-      success: true,
-      status: snapshot.status,
-    };
+        };
+      },
+    );
   } catch (error) {
-    const code =
-      error instanceof MarketingProviderError
-        ? error.code
-        : "MARKETING_CAMPAIGN_COMMAND_FAILED";
+    const code = campaignActionErrorCode(
+      "command",
+      error,
+      "MARKETING_CAMPAIGN_COMMAND_FAILED",
+    );
 
     if (
       tenantId &&
+      userId &&
       channelId &&
-      !["MARKETING_CONNECTION_REQUIRED"].includes(code)
+      code !== "MARKETING_CONNECTION_REQUIRED"
     ) {
-      await prisma.marketingCampaignChannel
-        .update({
-          where: {
-            id: channelId,
-          },
-          data: {
-            status:
-              code === "MARKETING_PROVIDER_NOT_REGISTERED"
-                ? "CONNECTOR_NOT_READY"
-                : "FAILED",
-            lastErrorCode: code,
-          },
-        })
-        .catch(() => undefined);
+      await runWithTenantContext(
+        {
+          tenantId,
+          userId,
+        },
+        () =>
+          prisma.marketingCampaignChannel
+            .update({
+              where: {
+                id: channelId,
+              },
+              data: {
+                status:
+                  code === "MARKETING_PROVIDER_NOT_REGISTERED"
+                    ? "CONNECTOR_NOT_READY"
+                    : "FAILED",
+                lastErrorCode: code,
+              },
+            })
+            .catch(() => undefined),
+      );
     }
 
     return {

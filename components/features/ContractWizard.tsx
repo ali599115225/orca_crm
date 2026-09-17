@@ -377,8 +377,7 @@ export default function ContractWizard({
     setCurrentStep(2);
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleIssueContract = async () => {
     setErrorCode(null);
     setIsSuccess(false);
 
@@ -578,7 +577,7 @@ export default function ContractWizard({
             ) : null}
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={(event) => event.preventDefault()} className="space-y-5">
             {currentStep === 0 && (
               <div className="space-y-2">
                 <label className={contractWizardVisual.label}>
@@ -599,6 +598,8 @@ export default function ContractWizard({
                       ? t("contractWizard.clientEmpty")
                       : t("contractWizard.clientPlaceholder")
                   }
+                  minimumSearchLength={0}
+                  placement="bottom"
                   aria-label={t("contractWizard.clientLabel")}
                 />
               </div>
@@ -627,6 +628,8 @@ export default function ContractWizard({
                         ? t("contractWizard.propertyEmpty")
                         : t("contractWizard.propertyPlaceholder")
                     }
+                    minimumSearchLength={0}
+                    placement="bottom"
                     aria-label={t("contractWizard.propertyLabel")}
                   />
                 </div>
@@ -776,7 +779,8 @@ export default function ContractWizard({
                 </button>
               ) : (
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => void handleIssueContract()}
                   disabled={isSubmitting || !canReview}
                   className={contractWizardVisual.primaryButton}
                 >

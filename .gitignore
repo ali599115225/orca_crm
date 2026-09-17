@@ -46,3 +46,5 @@ logs/
 /summary.json
 /orca_az-ez_pro.report.html
 /orca_az-ez_pro.report.json
+.vercel
+.neon

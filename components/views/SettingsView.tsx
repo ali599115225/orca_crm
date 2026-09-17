@@ -11,11 +11,17 @@ import SettingsCompliance from "@/components/settings/SettingsCompliance";
 import SettingsIntegrationsHub from "@/components/settings/SettingsIntegrationsHub";
 import AdvertisingPlatformIntegrations from "@/components/settings/AdvertisingPlatformIntegrations";
 import SettingsAIProviders from "@/components/settings/SettingsAIProviders";
-import { SmartCard } from "@/components/ui/SmartCard";
 import {
   createOrganizationBranchAction,
   listOrganizationBranchesAction,
 } from "@/app/actions/organization";
+import {
+  OperationsFormField,
+  OperationsPageHeader,
+  OperationsPanel,
+  OperationsTextField,
+} from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
 
 interface User {
   id: string;
@@ -79,9 +85,17 @@ export default function SettingsView({
 
   async function submitBranch() {
     setBranchError("");
+    if (!branchCode.trim() || !branchName.trim()) {
+      setBranchError(
+        isArabic
+          ? "أدخل رمز الفرع واسم الفرع."
+          : "Enter both branch code and branch name.",
+      );
+      return;
+    }
     const result = await createOrganizationBranchAction({
-      code: branchCode,
-      name: branchName,
+      code: branchCode.trim(),
+      name: branchName.trim(),
     });
     if (!result.success) {
       setBranchError(result.error);
@@ -127,139 +141,180 @@ export default function SettingsView({
 
   return (
     <main
-      className="orca-settings-final nc-page nc-stack orca-container pb-10"
+      className={operationsVisual.page}
       dir={isArabic ? "rtl" : "ltr"}
+      data-settings-dashboard-contract
     >
-      <header ref={headerRef} className="orca-workspace-hero">
-        <div>
-          <p className="text-xs font-bold text-[var(--nc-accent)]">
-            {isArabic
-              ? "المؤسسة → الفريق → التكاملات → الامتثال"
-              : "Organization → staff → integrations → compliance"}
-          </p>
-          <h1 className="mt-1 text-2xl font-black text-[var(--nc-foreground)]">
-          {isArabic ? "الإعدادات" : "Settings"}
-        </h1>
-        <p className="max-w-3xl text-sm font-medium leading-6 text-[var(--nc-foreground-secondary)]">
-          {isArabic
-            ? "إدارة بيانات المؤسسة والفريق والتكاملات والحملات الإعلانية والامتثال من مكان واحد."
-            : "Manage organization data, staff, integrations, advertising, and compliance from one place."}
-        </p>
+      <div className={operationsVisual.pageStack}>
+        <div ref={headerRef}>
+          <OperationsPageHeader
+            eyebrow={
+              isArabic
+                ? "المؤسسة → الفريق → التكاملات → الامتثال"
+                : "Organization → staff → integrations → compliance"
+            }
+            title={isArabic ? "الإعدادات" : "Settings"}
+            description={
+              isArabic
+                ? "إدارة بيانات المؤسسة والفريق والتكاملات والحملات الإعلانية والامتثال من مكان واحد."
+                : "Manage organization data, staff, integrations, advertising, and compliance from one place."
+            }
+          />
         </div>
-      </header>
 
-      <div className="orca-settings-nav-shell">
-        <SettingsNavigation
-          activeSection={activeSection}
-          lang={lang}
-          onChange={changeSection}
-          hideBilling
-        />
-      </div>
+        <OperationsPanel className="overflow-hidden p-2">
+          <SettingsNavigation
+            activeSection={activeSection}
+            lang={lang}
+            onChange={changeSection}
+            hideBilling
+          />
+        </OperationsPanel>
 
-      <section className="orca-settings-content orca-settings-section-shell w-full min-w-0 space-y-5">
-        {activeSection === "organization" && (
-          <SmartCard className="orca-workspace-panel p-6">
-            <div className="mb-6">
-              <h2 className="text-lg font-bold text-[var(--nc-foreground)]">
-                {isArabic ? "بيانات المؤسسة" : "Organization Details"}
-              </h2>
-              <p className="mt-1 text-xs text-[var(--nc-foreground-muted)]">
-                {isArabic
-                  ? "البيانات الأساسية المرتبطة بحساب الشركة."
-                  : "Core information associated with the company account."}
-              </p>
-            </div>
+        <section className="w-full min-w-0">
+          {activeSection === "organization" && (
+            <OperationsPanel padded>
+              <div className="grid gap-4">
+                <div>
+                  <h2 className={operationsVisual.sectionTitle}>
+                    {isArabic ? "بيانات المؤسسة" : "Organization Details"}
+                  </h2>
+                  <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+                    {isArabic
+                      ? "البيانات الأساسية المرتبطة بحساب الشركة وإدارة الفروع."
+                      : "Core company account information and branch management."}
+                  </p>
+                </div>
 
-            <dl className="orca-settings-info-grid">
-              <div className="orca-info-tile">
-                <dt>{isArabic ? "اسم المنشأة" : "Company Name"}</dt>
-                <dd>{tenant.companyName}</dd>
+                <dl className="grid gap-2 md:grid-cols-2">
+                  <div className={operationsVisual.contentCard + " p-3"}>
+                    <dt className={operationsVisual.meta}>
+                      {isArabic ? "اسم المنشأة" : "Company Name"}
+                    </dt>
+                    <dd className="mt-1 text-sm font-black text-[var(--nc-text-primary)]">
+                      {tenant.companyName}
+                    </dd>
+                  </div>
+
+                  <div className={operationsVisual.contentCard + " p-3"}>
+                    <dt className={operationsVisual.meta}>
+                      {isArabic ? "النطاق الفرعي" : "Subdomain"}
+                    </dt>
+                    <dd className="mt-1 font-mono text-sm font-black text-[var(--nc-text-primary)]">
+                      {tenant.subdomain}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="border-t border-[var(--nc-border)] pt-4">
+                  <h3 className={operationsVisual.sectionTitle}>
+                    {isArabic ? "الفروع" : "Branches"}
+                  </h3>
+
+                  <div className="mt-3 grid gap-2">
+                    {branches.length > 0 ? (
+                      branches.map((branch) => (
+                        <div
+                          key={branch.id}
+                          className={operationsVisual.contentCard + " flex items-center justify-between gap-3 p-3"}
+                        >
+                          <div className="min-w-0">
+                            <strong className="block truncate text-xs text-[var(--nc-text-primary)]">
+                              {branch.name}
+                            </strong>
+                            <span className={operationsVisual.meta}>
+                              {branch.code}
+                            </span>
+                          </div>
+                          <span className={operationsVisual.statusBadge}>
+                            {branch.active
+                              ? isArabic
+                                ? "نشط"
+                                : "Active"
+                              : isArabic
+                                ? "غير نشط"
+                                : "Inactive"}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-[var(--nc-text-dim)]">
+                        {isArabic ? "لا توجد فروع مسجلة بعد." : "No branches have been registered yet."}
+                      </p>
+                    )}
+                  </div>
+
+                  <form
+                    className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+                    noValidate
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void submitBranch();
+                    }}
+                  >
+                    <OperationsFormField label={isArabic ? "رمز الفرع" : "Branch code"}>
+                      <OperationsTextField
+                        value={branchCode}
+                        onChange={(event) => {
+                          setBranchCode(event.target.value);
+                          if (branchError) setBranchError("");
+                        }}
+                        placeholder={isArabic ? "مثال: RUH-01" : "Example: RUH-01"}
+                      />
+                    </OperationsFormField>
+
+                    <OperationsFormField label={isArabic ? "اسم الفرع" : "Branch name"}>
+                      <OperationsTextField
+                        value={branchName}
+                        onChange={(event) => {
+                          setBranchName(event.target.value);
+                          if (branchError) setBranchError("");
+                        }}
+                        placeholder={isArabic ? "فرع الرياض" : "Riyadh branch"}
+                      />
+                    </OperationsFormField>
+
+                    <button
+                      type="submit"
+                      className={operationsVisual.primaryButton + " self-end"}
+                    >
+                      {isArabic ? "إنشاء فرع" : "Create branch"}
+                    </button>
+                  </form>
+
+                  {branchError ? (
+                    <p role="alert" className="mt-2 text-xs font-bold text-rose-400">
+                      {branchError}
+                    </p>
+                  ) : null}
+                </div>
               </div>
+            </OperationsPanel>
+          )}
 
-              <div className="orca-info-tile">
-                <dt>{isArabic ? "النطاق الفرعي" : "Subdomain"}</dt>
-                <dd className="font-en">{tenant.subdomain}</dd>
-              </div>
-            </dl>
-
-            <div className="mt-6 space-y-3">
-              <h3 className="text-sm font-bold text-[var(--nc-foreground)]">
-                {isArabic ? "الفروع" : "Branches"}
-              </h3>
-              <ul className="space-y-1 text-sm">
-                {branches.map((branch) => (
-                  <li key={branch.id}>
-                    {branch.code} · {branch.name}
-                  </li>
-                ))}
-              </ul>
-              <form
-                className="flex flex-wrap gap-2"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void submitBranch();
-                }}
-              >
-                <input
-                  value={branchCode}
-                  onChange={(event) => setBranchCode(event.target.value)}
-                  placeholder={isArabic ? "رمز الفرع" : "Branch code"}
-                  className="h-11 rounded-xl border px-3 text-sm"
-                  required
-                />
-                <input
-                  value={branchName}
-                  onChange={(event) => setBranchName(event.target.value)}
-                  placeholder={isArabic ? "اسم الفرع" : "Branch name"}
-                  className="h-11 rounded-xl border px-3 text-sm"
-                  required
-                />
-                <button type="submit" className="nc-btn-primary h-11 rounded-xl px-4 text-xs font-black">
-                  {isArabic ? "إنشاء فرع" : "Create branch"}
-                </button>
-              </form>
-              {branchError ? (
-                <p className="text-xs text-rose-400">{branchError}</p>
-              ) : null}
-            </div>
-          </SmartCard>
-        )}
-
-        {activeSection === "staff" && (
-          <div className="orca-settings-section orca-settings-staff">
+          {activeSection === "staff" && (
             <SettingsStaff
               users={staffUsers}
               lang={lang}
               isArabic={isArabic}
             />
-          </div>
-        )}
+          )}
 
-        {activeSection === "ai" && (
-          <div className="orca-settings-section orca-settings-ai">
-            <SettingsAIProviders />
-          </div>
-        )}
+          {activeSection === "ai" && <SettingsAIProviders />}
 
-        {activeSection === "integrations" && (
-          <div className="space-y-6">
+          {activeSection === "integrations" && (
             <SettingsIntegrationsHub lang={lang} />
-          </div>
-        )}
+          )}
 
-        {activeSection === "advertising" && (
-          <div className="orca-settings-section orca-settings-advertising">
+          {activeSection === "advertising" && (
             <AdvertisingPlatformIntegrations lang={lang} />
-          </div>
-        )}
+          )}
 
-        {activeSection === "compliance" && (
-          <div className="orca-settings-section orca-settings-compliance">
+          {activeSection === "compliance" && (
             <SettingsCompliance lang={lang} isArabic={isArabic} />
-          </div>
-        )}
-      </section>
+          )}
+        </section>
+      </div>
     </main>
   );
 }

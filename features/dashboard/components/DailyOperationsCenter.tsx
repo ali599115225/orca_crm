@@ -305,7 +305,11 @@ export default function DailyOperationsCenter({
                 : copy.low;
 
           return (
-            <div key={task.id} className={`${dashboardVisual.contentCard} p-3.5 sm:h-[84px] sm:overflow-hidden`}>
+            <Link
+              key={task.id}
+              href={`/operations/tasks?task=${encodeURIComponent(task.id)}`}
+              className={`${dashboardVisual.interactiveContentCard} block p-3.5 sm:h-[84px] sm:overflow-hidden`}
+            >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <p className="line-clamp-2 text-sm font-bold text-[var(--nc-text-primary)]">
@@ -340,7 +344,7 @@ export default function DailyOperationsCenter({
                   </span>
                 </div>
               </div>
-            </div>
+            </Link>
           );
         })}
         {renderEmptySlots(filteredTasks.length)}
@@ -491,7 +495,7 @@ export default function DailyOperationsCenter({
 
   return (
     <section
-      className={`${dashboardVisual.dashPanel} p-4`}
+      className={`${dashboardVisual.dashPanel} orca-dashboard-v1-operations`}
       data-dashboard-card="operations"
     >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -517,7 +521,7 @@ export default function DailyOperationsCenter({
       </div>
 
       <div
-        className="orca-ops-tablist mt-3 flex max-w-full gap-1.5 overflow-x-auto border-b border-[var(--nc-glass-border)] pb-3 sm:gap-2"
+        className="orca-dashboard-v1-ops-tablist"
         role="tablist"
         aria-label={copy.operationsTitle}
       >
@@ -558,7 +562,7 @@ export default function DailyOperationsCenter({
 
       <div
         ref={tabpanelRef}
-        className="orca-ops-tabpanel h-[280px] overflow-y-auto overscroll-contain pt-3"
+        className="orca-dashboard-v1-ops-panel"
         role="tabpanel"
         id={`dashboard-panel-${activeTab}`}
         aria-labelledby={`dashboard-tab-${activeTab}`}

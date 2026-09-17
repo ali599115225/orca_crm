@@ -31,34 +31,23 @@ export default function DashboardMetricCard({
       aria-label={title}
       data-dashboard-card="kpi"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-[var(--nc-text-primary)]">
-            {title}
-          </p>
-          <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--nc-text-secondary)]">
-            {description}
-          </p>
-        </div>
-        <span className={dashboardVisual.metricIconTile}>{icon}</span>
-      </div>
+      <span className={dashboardVisual.metricIconTile}>{icon}</span>
 
-      <div className="mt-2">
-        {isReady ? (
-          <strong className="text-2xl font-black leading-none text-[var(--nc-text-primary)]">
-            {value.data}
-          </strong>
-        ) : (
-          <div className="flex items-end justify-between gap-3">
-            <strong className="text-2xl font-black leading-none text-[var(--nc-text-dim)]">
-              —
-            </strong>
-            <span className="text-xs font-bold text-red-600 dark:text-red-300">
-              {errorLabel}
-            </span>
-          </div>
-        )}
-      </div>
+      <span className="orca-dashboard-v1-metric-copy">
+        <strong className="orca-dashboard-v1-metric-title">{title}</strong>
+        <span className="orca-dashboard-v1-metric-description">
+          {description}
+        </span>
+      </span>
+
+      {isReady ? (
+        <strong className="orca-dashboard-v1-metric-value">{value.data}</strong>
+      ) : (
+        <span className="orca-dashboard-v1-metric-error">
+          <strong>—</strong>
+          <small>{errorLabel}</small>
+        </span>
+      )}
     </Link>
   );
 }

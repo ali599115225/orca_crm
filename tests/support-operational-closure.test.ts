@@ -30,6 +30,12 @@ describe("Support Center operational and property-identity closure", () => {
   const properties = source(
     "components/real-estate/properties/PropertiesWorkspace.tsx",
   );
+  const tasks = source("components/views/TasksView.tsx");
+  const operationsVisual = source("features/operations/visual.ts");
+  const operationsDialog = source("components/operations/OperationsDialog.tsx");
+  const operationsContractCss = source(
+    "app/operations/orca-page-contract-v1.css",
+  );
 
   it("keeps the support route on the canonical HelpdeskView", () => {
     expect(page).toContain(
@@ -113,34 +119,35 @@ describe("Support Center operational and property-identity closure", () => {
     expect(view).toContain("data-operational-detail-card");
     expect(view).toContain("data-support-ticket-list");
     expect(view).toContain("data-support-conversation");
-    expect(view).toContain('lg:grid-cols-[340px_minmax(0,1fr)]');
-    expect(view.match(/lg:h-\[520px\]/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(view).toContain("<OperationsExecutiveGrid");
+    expect(operationsVisual).toContain(
+      'executiveGrid: "orca-operations-executive-grid"',
+    );
+    expect(view).not.toContain('lg:h-[460px]');
+    expect(view).toContain("orca-operations-flow-region");
+    expect(view).toContain("OperationsScrollRegion");
+    expect(view).toContain('scrollRole="conversation"');
     expect(view).toContain('className="orca-workspace-pagination');
     expect(view).not.toContain('lg:w-[34%]');
     expect(view).not.toContain("<table");
   });
 
   it("adopts the approved property workspace identity", () => {
-    for (const token of [
-      "orca-container",
-      "orca-workspace-hero",
-      "orca-workspace-metrics",
-      "orca-workspace-metric",
-      "orca-workspace-note",
-      "orca-workspace-panel",
-      "orca-workspace-toolbar",
-      "orca-info-cell",
-      "orca-dialog-overlay",
-    ]) {
-      expect(properties + source("components/views/TasksView.tsx")).toContain(
-        token,
-      );
-      expect(view).toContain(token);
+    for (const workspace of [properties, tasks, view]) {
+      expect(workspace).toContain("operationsVisual.page");
+      expect(workspace).toContain("OperationsPageHeader");
+      expect(workspace).toContain("OperationsKpiGrid");
+      expect(workspace).toContain("OperationsPanel");
+      expect(workspace).not.toContain("UnifiedOperationsWorkspace");
     }
 
+    expect(operationsVisual).toContain(
+      'page:\n    "nc-page nc-stack orca-container orca-operations-page pb-4',
+    );
+    expect(operationsVisual).toContain('panel: "orca-workspace-panel"');
+    expect(operationsVisual).toContain('toolbar: "orca-workspace-toolbar"');
     expect(view).toContain("data-helpdesk-property-workspace");
-    expect(view).toContain("orca-container pb-4");
-    expect(view).not.toContain("UnifiedOperationsWorkspace");
+    expect(view).toContain("orca-info-cell");
   });
 
   it("keeps hero actions local to the support page", () => {
@@ -153,7 +160,7 @@ describe("Support Center operational and property-identity closure", () => {
 
   it("uses rounded gold ticket rows without square table edges", () => {
     expect(view).toContain("data-ticket-row");
-    expect(view).toContain("h-[68px]");
+    expect(view).toContain("h-[60px]");
     expect(view).toContain("rounded-2xl");
     expect(view).toContain("hover:bg-[var(--nc-accent-soft)]");
     expect(view).not.toContain("border-spacing-y-2");
@@ -168,22 +175,25 @@ describe("Support Center operational and property-identity closure", () => {
     expect(view).toContain("setMobileDetailOpen(true)");
     expect(view).toContain("setMobileDetailOpen(false)");
     expect(view).toContain("lg:hidden");
-    expect(view).toContain("[scrollbar-width:none]");
+    expect(view).toContain("OperationsScrollRegion");
+    expect(view).toContain('scrollRole="conversation"');
     expect(view).toContain("min-h-[78px]");
     expect(view).toContain("min-h-[56px]");
     expect(view).toContain("max-w-[74%]");
   });
 
   it("reviews the internal ticket form and renders it through a safe portal", () => {
-    expect(view).toContain('import { createPortal } from "react-dom"');
-    expect(view).toContain("editorOpen && typeof document !== \"undefined\"");
-    expect(view).toContain("document.body");
-    expect(view).toContain("top-[88px]");
-    expect(view).toContain("max-w-2xl");
-    expect(view).toContain("max-h-[calc(100vh-190px)]");
-    expect(view).toContain("min-h-[120px]");
+    expect(view).toContain("<OperationsDialog");
+    expect(operationsDialog).toContain(
+      'import { createPortal } from "react-dom"',
+    );
+    expect(operationsDialog).toContain(
+      'if (!open || typeof document === "undefined") return null;',
+    );
+    expect(operationsDialog).toContain("document.body");
+    expect(operationsDialog).toContain('event.key === "Escape"');
+    expect(operationsDialog).toContain("operationsVisual.dialog");
     expect(view).not.toContain("orca-form-textarea min-h-[180px]");
-    expect(view).toContain('event.key === "Escape"');
   });
 
   it("uses stable Latin date and time formatting in both languages", () => {
@@ -201,7 +211,18 @@ describe("Support Center operational and property-identity closure", () => {
       view.match(/<(?:button|input|textarea|select)\b[\s\S]*?>/g) ?? [];
     const actionableSource = actionableTags.join("\n");
 
-    expect(actionableSource).toContain("min-h-[44px]");
+    expect(operationsVisual).toContain(
+      'primaryButton: "orca-operations-primary-button"',
+    );
+    expect(operationsVisual).toContain(
+      'secondaryButton: "orca-operations-secondary-button"',
+    );
+    expect(operationsVisual).toContain(
+      'iconButton: "orca-operations-icon-button"',
+    );
+    expect(operationsContractCss).toMatch(
+      /\.orca-v1-shell \.orca-operations-primary-button,[\s\S]*?min-height:\s*44px;/,
+    );
     expect(actionableSource).not.toContain("min-h-[40px]");
     expect(actionableSource).not.toContain("h-10");
   });
@@ -219,6 +240,16 @@ describe("Support Center operational and property-identity closure", () => {
     expect(view).toContain('formData.append("phone", newPhone.trim())');
     expect(view).toContain('formData.append("channel", newChannel)');
     expect(actions).toContain("email, phone, channel");
+  });
+
+  it("keeps the create-ticket channel selector inside the shared ORCA form contract", () => {
+    expect(view).not.toContain('<select value={newChannel}');
+    expect(view).toContain("<SettingsSelect");
+    expect(view).toContain("value={newChannel}");
+    expect(view).toContain("label={t.channelField}");
+    expect(view).toContain('channelField: "القناة"');
+    expect(view).toContain('emailField: "البريد الإلكتروني"');
+    expect(view).toContain('phoneField: "الهاتف"');
   });
 
   it("sends close and reply through one bounded shared destination dispatcher", () => {

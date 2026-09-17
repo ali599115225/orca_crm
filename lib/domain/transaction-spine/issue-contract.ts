@@ -238,5 +238,8 @@ export async function issueContract(input: IssueContractInput) {
     }
 
     return contract;
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }, {
+    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    timeout: 15_000,
+  });
 }

@@ -5,11 +5,9 @@
 // edit, and archive are permission-gated (re-verified on the server).
 // `status` is the single source of truth; raw enums and raw server errors
 // are never rendered.
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowRight,
-  ArrowLeft,
   Archive,
   ArchiveRestore,
   ExternalLink,
@@ -26,7 +24,6 @@ import {
   History,
   ListTodo,
   Phone,
-  X,
 } from "lucide-react";
 import { useApp } from "@/app/context/AppContext";
 import { toast } from "@/app/context/ToastContext";
@@ -51,6 +48,19 @@ import { displayEnum, displayGeo, displayPerson } from "@/lib/display";
 import type { DisplayLocale } from "@/lib/display";
 import { formatDisplayDate, formatDisplayDateTime } from "@/lib/display/dateTime";
 import { formatNumber } from "@/components/leads/helpers";
+import {
+  OperationsBackAction,
+  OperationsDialog,
+  OperationsFormField,
+  OperationsKpiGrid,
+  OperationsMetricCard,
+  OperationsPageHeader,
+  OperationsPanel,
+  OperationsTabs,
+  OperationsTextField,
+  OperationsTextareaField,
+} from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
 import SettingsSelect from "@/components/settings/SettingsSelect";
 import LeadContactsPanel from "@/components/leads/panels/LeadContactsPanel";
 import {
@@ -97,6 +107,15 @@ interface LeadDetailClientProps {
   lead: LeadDetailData;
   viewerRole: string;
   viewerUserId: string;
+}
+
+function LeadSummaryCell({ label, value }: { label: ReactNode; value: ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <p className={operationsVisual.meta}>{label}</p>
+      <div className="mt-1 truncate text-xs font-bold text-[var(--nc-text-primary)]">{value}</div>
+    </div>
+  );
 }
 
 export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: LeadDetailClientProps) {
@@ -1025,12 +1044,11 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
     }
   };
 
-  const BackIcon = isArabic ? ArrowRight : ArrowLeft;
-  const infoCardClass = `${leadVisual.softPanel} p-4 sm:p-5`;
-  const infoLabelClass = leadVisual.label;
-  const infoValueClass = leadVisual.value;
-  const selectClass = leadVisual.select;
-  const inputClass = leadVisual.input;
+  const infoCardClass = `${operationsVisual.softPanel} p-4 sm:p-5`;
+  const infoLabelClass = operationsVisual.meta;
+  const infoValueClass = operationsVisual.body;
+  const selectClass = "orca-operations-input";
+  const inputClass = "orca-operations-input";
   const renderEmptyState = (message: string) => (
     <div className="flex h-[140px] items-center justify-center rounded-lg border border-dashed border-[var(--nc-border)] text-xs font-medium text-[var(--nc-text-secondary)]">
       {message}
@@ -1038,184 +1056,72 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
   );
 
   return (
-    <section ref={pageRootRef} dir={direction} className={leadVisual.page}>
-      {/* Scoped rule for the tagged layout scroller (Chromium/WebKit). */}
-      <style>{`[data-leads-hide-scrollbar]::-webkit-scrollbar{display:none;width:0;height:0}`}</style>
-      <div className={leadVisual.pageStack}>
-        {/* Action Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4">
-          <button
-            type="button"
-            onClick={() => router.push("/operations/leads")}
-            className={leadVisual.secondaryButton}
-          >
-            <BackIcon className="h-3.5 w-3.5" aria-hidden="true" />
-            {labels.back}
-          </button>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {canManage && !lead.isArchived && (
-              <button
-                type="button"
-                onClick={() => {
-                  setArchiveReason("");
-                  setArchiveError("");
-                  setShowArchiveDialog(true);
-                }}
-                className={leadVisual.dangerGhostButton}
-              >
-                <Archive className="h-3.5 w-3.5" aria-hidden="true" />
-                {labels.archiveAction}
-              </button>
-            )}
-            {canManage && lead.isArchived && (
-              <button
-                type="button"
-                onClick={() => void handleRestore()}
-                disabled={restoreSaving}
-                className={leadVisual.primaryButton}
-              >
-                <ArchiveRestore className="h-3.5 w-3.5" aria-hidden="true" />
-                {restoreSaving ? labels.saving : labels.restoreAction}
-              </button>
-            )}
-            {canWrite && !lead.isArchived && (
-              <>
-                <SettingsSelect
-                  aria-label={labels.changeStatus}
-                  value={lead.status}
-                  disabled={statusSaving}
-                  onChange={(value) => void handleStatusChange(value as LeadStatusValue)}
-                  options={statusOptions}
-                  className={selectClass}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setWhatsAppError("");
-                    setWhatsAppMessage("");
-                    setShowWhatsAppModal(true);
-                  }}
-                  className={leadVisual.ghostButton}
-                >
-                  <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                  {isArabic ? "واتساب" : "WhatsApp"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmailError("");
-                    setShowEmailModal(true);
-                  }}
-                  className={leadVisual.ghostButton}
-                >
-                  <Mail className="h-3.5 w-3.5" aria-hidden="true" />
-                  {labels.sendEmail}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowEditDialog(true)}
-                  className={leadVisual.primaryButton}
-                >
-                  <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                  {labels.editAction}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Summary Card */}
-        <div className={`${leadVisual.softPanel} mx-3 p-4 sm:mx-4`}>
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sm font-black text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
-              {leadInitials}
-            </div>
-            <div className="min-w-0">
-              <h1 className="truncate text-base font-extrabold text-[var(--nc-text-primary)] sm:text-lg">
-                <bdi dir="auto">{leadName || lead.phone}</bdi>
-              </h1>
-              <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold leading-none ${leadStatusTone(lead.status)}`}>
-                  {displayEnum(lead.status, "leadStatus", displayLocale)}
-                </span>
-                {lead.isArchived && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold leading-none text-amber-700 dark:text-amber-300">
-                    <Archive className="h-3 w-3" aria-hidden="true" />
-                    {labels.archivedBadge}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-[var(--nc-border)] pt-3 text-xs sm:grid-cols-3 lg:grid-cols-4">
-            <div>
-              <p className="font-medium text-[var(--nc-text-secondary)]">{labels.phoneLabel}</p>
-              <p className="mt-0.5 font-bold text-[var(--nc-text-primary)]"><bdi dir="ltr" className="tabular-nums">{lead.phone}</bdi></p>
-            </div>
-            <div>
-              <p className="font-medium text-[var(--nc-text-secondary)]">{labels.emailLabel}</p>
-              <p className="mt-0.5 break-all font-bold text-[var(--nc-text-primary)]">{lead.email ? <bdi dir="ltr">{lead.email}</bdi> : labels.notSpecified}</p>
-            </div>
-            <div>
-              <p className="font-medium text-[var(--nc-text-secondary)]">{labels.city}</p>
-              <p className="mt-0.5 font-bold text-[var(--nc-text-primary)]">{displayGeo(lead.city, "city", displayLocale, { route: "/operations/leads" })}</p>
-            </div>
-            <div>
-              <p className="font-medium text-[var(--nc-text-secondary)]">{labels.source}</p>
-              <p className="mt-0.5 font-bold text-[var(--nc-text-primary)]">{displayEnum(lead.source, "leadSource", displayLocale)}</p>
-            </div>
-            <div>
-              <p className="font-medium text-[var(--nc-text-secondary)]">{labels.assignAction}</p>
+    <section ref={pageRootRef} dir={direction} className={operationsVisual.page} data-lead-detail-contract="dashboard-v2">
+      <div className={operationsVisual.pageStack}>
+        <OperationsPageHeader
+          eyebrow={labels.breadcrumb}
+          title={<bdi dir="auto">{leadName || lead.phone}</bdi>}
+          description={`${displayEnum(lead.status, "leadStatus", displayLocale)} · ${displayGeo(lead.city, "city", displayLocale, { route: "/operations/leads" })}`}
+          icon={UserRound}
+          meta={
+            <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${leadStatusTone(lead.status)}`}>
+              {displayEnum(lead.status, "leadStatus", displayLocale)}
+            </span>
+          }
+          actions={
+            <>
+              <OperationsBackAction href="/operations/leads" label={labels.back} locale={displayLocale} />
               {canManage && !lead.isArchived ? (
-                <SettingsSelect
-                  aria-label={labels.assignAction}
-                  value={lead.assignedTo || ""}
-                  disabled={assignSaving}
-                  onChange={(value) => void handleAssign(value)}
-                  options={assigneeOptions}
-                  className={`${selectClass} mt-0.5`}
-                />
-              ) : (
-                <p className="mt-0.5 font-bold text-[var(--nc-text-primary)]">
-                  <bdi dir="auto">{lead.assignedUser ? displayPerson(lead.assignedUser.name, displayLocale, { route: "/operations/leads" }) : labels.unassigned}</bdi>
-                </p>
-              )}
-            </div>
-            <div>
-              <p className="font-medium text-[var(--nc-text-secondary)]">{labels.registrationDate}</p>
-              <p className="mt-0.5 font-bold text-[var(--nc-text-primary)]"><bdi dir="ltr">{shortDate(lead.createdAt)}</bdi></p>
-            </div>
-            <div>
-              <p className="font-medium text-[var(--nc-text-secondary)]">{labels.lastContact}</p>
-              <p className="mt-0.5 font-bold text-[var(--nc-text-primary)]"><bdi dir="ltr">{shortDate(lead.lastContactedAt)}</bdi></p>
-            </div>
-            <div>
-              <p className="font-medium text-[var(--nc-text-secondary)]">{labels.scoreLabel}</p>
-              <p className="mt-0.5 font-bold text-[var(--nc-text-primary)]"><bdi dir="ltr">{lead.leadScore}/100</bdi></p>
-            </div>
-          </div>
+                <button type="button" onClick={() => { setArchiveReason(""); setArchiveError(""); setShowArchiveDialog(true); }} className={operationsVisual.ghostButton}><Archive aria-hidden="true" />{labels.archiveAction}</button>
+              ) : null}
+              {canManage && lead.isArchived ? (
+                <button type="button" onClick={() => void handleRestore()} disabled={restoreSaving} className={operationsVisual.primaryButton}><ArchiveRestore aria-hidden="true" />{restoreSaving ? labels.saving : labels.restoreAction}</button>
+              ) : null}
+              {canWrite && !lead.isArchived ? (
+                <>
+                  <SettingsSelect aria-label={labels.changeStatus} value={lead.status} disabled={statusSaving} onChange={(value) => void handleStatusChange(value as LeadStatusValue)} options={statusOptions} className="min-w-[150px]" />
+                  <button type="button" onClick={() => { setWhatsAppError(""); setWhatsAppMessage(""); setShowWhatsAppModal(true); }} className={operationsVisual.secondaryButton}><MessageCircle aria-hidden="true" />{isArabic ? "واتساب" : "WhatsApp"}</button>
+                  <button type="button" onClick={() => { setEmailError(""); setShowEmailModal(true); }} className={operationsVisual.secondaryButton}><Mail aria-hidden="true" />{labels.sendEmail}</button>
+                  <button type="button" onClick={() => setShowEditDialog(true)} className={operationsVisual.primaryButton}><Pencil aria-hidden="true" />{labels.editAction}</button>
+                </>
+              ) : null}
+            </>
+          }
+        />
 
-          {lead.isArchived && (
-            <div className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
-              <p>{labels.archivedInfo}</p>
-              <p className="mt-0.5">
-                {lead.archivedByName ? (<>{labels.archivedBy}: <bdi dir="auto">{lead.archivedByName}</bdi></>) : null}
-                {lead.archivedAt ? ` · ${formatDisplayDateTime(lead.archivedAt)}` : null}
-              </p>
-              {lead.archiveReason && (<p className="mt-0.5">{labels.archiveReasonShown}: {lead.archiveReason}</p>)}
+        <OperationsKpiGrid aria-label={labels.title}>
+          <OperationsMetricCard title={labels.scoreLabel} value={`${lead.leadScore}/100`} description={labels.leadRegistry} icon={CheckCircle2} />
+          <OperationsMetricCard title={labels.assignAction} value={lead.assignedUser ? displayPerson(lead.assignedUser.name, displayLocale, { route: "/operations/leads" }) : labels.unassigned} description={labels.owner} icon={UserRound} />
+          <OperationsMetricCard title={labels.lastContact} value={shortDate(lead.lastContactedAt)} description={labels.registrationDate} icon={Clock3} />
+          <OperationsMetricCard title={labels.source} value={displayEnum(lead.source, "leadSource", displayLocale)} description={lead.project?.name || labels.noProject} icon={Briefcase} />
+        </OperationsKpiGrid>
+
+        <OperationsPanel padded className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <LeadSummaryCell label={labels.phoneLabel} value={<bdi dir="ltr" className="tabular-nums">{lead.phone}</bdi>} />
+          <LeadSummaryCell label={labels.emailLabel} value={lead.email ? <bdi dir="ltr">{lead.email}</bdi> : labels.notSpecified} />
+          <LeadSummaryCell label={labels.city} value={displayGeo(lead.city, "city", displayLocale, { route: "/operations/leads" })} />
+          <LeadSummaryCell label={labels.registrationDate} value={<bdi dir="ltr">{shortDate(lead.createdAt)}</bdi>} />
+          {canManage && !lead.isArchived ? (
+            <div>
+              <p className={operationsVisual.meta}>{labels.assignAction}</p>
+              <SettingsSelect aria-label={labels.assignAction} value={lead.assignedTo || ""} disabled={assignSaving} onChange={(value) => void handleAssign(value)} options={assigneeOptions} className="mt-1.5 w-full" />
             </div>
-          )}
-        </div>
+          ) : null}
+        </OperationsPanel>
+
+        {lead.isArchived ? (
+          <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
+            <p>{labels.archivedInfo}</p>
+            <p className="mt-0.5">{lead.archivedByName ? <>{labels.archivedBy}: <bdi dir="auto">{lead.archivedByName}</bdi></> : null}{lead.archivedAt ? ` · ${formatDisplayDateTime(lead.archivedAt)}` : null}</p>
+            {lead.archiveReason ? <p className="mt-0.5">{labels.archiveReasonShown}: {lead.archiveReason}</p> : null}
+          </div>
+        ) : null}
 
         {/* Tabs */}
-        <div className={leadVisual.workspacePanel}>
+        <OperationsPanel>
           <div className="relative">
-            <div
-              className={leadVisual.workspaceTabs}
+            <OperationsTabs
               data-leads-hide-scrollbar
-              style={{ scrollbarWidth: "none" }}
-              role="tablist"
               aria-label={labels.title}
             >
               {tabs.map((tab) => {
@@ -1228,7 +1134,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                     aria-selected={active}
                     onClick={() => setActiveTab(tab.id)}
                     className={
-                      active ? leadVisual.activeTab : leadVisual.tab
+                      active ? operationsVisual.activeTab : operationsVisual.tab
                     }
                   >
                     {tab.label}
@@ -1238,7 +1144,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                   </button>
                 );
               })}
-            </div>
+            </OperationsTabs>
             <div
               className={`pointer-events-none absolute inset-y-0 z-10 w-8 lg:hidden ${
                 isArabic ? "left-0 bg-gradient-to-l" : "right-0 bg-gradient-to-r"
@@ -1252,12 +1158,13 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
               <div className="space-y-4">
                 <LeadContactsPanel
                   leadId={lead.id}
+                  locale={isArabic ? "ar" : "en"}
                   labels={{ noContacts: isArabic ? "لا توجد جهات اتصال" : "No contacts" }}
                 />
                 {/* Row 1: Tasks | Activity | Customer Info  (RTL: rightmost first) */}
                 <div className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-[4fr_5fr_3fr]">
                   {/* Upcoming Tasks */}
-                  <div className={`${leadVisual.softPanel} p-3`}>
+                  <div className={`${operationsVisual.softPanel} p-3`}>
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs font-bold text-[var(--nc-text-primary)]">{isArabic ? "المهام القادمة" : "Upcoming Tasks"}</h3>
                       {lead.tasks.length > 0 && (
@@ -1307,7 +1214,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                   </div>
 
                   {/* Recent Activity */}
-                  <div className={`${leadVisual.softPanel} p-3`}>
+                  <div className={`${operationsVisual.softPanel} p-3`}>
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs font-bold text-[var(--nc-text-primary)]">{isArabic ? "النشاط الأخير" : "Recent Activity"}</h3>
                       {timeline.length > 0 && (
@@ -1343,7 +1250,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                   </div>
 
                   {/* Customer Needs & Preferences */}
-                  <div className={`${leadVisual.softPanel} p-3 md:col-span-2 lg:col-span-1`}>
+                  <div className={`${operationsVisual.softPanel} p-3 md:col-span-2 lg:col-span-1`}>
                     <h3 className="flex items-center gap-1.5 text-xs font-bold text-[var(--nc-text-primary)]">
                       <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
                       {isArabic ? "احتياجات وتفضيلات العميل" : "Customer Needs & Preferences"}
@@ -1360,7 +1267,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                           <button
                             type="button"
                             onClick={() => router.push(`/operations/projects?projectId=${encodeURIComponent(lead.project!.id)}&leadId=${encodeURIComponent(lead.id)}`)}
-                            className={`${leadVisual.secondaryButton} w-full justify-center`}
+                            className={`${operationsVisual.secondaryButton} w-full justify-center`}
                           >
                             <ExternalLink className="h-3 w-3" aria-hidden="true" />
                             {isArabic ? "فتح المشروع" : "Open project"}
@@ -1380,7 +1287,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                 {/* Row 2: Tours | Offers  (RTL: rightmost first) */}
                 <div className="grid items-stretch gap-4 md:grid-cols-2">
                   {/* Upcoming Tours */}
-                  <div className={`${leadVisual.softPanel} p-3`}>
+                  <div className={`${operationsVisual.softPanel} p-3`}>
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs font-bold text-[var(--nc-text-primary)]">{isArabic ? "الجولات القادمة" : "Upcoming Tours"}</h3>
                       {lead.tours.length > 0 && (
@@ -1430,7 +1337,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                   </div>
 
                   {/* Recent Offers */}
-                  <div className={`${leadVisual.softPanel} p-3`}>
+                  <div className={`${operationsVisual.softPanel} p-3`}>
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs font-bold text-[var(--nc-text-primary)]">{isArabic ? "العروض الأخيرة" : "Recent Offers"}</h3>
                       {totalOffers > 0 && (
@@ -1486,7 +1393,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
 
             {activeTab === "communication" && (
               <div className="space-y-4">
-                <div className={`${leadVisual.softPanel} flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between`}>
+                <div className={`${operationsVisual.softPanel} flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between`}>
                   <div className="relative min-w-0 flex-1">
                     <Search
                       className={`pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--nc-text-dim)] ${isArabic ? "right-3" : "left-3"}`}
@@ -1510,7 +1417,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                         key={value}
                         type="button"
                         onClick={() => setCommunicationKind(value)}
-                        className={communicationKind === value ? leadVisual.activeTab : leadVisual.secondaryButton}
+                        className={communicationKind === value ? operationsVisual.activeTab : operationsVisual.secondaryButton}
                       >
                         {label}
                       </button>
@@ -1520,7 +1427,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
 
                 <div className="grid items-start gap-4 lg:grid-cols-2">
                   {/* Activity Log — right in RTL: all events */}
-                  <section className={`${leadVisual.softPanel} p-4`}>
+                  <section className={`${operationsVisual.softPanel} p-4`}>
                     <div className="flex items-center justify-between border-b border-[var(--nc-border)] pb-3">
                       <div className="flex items-center gap-2">
                         <Clock3 className="h-4 w-4 text-[var(--nc-accent)]" aria-hidden="true" />
@@ -1585,7 +1492,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                   </section>
 
                   {/* Conversations — left in RTL: communications only */}
-                  <section className={`${leadVisual.softPanel} p-4`}>
+                  <section className={`${operationsVisual.softPanel} p-4`}>
                     <div className="flex items-center justify-between border-b border-[var(--nc-border)] pb-3">
                       <div className="flex items-center gap-2">
                         <MessageCircle className="h-4 w-4 text-[var(--nc-accent)]" aria-hidden="true" />
@@ -1678,7 +1585,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
 
             {activeTab === "tasks" && (
               <div className="space-y-4">
-                <div className={`${leadVisual.softPanel} p-4`}>
+                <div className={`${operationsVisual.softPanel} p-4`}>
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <div className="flex items-center gap-2">
@@ -1712,7 +1619,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                         onClick={() =>
                           router.push(`/operations/tasks?leadId=${encodeURIComponent(lead.id)}`)
                         }
-                        className={leadVisual.secondaryButton}
+                        className={operationsVisual.secondaryButton}
                       >
                         <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                         {isArabic ? "صفحة المهام" : "Tasks page"}
@@ -1724,7 +1631,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                             setTaskError("");
                             setShowTaskForm((value) => !value);
                           }}
-                          className={leadVisual.primaryButton}
+                          className={operationsVisual.primaryButton}
                         >
                           {showTaskForm
                             ? labels.cancel
@@ -1757,7 +1664,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                 </div>
 
                 {showTaskForm && canWrite && !lead.isArchived && (
-                  <form onSubmit={handleCreateTask} className={`${leadVisual.card} space-y-3 p-4`}>
+                  <form onSubmit={handleCreateTask} noValidate className={`${operationsVisual.contentCard} space-y-3 p-4`}>
                     {taskError && (
                       <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500">
                         {taskError}
@@ -1768,20 +1675,19 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                       onChange={(event) => setTaskTitle(event.target.value)}
                       placeholder={isArabic ? "عنوان المهمة" : "Task title"}
                       className={inputClass}
-                      required
                     />
                     <textarea
                       value={taskDescription}
                       onChange={(event) => setTaskDescription(event.target.value)}
                       placeholder={isArabic ? "وصف اختياري" : "Optional description"}
                       rows={3}
-                      className={leadVisual.textarea}
+                      className={"orca-operations-textarea"}
                     />
                     <div className="flex justify-end">
                       <button
                         type="submit"
                         disabled={taskSaving || !taskTitle.trim()}
-                        className={leadVisual.primaryButton}
+                        className={operationsVisual.primaryButton}
                       >
                         {taskSaving
                           ? labels.saving
@@ -1804,7 +1710,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                 ) : (
                   <div className="grid items-start gap-4 lg:grid-cols-[minmax(300px,0.86fr)_minmax(0,1.7fr)]">
                     {/* Task details — right in RTL */}
-                    <aside className={`${leadVisual.softPanel} p-4`}>
+                    <aside className={`${operationsVisual.softPanel} p-4`}>
                       {selectedTask ? (
                         <>
                           <div className="flex items-center justify-between gap-3 border-b border-[var(--nc-border)] pb-3">
@@ -1848,7 +1754,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                               type="button"
                               disabled={Boolean(completingTaskId)}
                               onClick={() => void handleCompleteTask(selectedTask.id)}
-                              className={`${leadVisual.primaryButton} mt-5 w-full justify-center`}
+                              className={`${operationsVisual.primaryButton} mt-5 w-full justify-center`}
                             >
                               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                               {completingTaskId === selectedTask.id
@@ -1865,7 +1771,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                     </aside>
 
                     {/* Responsive board: 3 status columns on Desktop */}
-                    <section className={`${leadVisual.softPanel} p-4`}>
+                    <section className={`${operationsVisual.softPanel} p-4`}>
                       <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         {taskBuckets.map((bucket) => (
                           <div key={bucket.id} className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-2.5">
@@ -1931,7 +1837,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
             {activeTab === "tours" && (
               <div className="space-y-4">
                 {/* Header bar: title + search + new tour */}
-                <div className={`${leadVisual.softPanel} p-4`}>
+                <div className={`${operationsVisual.softPanel} p-4`}>
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <div className="flex items-center gap-2">
@@ -1969,7 +1875,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                           onClick={() =>
                             router.push(`/operations/tours?leadId=${encodeURIComponent(lead.id)}`)
                           }
-                          className={leadVisual.primaryButton}
+                          className={operationsVisual.primaryButton}
                         >
                           {isArabic ? "جولة جديدة" : "New tour"}
                         </button>
@@ -2005,7 +1911,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                 ) : (
                   <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(300px,0.9fr)]">
                     {/* Tours list — right in RTL */}
-                    <section className={`${leadVisual.softPanel} p-4`}>
+                    <section className={`${operationsVisual.softPanel} p-4`}>
                       {filteredTours.length === 0 ? (
                         renderEmptyState(isArabic ? "لا توجد نتائج مطابقة" : "No matching tours")
                       ) : (
@@ -2065,7 +1971,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                     </section>
 
                     {/* Tour details — left in RTL */}
-                    <aside className={`${leadVisual.softPanel} p-4`}>
+                    <aside className={`${operationsVisual.softPanel} p-4`}>
                       {selectedTour ? (
                         <>
                           <div className="flex items-center justify-between gap-3 border-b border-[var(--nc-border)] pb-3">
@@ -2111,7 +2017,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                                   `/operations/tours?tourId=${encodeURIComponent(selectedTour.id)}&leadId=${encodeURIComponent(lead.id)}`,
                                 )
                               }
-                              className={`${leadVisual.secondaryButton} w-full justify-center`}
+                              className={`${operationsVisual.secondaryButton} w-full justify-center`}
                             >
                               <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                               {isArabic ? "فتح صفحة الجولة" : "Open tour page"}
@@ -2124,7 +2030,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                                     `/operations/properties?unitId=${encodeURIComponent(selectedTour.unitId!)}&leadId=${encodeURIComponent(lead.id)}`,
                                   )
                                 }
-                                className={`${leadVisual.secondaryButton} w-full justify-center`}
+                                className={`${operationsVisual.secondaryButton} w-full justify-center`}
                               >
                                 <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                                 {isArabic ? "فتح صفحة الوحدة" : "Open unit page"}
@@ -2144,7 +2050,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                                     type="button"
                                     disabled={Boolean(updatingTourId)}
                                     onClick={() => void handleUpdateTourStatus(selectedTour.id, "COMPLETED")}
-                                    className={leadVisual.primaryButton}
+                                    className={operationsVisual.primaryButton}
                                   >
                                     <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
                                     {updatingTourId === selectedTour.id
@@ -2155,7 +2061,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                                     type="button"
                                     disabled={Boolean(updatingTourId)}
                                     onClick={() => void handleUpdateTourStatus(selectedTour.id, "FOLLOW_UP")}
-                                    className={leadVisual.secondaryButton}
+                                    className={operationsVisual.secondaryButton}
                                   >
                                     {isArabic ? "متابعة" : "Follow-up"}
                                   </button>
@@ -2183,7 +2089,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
             {activeTab === "opportunities" && (
               <div className="space-y-4">
                 {/* Header bar: title + search + new opportunity */}
-                <div className={`${leadVisual.softPanel} p-4`}>
+                <div className={`${operationsVisual.softPanel} p-4`}>
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <div className="flex items-center gap-2">
@@ -2221,7 +2127,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                           onClick={() =>
                             router.push(`/operations/opportunities?leadId=${encodeURIComponent(lead.id)}`)
                           }
-                          className={leadVisual.primaryButton}
+                          className={operationsVisual.primaryButton}
                         >
                           {isArabic ? "فرصة جديدة" : "New opportunity"}
                         </button>
@@ -2251,7 +2157,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                 ) : (
                   <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(300px,0.9fr)]">
                     {/* Opportunities list — right in RTL */}
-                    <section className={`${leadVisual.softPanel} p-4`}>
+                    <section className={`${operationsVisual.softPanel} p-4`}>
                       {filteredOpportunities.length === 0 ? (
                         renderEmptyState(isArabic ? "لا توجد نتائج مطابقة" : "No matching opportunities")
                       ) : (
@@ -2307,7 +2213,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                     </section>
 
                     {/* Opportunity details — left in RTL */}
-                    <aside className={`${leadVisual.softPanel} p-4`}>
+                    <aside className={`${operationsVisual.softPanel} p-4`}>
                       {selectedOpportunity ? (
                         <>
                           <div className="border-b border-[var(--nc-border)] pb-3">
@@ -2380,7 +2286,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                                   `/operations/opportunities?opportunityId=${encodeURIComponent(selectedOpportunity.id)}&leadId=${encodeURIComponent(lead.id)}`,
                                 )
                               }
-                              className={`${leadVisual.primaryButton} w-full justify-center`}
+                              className={`${operationsVisual.primaryButton} w-full justify-center`}
                             >
                               <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                               {isArabic ? "عرض تفاصيل الفرصة" : "Open opportunity details"}
@@ -2393,7 +2299,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                                     `/operations/properties?unitId=${encodeURIComponent(selectedOpportunity.unitId!)}&leadId=${encodeURIComponent(lead.id)}`,
                                   )
                                 }
-                                className={`${leadVisual.secondaryButton} w-full justify-center`}
+                                className={`${operationsVisual.secondaryButton} w-full justify-center`}
                               >
                                 <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                                 {isArabic ? "فتح صفحة الوحدة" : "Open unit page"}
@@ -2403,7 +2309,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                               <button
                                 type="button"
                                 onClick={() => setActiveTab("offers")}
-                                className={`${leadVisual.secondaryButton} w-full justify-center`}
+                                className={`${operationsVisual.secondaryButton} w-full justify-center`}
                               >
                                 {isArabic ? "عرض العروض المرتبطة" : "View linked offers"}
                               </button>
@@ -2422,7 +2328,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
             {activeTab === "offers" && (
               <div className="space-y-4">
                 {/* Header bar: title + search + new offer */}
-                <div className={`${leadVisual.softPanel} p-4`}>
+                <div className={`${operationsVisual.softPanel} p-4`}>
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <div className="flex items-center gap-2">
@@ -2460,7 +2366,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                           onClick={() =>
                             router.push(`/operations/offers?leadId=${encodeURIComponent(lead.id)}`)
                           }
-                          className={leadVisual.primaryButton}
+                          className={operationsVisual.primaryButton}
                         >
                           {isArabic ? "عرض جديد" : "New offer"}
                         </button>
@@ -2496,7 +2402,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                 ) : (
                   <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(300px,0.9fr)]">
                     {/* Offers list — right in RTL */}
-                    <section className={`${leadVisual.softPanel} p-4`}>
+                    <section className={`${operationsVisual.softPanel} p-4`}>
                       {filteredOffers.length === 0 ? (
                         renderEmptyState(isArabic ? "لا توجد نتائج مطابقة" : "No matching offers")
                       ) : (
@@ -2552,7 +2458,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                     </section>
 
                     {/* Offer details — left in RTL */}
-                    <aside className={`${leadVisual.softPanel} p-4`}>
+                    <aside className={`${operationsVisual.softPanel} p-4`}>
                       {selectedOffer ? (
                         <>
                           <div className="border-b border-[var(--nc-border)] pb-3">
@@ -2613,7 +2519,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                                   `/operations/offers?offerId=${encodeURIComponent(selectedOffer.id)}&leadId=${encodeURIComponent(lead.id)}`,
                                 )
                               }
-                              className={`${leadVisual.primaryButton} w-full justify-center`}
+                              className={`${operationsVisual.primaryButton} w-full justify-center`}
                             >
                               <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                               {isArabic ? "فتح تفاصيل العرض" : "Open offer details"}
@@ -2626,7 +2532,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                                     `/operations/properties?unitId=${encodeURIComponent(selectedOffer.unitId!)}&leadId=${encodeURIComponent(lead.id)}`,
                                   )
                                 }
-                                className={`${leadVisual.secondaryButton} w-full justify-center`}
+                                className={`${operationsVisual.secondaryButton} w-full justify-center`}
                               >
                                 <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                                 {isArabic ? "فتح صفحة الوحدة" : "Open unit page"}
@@ -2640,7 +2546,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                                   type="button"
                                   disabled={Boolean(acceptingOfferId)}
                                   onClick={() => void handleAcceptOffer(selectedOffer.id, selectedOffer.unitId)}
-                                  className={`${leadVisual.secondaryButton} w-full justify-center`}
+                                  className={`${operationsVisual.secondaryButton} w-full justify-center`}
                                 >
                                   <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
                                   {acceptingOfferId === selectedOffer.id
@@ -2662,7 +2568,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
             {activeTab === "history" && (
               <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.9fr)_minmax(240px,0.7fr)]">
                 {/* Timeline — right in RTL */}
-                <section className={`${leadVisual.softPanel} p-4`}>
+                <section className={`${operationsVisual.softPanel} p-4`}>
                   <div className="flex items-center gap-2 border-b border-[var(--nc-border)] pb-3">
                     <History className="h-4 w-4 text-[var(--nc-accent)]" aria-hidden="true" />
                     <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">
@@ -2726,7 +2632,7 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                 </section>
 
                 {/* Filters — left in RTL */}
-                <aside className={`${leadVisual.softPanel} p-4`}>
+                <aside className={`${operationsVisual.softPanel} p-4`}>
                   <div className="flex items-center gap-2 border-b border-[var(--nc-border)] pb-3">
                     <Search className="h-4 w-4 text-[var(--nc-accent)]" aria-hidden="true" />
                     <h3 className="text-sm font-bold text-[var(--nc-text-primary)]">
@@ -2779,25 +2685,23 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
                     <label className="text-[11px] font-semibold text-[var(--nc-text-secondary)]" htmlFor="lead-history-period">
                       {isArabic ? "تحديد فترة" : "Period"}
                     </label>
-                    <select
-                      id="lead-history-period"
+                    <SettingsSelect id="lead-history-period"
                       value={historyPeriod}
-                      onChange={(event) =>
-                        setHistoryPeriod(event.target.value as "all" | "7" | "30" | "90")
+                      onChange={(value) =>
+                        setHistoryPeriod(value as "all" | "7" | "30" | "90")
                       }
                       className={`${inputClass} mt-1.5`}
-                    >
-                      <option value="all">{isArabic ? "كل الفترات" : "All time"}</option>
-                      <option value="7">{isArabic ? "آخر 7 أيام" : "Last 7 days"}</option>
-                      <option value="30">{isArabic ? "آخر 30 يومًا" : "Last 30 days"}</option>
-                      <option value="90">{isArabic ? "آخر 90 يومًا" : "Last 90 days"}</option>
-                    </select>
+                      options={[{ value: "all", label: isArabic ? "كل الفترات" : "All time" },
+                        { value: "7", label: isArabic ? "آخر 7 أيام" : "Last 7 days" },
+                        { value: "30", label: isArabic ? "آخر 30 يومًا" : "Last 30 days" },
+                        { value: "90", label: isArabic ? "آخر 90 يومًا" : "Last 90 days" }]}
+                    />
                   </div>
                 </aside>
               </div>
             )}
           </div>
-        </div>
+        </OperationsPanel>
       </div>
 
       {/* Edit dialog (unified form) */}
@@ -2829,306 +2733,73 @@ export default function LeadDetailClient({ lead, viewerRole, viewerUserId }: Lea
       )}
 
       {/* Archive dialog */}
-      {showArchiveDialog && (
-        <div
-          className={leadVisual.modalOverlay}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="archive-lead-title"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !archiveSaving) setShowArchiveDialog(false);
-          }}
-        >
-          <div
-            dir={direction}
-            className={`${leadVisual.modal} max-w-md p-5`}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <h2 id="archive-lead-title" className="text-base font-bold">
-                {labels.archiveAction}: {leadName || lead.phone}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setShowArchiveDialog(false)}
-                className={leadVisual.closeButton}
-                aria-label={labels.cancel}
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
-
-            <label className="mb-1.5 mt-4 block text-xs font-bold text-[var(--nc-text-secondary)]" htmlFor="archive-reason">
-              {labels.archiveReasonLabel} *
-            </label>
-            <textarea
-              id="archive-reason"
-              value={archiveReason}
-              onChange={(event) => setArchiveReason(event.target.value)}
-              placeholder={labels.archiveReasonPlaceholder}
-              rows={3}
-              className={leadVisual.textarea}
-            />
-            {archiveError && (
-              <p className="mt-2 text-xs font-semibold text-red-500">{archiveError}</p>
-            )}
-
-            <div className="mt-4 flex flex-col-reverse gap-2 border-t border-[var(--nc-border)] pt-4 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setShowArchiveDialog(false)}
-                disabled={archiveSaving}
-                className={leadVisual.secondaryButton}
-              >
-                {labels.cancel}
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleArchive()}
-                disabled={archiveSaving}
-                className={leadVisual.primaryButton}
-              >
-                {archiveSaving ? labels.saving : labels.archiveConfirm}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <OperationsDialog
+        open={showArchiveDialog}
+        onClose={() => setShowArchiveDialog(false)}
+        title={labels.archiveAction}
+        description={labels.archiveReasonPlaceholder}
+        closeLabel={labels.cancel}
+        closeDisabled={archiveSaving}
+        dir={direction}
+        footer={
+          <>
+            <button type="button" onClick={() => setShowArchiveDialog(false)} disabled={archiveSaving} className={operationsVisual.secondaryButton}>{labels.cancel}</button>
+            <button type="button" onClick={() => void handleArchive()} disabled={archiveSaving} className={operationsVisual.primaryButton}>{archiveSaving ? labels.saving : labels.archiveConfirm}</button>
+          </>
+        }
+      >
+        <OperationsFormField label={labels.archiveReasonLabel} error={archiveError || undefined}>
+          <OperationsTextareaField value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} placeholder={labels.archiveReasonPlaceholder} rows={3} />
+        </OperationsFormField>
+      </OperationsDialog>
 
       {/* Send email dialog */}
-      {showEmailModal && (
-        <div
-          className={leadVisual.modalOverlay}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="send-email-title"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !emailSending) setShowEmailModal(false);
-          }}
-        >
-          <form
-            onSubmit={handleSendEmail}
-            dir={direction}
-            className={leadVisual.modal}
-          >
-            <div className={leadVisual.modalHeader}>
-              <h2 id="send-email-title" className="text-base font-bold">
-                {labels.sendEmail}: {leadName || lead.phone}
-              </h2>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmailError("");
-                  setShowEmailModal(false);
-                }}
-                className={leadVisual.closeButton}
-                aria-label={labels.cancel}
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
-
-            <div className={leadVisual.modalBody}>
-              {emailError && (
-                <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500">
-                  {emailError}
-                </div>
-              )}
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]" htmlFor="email-to">
-                  {labels.emailTo} *
-                </label>
-                <input
-                  id="email-to"
-                  type="email"
-                  dir="ltr"
-                  value={emailTo}
-                  onChange={(event) => setEmailTo(event.target.value)}
-                  required
-                  className={`${inputClass} text-left`}
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]" htmlFor="email-subject">
-                  {labels.emailSubject} *
-                </label>
-                <input
-                  id="email-subject"
-                  type="text"
-                  value={emailSubject}
-                  onChange={(event) => setEmailSubject(event.target.value)}
-                  required
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]" htmlFor="email-body">
-                  {labels.emailBody} *
-                </label>
-                <textarea
-                  id="email-body"
-                  value={emailBody}
-                  onChange={(event) => setEmailBody(event.target.value)}
-                  required
-                  rows={7}
-                  className={leadVisual.textarea}
-                />
-              </div>
-            </div>
-
-            <div className={leadVisual.modalFooter}>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmailError("");
-                  setShowEmailModal(false);
-                }}
-                disabled={emailSending}
-                className={leadVisual.secondaryButton}
-              >
-                {labels.cancel}
-              </button>
-              <button
-                type="submit"
-                disabled={emailSending}
-                className={leadVisual.primaryButton}
-              >
-                {emailSending ? labels.sending : labels.send}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      <OperationsDialog
+        open={showEmailModal}
+        onClose={() => { setEmailError(""); setShowEmailModal(false); }}
+        title={`${labels.sendEmail}: ${leadName || lead.phone}`}
+        closeLabel={labels.cancel}
+        closeDisabled={emailSending}
+        dir={direction}
+        footer={
+          <>
+            <button type="button" onClick={() => { setEmailError(""); setShowEmailModal(false); }} disabled={emailSending} className={operationsVisual.secondaryButton}>{labels.cancel}</button>
+            <button form="lead-email-form" type="submit" disabled={emailSending} className={operationsVisual.primaryButton}>{emailSending ? labels.sending : labels.send}</button>
+          </>
+        }
+      >
+        <form id="lead-email-form" onSubmit={handleSendEmail} noValidate className="space-y-4">
+          {emailError ? <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500">{emailError}</div> : null}
+          <OperationsFormField label={labels.emailTo}><OperationsTextField id="email-to" type="email" dir="ltr" value={emailTo} onChange={(event) => setEmailTo(event.target.value)} className="text-left" /></OperationsFormField>
+          <OperationsFormField label={labels.emailSubject}><OperationsTextField id="email-subject" value={emailSubject} onChange={(event) => setEmailSubject(event.target.value)} /></OperationsFormField>
+          <OperationsFormField label={labels.emailBody}><OperationsTextareaField id="email-body" value={emailBody} onChange={(event) => setEmailBody(event.target.value)} rows={7} /></OperationsFormField>
+        </form>
+      </OperationsDialog>
 
       {/* WhatsApp dialog */}
-      {showWhatsAppModal && (
-        <div
-          className={leadVisual.modalOverlay}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="send-whatsapp-title"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !whatsAppSending) {
-              setShowWhatsAppModal(false);
-              setWhatsAppError("");
-            }
-          }}
-        >
-          <form
-            onSubmit={handleSendWhatsApp}
-            dir={direction}
-            className={leadVisual.modal}
-          >
-            <div className={leadVisual.modalHeader}>
-              <div>
-                <h2 id="send-whatsapp-title" className="text-base font-bold">
-                  {isArabic ? "مراسلة واتساب" : "WhatsApp message"}:{" "}
-                  {leadName || lead.phone}
-                </h2>
-                <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
-                  <bdi dir="ltr">{lead.phone}</bdi>
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowWhatsAppModal(false);
-                  setWhatsAppError("");
-                }}
-                className={leadVisual.closeButton}
-                aria-label={labels.cancel}
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
-
-            <div className={leadVisual.modalBody}>
-              {whatsAppError && (
-                <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500">
-                  {whatsAppError}
-                </div>
-              )}
-              {!normalizedWhatsAppPhone && (
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-600 dark:text-amber-300">
-                  {isArabic
-                    ? "رقم العميل يحتاج تصحيحًا قبل مراسلته عبر واتساب."
-                    : "The lead phone number must be corrected before WhatsApp messaging."}
-                </div>
-              )}
-              <div>
-                <label
-                  className="mb-1.5 block text-xs font-bold text-[var(--nc-text-secondary)]"
-                  htmlFor="whatsapp-message"
-                >
-                  {isArabic ? "نص الرسالة" : "Message"} *
-                </label>
-                <textarea
-                  id="whatsapp-message"
-                  value={whatsAppMessage}
-                  onChange={(event) => setWhatsAppMessage(event.target.value)}
-                  required
-                  rows={7}
-                  className={leadVisual.textarea}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() =>
-                  router.push(
-                    `/operations/whatsapp?leadId=${encodeURIComponent(
-                      lead.id,
-                    )}&phone=${encodeURIComponent(lead.phone)}`,
-                  )
-                }
-                className={leadVisual.secondaryButton}
-              >
-                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                {isArabic ? "فتح مركز واتساب" : "Open WhatsApp center"}
-              </button>
-            </div>
-
-            <div className={leadVisual.modalFooter}>
-              {whatsAppFallbackUrl && whatsAppMessage.trim() && (
-                <a
-                  href={whatsAppFallbackUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={handleWhatsAppFallback}
-                  className={leadVisual.secondaryButton}
-                >
-                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                  {isArabic ? "فتح واتساب مباشرة" : "Open direct WhatsApp"}
-                </a>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowWhatsAppModal(false);
-                  setWhatsAppError("");
-                }}
-                disabled={whatsAppSending}
-                className={leadVisual.secondaryButton}
-              >
-                {labels.cancel}
-              </button>
-              <button
-                type="submit"
-                disabled={
-                  whatsAppSending ||
-                  !normalizedWhatsAppPhone ||
-                  !whatsAppMessage.trim()
-                }
-                className={leadVisual.primaryButton}
-              >
-                {whatsAppSending
-                  ? labels.sending
-                  : isArabic
-                    ? "إرسال عبر النظام"
-                    : "Send via system"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      <OperationsDialog
+        open={showWhatsAppModal}
+        onClose={() => { setShowWhatsAppModal(false); setWhatsAppError(""); }}
+        title={`${isArabic ? "مراسلة واتساب" : "WhatsApp message"}: ${leadName || lead.phone}`}
+        description={lead.phone}
+        closeLabel={labels.cancel}
+        closeDisabled={whatsAppSending}
+        dir={direction}
+        footer={
+          <>
+            {whatsAppFallbackUrl && whatsAppMessage.trim() ? <a href={whatsAppFallbackUrl} target="_blank" rel="noreferrer" onClick={handleWhatsAppFallback} className={operationsVisual.secondaryButton}><ExternalLink aria-hidden="true" />{isArabic ? "فتح واتساب مباشرة" : "Open direct WhatsApp"}</a> : null}
+            <button type="button" onClick={() => { setShowWhatsAppModal(false); setWhatsAppError(""); }} disabled={whatsAppSending} className={operationsVisual.secondaryButton}>{labels.cancel}</button>
+            <button form="lead-whatsapp-form" type="submit" disabled={whatsAppSending || !normalizedWhatsAppPhone || !whatsAppMessage.trim()} className={operationsVisual.primaryButton}>{whatsAppSending ? labels.sending : isArabic ? "إرسال عبر النظام" : "Send via system"}</button>
+          </>
+        }
+      >
+        <form id="lead-whatsapp-form" onSubmit={handleSendWhatsApp} noValidate className="space-y-4">
+          {whatsAppError ? <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500">{whatsAppError}</div> : null}
+          {!normalizedWhatsAppPhone ? <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-600 dark:text-amber-300">{isArabic ? "رقم العميل يحتاج تصحيحًا قبل مراسلته عبر واتساب." : "The lead phone number must be corrected before WhatsApp messaging."}</div> : null}
+          <OperationsFormField label={isArabic ? "نص الرسالة" : "Message"}><OperationsTextareaField id="whatsapp-message" value={whatsAppMessage} onChange={(event) => setWhatsAppMessage(event.target.value)} rows={7} /></OperationsFormField>
+          <button type="button" onClick={() => router.push(`/operations/whatsapp?leadId=${encodeURIComponent(lead.id)}&phone=${encodeURIComponent(lead.phone)}`)} className={operationsVisual.secondaryButton}><ExternalLink aria-hidden="true" />{isArabic ? "فتح مركز واتساب" : "Open WhatsApp center"}</button>
+        </form>
+      </OperationsDialog>
     </section>
   );
 }

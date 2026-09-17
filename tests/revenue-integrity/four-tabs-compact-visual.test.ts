@@ -18,9 +18,10 @@ describe("Revenue Integrity compact four-tab identity", () => {
     }
   });
 
-  it("uses a 2:1 operational split and shorter fixed cards", () => {
+  it("uses a 2:1 operational split with natural-height panels", () => {
     expect(visual).toContain("minmax(0,2fr)_minmax(320px,1fr)");
-    expect(visual).toContain("lg:h-[430px]");
+    expect(visual).not.toContain("lg:h-[430px]");
     expect(visual).not.toContain("lg:h-[560px]");
+    expect(visual).not.toContain("overscroll-contain");
   });
 });

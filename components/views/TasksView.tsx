@@ -23,10 +23,8 @@ import {
   Plus,
   RefreshCw,
   Search,
-  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { createPortal } from "react-dom";
 
 import {
   createTaskAction,
@@ -37,6 +35,18 @@ import {
 } from "@/app/actions/tasks";
 import { useApp } from "@/app/context/AppContext";
 import SettingsSelect from "@/components/settings/SettingsSelect";
+import {
+  OperationsDialog,
+  OperationsEmptyState,
+  OperationsExecutiveGrid,
+  OperationsKpiGrid,
+  OperationsMetricCard,
+  OperationsPageHeader,
+  OperationsPanel,
+  OperationsPanelHeader,
+  OperationsScrollRegion,
+} from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
 import { displayPerson } from "@/lib/display";
 import { toArabicNumerals } from "@/lib/formatters";
 
@@ -410,7 +420,10 @@ export default function TasksView() {
   );
 
   useEffect(() => {
-    void loadData();
+    const preferredTaskId = new URLSearchParams(window.location.search).get(
+      "task",
+    );
+    void loadData(preferredTaskId);
   }, [loadData]);
 
   const formatNumber = (value: number | string) =>
@@ -748,64 +761,32 @@ export default function TasksView() {
   return (
     <section
       dir={isArabic ? "rtl" : "ltr"}
-      className="nc-page nc-stack orca-container pb-4"
+      className={operationsVisual.page}
       data-tasks-property-workspace
     >
-      <header className="orca-workspace-hero">
-        <div>
-          <p className="text-xs font-bold text-[var(--nc-accent)]">
-            {isArabic
-              ? "العميل ← المهمة ← موعد الاستحقاق ← الإنجاز"
-              : "Customer → task → due date → completion"}
-          </p>
-          <h1 className="mt-1 text-2xl font-black">{t.title}</h1>
-          <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">
-            {t.description}
-          </p>
-        </div>
+      <OperationsPageHeader
+        eyebrow={isArabic ? "العميل ← المهمة ← موعد الاستحقاق ← الإنجاز" : "Customer → task → due date → completion"}
+        title={t.title}
+        description={t.description}
+        icon={ListChecks}
+        actions={
+          <>
+            <button type="button" onClick={() => void loadData(selectedId)} disabled={isLoading} className={operationsVisual.iconButton} aria-label={isArabic ? "تحديث المهام" : "Refresh tasks"} title={isArabic ? "تحديث" : "Refresh"}>
+              <RefreshCw className={isLoading ? "animate-spin" : ""} aria-hidden="true" />
+            </button>
+            <button type="button" onClick={beginCreate} className={operationsVisual.primaryButton}>
+              <Plus aria-hidden="true" />{t.newLabel}
+            </button>
+          </>
+        }
+      />
 
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <button
-            type="button"
-            onClick={() => void loadData(selectedId)}
-            disabled={isLoading}
-            className="nc-btn nc-btn-ghost min-h-[44px] rounded-xl border border-[var(--nc-border)] px-4 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <RefreshCw size={15} className={isLoading ? "animate-spin" : ""} />
-            {isArabic ? "تحديث" : "Refresh"}
-          </button>
-
-          <button
-            type="button"
-            onClick={beginCreate}
-            className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-black"
-          >
-            <Plus size={16} />
-            {t.newLabel}
-          </button>
-        </div>
-      </header>
-
-      <div className="orca-workspace-metrics">
-        {[
-          { label: t.total, value: formatNumber(tasks.length), icon: ListChecks },
-          { label: t.overdue, value: formatNumber(overdueCount), icon: Clock },
-          {
-            label: t.completed,
-            value: formatNumber(completedCount),
-            icon: CheckCircle2,
-          },
-          { label: t.rate, value: formatPercent(completionRate), icon: Archive },
-        ].map(({ label, value, icon: Icon }) => (
-          <div key={label} className="orca-workspace-metric min-h-[96px]">
-            <div className="flex items-center justify-between gap-3 text-xs font-bold text-[var(--nc-text-secondary)]">
-              <span>{label}</span>
-              <Icon size={17} />
-            </div>
-            <strong className="mt-3 block text-2xl">{value}</strong>
-          </div>
-        ))}
-      </div>
+      <OperationsKpiGrid>
+        <OperationsMetricCard title={t.total} value={formatNumber(tasks.length)} description={isArabic ? "كل المهام المسجلة" : "All recorded tasks"} icon={ListChecks} />
+        <OperationsMetricCard title={t.overdue} value={formatNumber(overdueCount)} description={isArabic ? "تحتاج معالجة" : "Needs attention"} icon={Clock} />
+        <OperationsMetricCard title={t.completed} value={formatNumber(completedCount)} description={isArabic ? "تم إنجازها" : "Completed"} icon={CheckCircle2} />
+        <OperationsMetricCard title={t.rate} value={formatPercent(completionRate)} description={isArabic ? `${formatNumber(pendingCount)} مفتوحة` : `${formatNumber(pendingCount)} open`} icon={Archive} />
+      </OperationsKpiGrid>
 
       <div className="orca-workspace-note flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
         <span className="text-[var(--nc-text-secondary)]">
@@ -837,16 +818,9 @@ export default function TasksView() {
         </div>
       ) : null}
 
-      <div
-        dir="ltr"
-        className="grid min-w-0 gap-3 lg:grid-cols-[340px_minmax(0,1fr)]"
-        data-four-page-two-card-workspace
-      >
-        <aside
-          dir={isArabic ? "rtl" : "ltr"}
-          className="orca-workspace-panel flex min-w-0 flex-col overflow-hidden lg:h-[520px]"
-          data-operational-list-card
-        >
+      <OperationsExecutiveGrid data-four-page-two-card-workspace>
+        <OperationsPanel className="min-w-0 overflow-hidden" dir={isArabic ? "rtl" : "ltr"} data-operational-list-card>
+          <OperationsPanelHeader title={t.listTitle} description={t.ordered} icon={ListChecks} meta={<span className={operationsVisual.counterBadge}>{filteredTasks.length}</span>} />
           <div className="orca-workspace-toolbar border-b border-[var(--nc-border)] p-3">
             <div className="grid grid-cols-[minmax(0,1fr)_112px] gap-2">
               <label className="relative min-w-0">
@@ -886,7 +860,7 @@ export default function TasksView() {
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="orca-operations-flow-region p-2">
             {isLoading && tasks.length === 0 ? (
               <div className="flex h-full min-h-[220px] items-center justify-center gap-2 text-sm text-[var(--nc-text-secondary)]">
                 <Loader2
@@ -912,7 +886,7 @@ export default function TasksView() {
                       data-task-row
                       aria-pressed={selected}
                       onClick={() => openTask(task.id)}
-                      className={`group flex h-[68px] w-full items-center gap-3 rounded-2xl border px-3 text-start outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-border)] ${
+                      className={`group flex h-[60px] w-full items-center gap-3 rounded-2xl border px-3 text-start outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-border)] ${
                         selected
                           ? "border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-accent)]"
                           : "border-[var(--nc-border)] bg-[var(--nc-surface-strong)] hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent)]"
@@ -1009,62 +983,29 @@ export default function TasksView() {
               </button>
             </div>
           </div>
-        </aside>
+        </OperationsPanel>
 
-        <section
-          dir={isArabic ? "rtl" : "ltr"}
-          className="orca-workspace-panel flex min-w-0 flex-col overflow-hidden lg:h-[520px]"
-          data-operational-detail-card
-        >
+        <OperationsPanel className="min-w-0 overflow-hidden" dir={isArabic ? "rtl" : "ltr"} data-operational-detail-card>
           {selectedTask ? (
             <>
-              <header className="flex min-h-[78px] shrink-0 items-center justify-between gap-3 border-b border-[var(--nc-border)] px-4 py-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-[var(--nc-accent)]">
-                    {statusLabel(selectedTask)}
-                  </p>
-                  <h2 className="mt-1 truncate text-lg font-black">
-                    {displayTaskTitle(selectedTask)}
-                  </h2>
-                  <p
-                    className="mt-1 text-xs text-[var(--nc-text-secondary)]"
-                    dir="ltr"
-                  >
-                    {formatDateTime(selectedTask.dueDate)}
-                  </p>
-                </div>
+              <OperationsPanelHeader
+                title={displayTaskTitle(selectedTask)}
+                description={`${statusLabel(selectedTask)} · ${formatDateTime(selectedTask.dueDate)}`}
+                icon={ListChecks}
+                actions={
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => beginEdit(selectedTask)} disabled={busyTaskId === selectedTask.id} className={operationsVisual.secondaryButton}>
+                      <Pencil aria-hidden="true" /><span className="hidden sm:inline">{t.editLabel}</span>
+                    </button>
+                    <button type="button" onClick={() => void completeTaskById(selectedTask.id)} disabled={busyTaskId === selectedTask.id || selectedTask.status === "COMPLETED"} className={operationsVisual.primaryButton}>
+                      {busyTaskId === selectedTask.id ? <Loader2 className="animate-spin" aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
+                      <span className="hidden sm:inline">{t.complete}</span>
+                    </button>
+                  </div>
+                }
+              />
 
-                <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => beginEdit(selectedTask)}
-                    disabled={busyTaskId === selectedTask.id}
-                    className="nc-btn nc-btn-ghost inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[var(--nc-border)] px-3 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <Pencil size={15} />
-                    <span className="hidden sm:inline">{t.editLabel}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => void completeTaskById(selectedTask.id)}
-                    disabled={
-                      busyTaskId === selectedTask.id ||
-                      selectedTask.status === "COMPLETED"
-                    }
-                    className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-3 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {busyTaskId === selectedTask.id ? (
-                      <Loader2 size={15} className="animate-spin" />
-                    ) : (
-                      <CheckCircle2 size={15} />
-                    )}
-                    <span className="hidden sm:inline">{t.complete}</span>
-                  </button>
-                </div>
-              </header>
-
-              <div className="min-h-0 flex-1 overflow-y-auto p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="orca-operations-flow-region p-4">
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="orca-info-cell min-h-[64px]">
                     <span>{t.customer}</span>
@@ -1095,54 +1036,34 @@ export default function TasksView() {
               {t.select}
             </div>
           )}
-        </section>
-      </div>
+        </OperationsPanel>
+      </OperationsExecutiveGrid>
 
-      {editorOpen && typeof document !== "undefined"
-        ? createPortal(
-            <div
-              className="orca-dialog-overlay"
-              data-task-editor-overlay
-              style={{
-                alignItems: "start",
-                justifyItems: "center",
-                paddingTop: "5.5rem",
-                paddingBottom: "1rem",
-              }}
-            >
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="task-editor-title"
-                className="orca-dialog max-w-[680px]"
-                style={{ maxHeight: "calc(100dvh - 6.5rem)" }}
-              >
-            <div className="orca-dialog-header">
-              <div>
-                <p className="text-xs font-bold text-[var(--nc-accent)]">
-                  {isArabic ? "المهام والتذكيرات" : "Tasks & reminders"}
-                </p>
-                <h2 id="task-editor-title" className="mt-1 text-lg font-black">
-                  {editorTitle}
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={cancelEditor}
-                disabled={saving}
-                className="orca-dialog-close min-h-[44px] min-w-[44px]"
-                aria-label={t.cancel}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
+      <OperationsDialog
+        open={editorOpen}
+        onClose={cancelEditor}
+        title={editorTitle}
+        description={isArabic ? "المهام والتذكيرات" : "Tasks & reminders"}
+        closeLabel={t.cancel}
+        closeDisabled={saving}
+        className="max-w-2xl"
+        dir={isArabic ? "rtl" : "ltr"}
+        footer={
+          <>
+            <button type="button" onClick={cancelEditor} disabled={saving} className={operationsVisual.secondaryButton}>{t.cancel}</button>
+            <button type="submit" form="task-editor-form" disabled={saving || !newTitle.trim() || !newLeadId || !newAssignedTo || !newDueDate || !newDueTime} className={operationsVisual.primaryButton}>
+              {saving ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
+              {editorMode === "edit" ? t.updateTask : t.saveTask}
+            </button>
+          </>
+        }
+      >
             <form
               onSubmit={(event) => {
                 event.preventDefault();
                 void saveTask();
               }}
-              className="orca-dialog-body grid gap-3 sm:grid-cols-2"
+              id="task-editor-form" noValidate className="grid gap-3 sm:grid-cols-2"
             >
               <div className="sm:col-span-2">
                 <TaskField label={t.taskTitle}>
@@ -1150,7 +1071,7 @@ export default function TasksView() {
                   value={newTitle}
                   onChange={(event) => setNewTitle(event.target.value)}
                   required
-                  className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-2.5 outline-none focus:border-[var(--nc-accent-border)]"
+                  className="orca-operations-input"
                   />
                 </TaskField>
               </div>
@@ -1215,44 +1136,13 @@ export default function TasksView() {
                     rows={3}
                     value={newNotes}
                     onChange={(event) => setNewNotes(event.target.value)}
-                    className="orca-form-textarea min-h-[96px] w-full resize-none rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-2.5 outline-none focus:border-[var(--nc-accent-border)]"
+                    className="orca-operations-textarea"
                   />
                 </TaskField>
               </div>
 
-              <div className="grid gap-2 sm:col-span-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={cancelEditor}
-                  disabled={saving}
-                  className="nc-btn nc-btn-ghost min-h-[44px] rounded-xl border border-[var(--nc-border)] px-4 font-bold disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {t.cancel}
-                </button>
-                <button
-                  type="submit"
-                  disabled={
-                    saving ||
-                    !newTitle.trim() ||
-                    !newLeadId ||
-                    !newAssignedTo ||
-                    !newDueDate ||
-                    !newDueTime
-                  }
-                  className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 font-black disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {saving ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : null}
-                  {editorMode === "edit" ? t.updateTask : t.saveTask}
-                </button>
-              </div>
             </form>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
+      </OperationsDialog>
     </section>
   );
 }
@@ -1343,11 +1233,12 @@ function TaskDateInput({
       </button>
 
       {open ? (
-        <div
+        <OperationsScrollRegion
+          scrollRole="menu"
           id={popoverId}
           role="listbox"
           aria-label={isArabic ? "تواريخ مقترحة" : "Suggested dates"}
-          className="absolute inset-x-0 top-[calc(100%+6px)] z-50 grid max-h-60 grid-cols-2 gap-1 overflow-y-auto rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-2 shadow-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="absolute inset-x-0 top-[calc(100%+6px)] z-50 grid grid-cols-2 gap-1 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-2 shadow-2xl"
           data-task-date-popover
         >
           {options.map((option) => (
@@ -1372,7 +1263,7 @@ function TaskDateInput({
               </span>
             </button>
           ))}
-        </div>
+        </OperationsScrollRegion>
       ) : null}
     </div>
   );
@@ -1445,11 +1336,12 @@ function TaskTimeInput({
       </button>
 
       {open ? (
-        <div
+        <OperationsScrollRegion
+          scrollRole="menu"
           id={popoverId}
           role="listbox"
           aria-label={isArabic ? "أوقات مقترحة" : "Suggested times"}
-          className="absolute inset-x-0 top-[calc(100%+6px)] z-50 grid max-h-56 grid-cols-4 gap-1 overflow-y-auto rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-2 shadow-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="absolute inset-x-0 top-[calc(100%+6px)] z-50 grid grid-cols-4 gap-1 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-2 shadow-2xl"
           data-task-time-popover
         >
           {options.map((option) => (
@@ -1471,7 +1363,7 @@ function TaskTimeInput({
               {option}
             </button>
           ))}
-        </div>
+        </OperationsScrollRegion>
       ) : null}
     </div>
   );
@@ -1596,10 +1488,11 @@ function TaskCombobox({
       </div>
 
       {open ? (
-        <div
+        <OperationsScrollRegion
+          scrollRole="menu"
           id={listboxId}
           role="listbox"
-          className="absolute inset-x-0 top-[calc(100%+6px)] z-30 max-h-56 overflow-y-auto rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-1 shadow-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="absolute inset-x-0 top-[calc(100%+6px)] z-30 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-1 shadow-2xl"
         >
           {visibleOptions.length > 0 ? (
             visibleOptions.map((option) => {
@@ -1636,7 +1529,7 @@ function TaskCombobox({
               {emptyText}
             </div>
           )}
-        </div>
+        </OperationsScrollRegion>
       ) : null}
     </div>
   );

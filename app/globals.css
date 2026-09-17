@@ -1501,6 +1501,7 @@ textarea {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 135px), 1fr));
   gap: 0.5rem;
+  direction: inherit;
 }
 
 .orca-lifecycle-stage {
@@ -1891,3 +1892,394 @@ textarea {
   width: 0;
   height: 0;
 }
+
+/* ORCA VISUAL DENSITY CLOSURE 2026-09
+   Compact information density while preserving >=44px interactive targets.
+   Interactive hover surfaces retain rounded geometry. */
+
+:root {
+  --orca-workspace-radius: 20px;
+  --orca-workspace-shadow: 0 14px 42px rgba(0, 0, 0, 0.14);
+}
+
+.orca-workspace-hero {
+  gap: 0.875rem;
+  padding: 1rem;
+  border-radius: var(--orca-workspace-radius);
+}
+
+.orca-workspace-hero::before {
+  height: 5rem;
+}
+
+@media (min-width: 640px) {
+  .orca-workspace-hero {
+    padding: 1rem 1.125rem;
+  }
+
+  .orca-dialog-overlay {
+    padding: 1rem;
+  }
+
+  .orca-dialog {
+    max-height: calc(100dvh - 2rem);
+  }
+}
+
+.orca-workspace-metrics > * {
+  min-height: 84px !important;
+}
+
+.orca-workspace-metric,
+.orca-contract-shell-metric,
+.orca-contract-kpi,
+.orca-summary-card,
+.orca-mini-metric,
+.orca-info-cell {
+  border-radius: 14px;
+}
+
+.orca-workspace-metric {
+  padding: 0.75rem;
+}
+
+.orca-workspace-note {
+  padding: 0.5rem 0.75rem;
+  border-radius: 14px;
+  font-size: 0.8125rem;
+}
+
+.orca-workspace-toolbar {
+  padding: 0.625rem;
+}
+
+.orca-workspace-panel,
+.orca-dialog {
+  border-radius: var(--orca-workspace-radius);
+}
+
+.orca-dialog-header {
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.orca-dialog-body {
+  padding: 1rem;
+}
+
+/* Compact settings without shrinking interactive controls. */
+.orca-settings-section-shell {
+  min-height: 0;
+}
+
+.orca-settings-section {
+  gap: 1rem;
+}
+
+.orca-settings-info-grid,
+.orca-settings-card-grid {
+  gap: 0.75rem;
+}
+
+.orca-settings-card {
+  min-height: 176px;
+}
+
+.orca-settings-plan-card {
+  min-height: 280px;
+}
+
+.orca-settings-provider-card {
+  min-height: 76px;
+  border-radius: 14px;
+}
+
+.orca-settings-final textarea {
+  min-height: 88px;
+}
+
+/* Rounded interaction contract. */
+.orca-workspace-tabs button,
+.orca-settings-tab,
+[data-operational-list-card] button[aria-pressed] {
+  border-radius: 14px !important;
+}
+
+[data-operational-list-card] button[aria-pressed] {
+  overflow: hidden;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+[data-operational-list-card] button[aria-pressed]:hover,
+[data-operational-list-card] button[aria-pressed]:focus-visible {
+  border-color: var(--nc-accent-border) !important;
+  background: var(--nc-accent-soft) !important;
+  box-shadow: 0 5px 16px color-mix(in srgb, var(--nc-accent) 12%, transparent);
+}
+
+/* Table hover lives on the cells so the outside corners stay rounded. */
+.orca-data-row {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.orca-data-row > td {
+  background-clip: padding-box;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.orca-data-row:hover > td,
+.orca-data-row:focus-visible > td,
+.orca-data-row.is-selected > td {
+  background: var(--nc-accent-soft) !important;
+}
+
+.orca-data-row > td:first-child {
+  border-start-start-radius: 14px;
+  border-end-start-radius: 14px;
+}
+
+.orca-data-row > td:last-child {
+  border-start-end-radius: 14px;
+  border-end-end-radius: 14px;
+}
+
+.orca-data-row:hover > td:first-child,
+.orca-data-row:focus-visible > td:first-child,
+.orca-data-row.is-selected > td:first-child {
+  box-shadow: inset 1px 0 0 var(--nc-accent-border);
+}
+
+.orca-data-row:hover > td:last-child,
+.orca-data-row:focus-visible > td:last-child,
+.orca-data-row.is-selected > td:last-child {
+  box-shadow: inset -1px 0 0 var(--nc-accent-border);
+}
+/* ORCA CONTRACTS PAYMENTS FULL VISUAL CLOSURE 2026-09 */
+
+[data-contracts-payments-shell] {
+  gap: 0.65rem;
+}
+
+/* Compact KPI cards: label and value share the same horizontal row. */
+[data-contracts-payments-shell] .orca-contract-shell-metric {
+  min-height: 56px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  text-align: start;
+}
+
+[data-contracts-payments-shell] .orca-contract-shell-metric > strong {
+  margin-top: 0 !important;
+  flex: 0 0 auto;
+}
+
+/* Master/detail */
+[data-contracts-payments-shell] .orca-master-detail {
+  gap: 0.65rem;
+}
+
+[data-contracts-payments-shell] .orca-detail-pane > div {
+  padding: 0.75rem;
+}
+
+/* All real controls remain touch-safe. */
+[data-contracts-payments-shell] button,
+[data-contracts-payments-shell] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+[data-contracts-payments-shell] select {
+  min-height: 44px;
+}
+
+/* Compact tables without tiny click targets. */
+[data-contracts-payments-shell] .nc-table th {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+[data-contracts-payments-shell] .nc-table td {
+  padding-top: 0.45rem !important;
+  padding-bottom: 0.45rem !important;
+}
+
+/* Rounded hover / selection contract. */
+[data-contracts-payments-shell] .orca-data-row {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+[data-contracts-payments-shell] .orca-data-row > td {
+  background-clip: padding-box;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+[data-contracts-payments-shell] .orca-data-row:hover > td,
+[data-contracts-payments-shell] .orca-data-row:focus-within > td,
+[data-contracts-payments-shell] .orca-data-row.is-selected > td {
+  background: var(--nc-accent-soft) !important;
+}
+
+[data-contracts-payments-shell] .orca-data-row > td:first-child {
+  border-start-start-radius: 12px;
+  border-end-start-radius: 12px;
+}
+
+[data-contracts-payments-shell] .orca-data-row > td:last-child {
+  border-start-end-radius: 12px;
+  border-end-end-radius: 12px;
+}
+
+/* Three operational modals. */
+[data-contracts-modal="true"] {
+  border-radius: 16px;
+}
+
+[data-contracts-modal="true"] button,
+[data-contracts-modal="true"] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+[data-contracts-modal="true"] select {
+  min-height: 44px;
+}
+
+[data-contracts-modal="true"] textarea {
+  min-height: 88px;
+}
+
+/* ORCA_NOTIFICATION_WINDOW_CONTRACT_START */
+/* Visual-only contract for the header notification window. */
+.orca-v1-notification-panel {
+  position: fixed;
+  top: 50vh;
+  left: 50vw;
+  right: auto;
+  z-index: 1000;
+  display: flex;
+  width: min(420px, calc(100vw - 2rem));
+  max-height: min(520px, calc(100dvh - 2rem));
+  flex-direction: column;
+  overflow: hidden;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--nc-border);
+  border-radius: 1rem;
+  background: var(--nc-surface-solid);
+  color: var(--nc-foreground);
+  opacity: 1;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+  backdrop-filter: none;
+  isolation: isolate;
+}
+
+.orca-v1-notification-panel.is-rtl,
+.orca-v1-notification-panel.is-ltr {
+  right: auto;
+}
+
+.orca-v1-notification-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--nc-border);
+  background: var(--nc-surface-solid);
+  padding: 0.875rem 1rem;
+}
+
+.orca-v1-notification-title {
+  color: var(--nc-foreground);
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+
+.orca-v1-notification-meta {
+  margin-top: 0.2rem;
+  color: var(--nc-foreground-muted);
+  font-size: 0.6875rem;
+}
+
+.orca-v1-notification-state {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: var(--nc-foreground-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.orca-v1-notification-list {
+  min-height: 0;
+  max-height: min(360px, calc(100dvh - 11rem));
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.75rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.orca-v1-notification-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.orca-v1-notification-item {
+  width: 100%;
+  border: 1px solid var(--nc-border);
+  border-radius: 0.75rem;
+  background: var(--nc-surface-soft);
+  padding: 0.75rem;
+  text-align: start;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.orca-v1-notification-item + .orca-v1-notification-item {
+  margin-top: 0.5rem;
+}
+
+.orca-v1-notification-item:hover,
+.orca-v1-notification-item:focus-visible {
+  border-color: var(--nc-accent-border);
+  background: var(--nc-accent-soft);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--nc-accent) 12%, transparent);
+  outline: none;
+}
+
+.orca-v1-notification-item.is-unread {
+  border-color: var(--nc-accent-border);
+  background: var(--nc-accent-soft);
+}
+
+.orca-v1-notification-dot.is-unread {
+  background: var(--nc-accent);
+}
+
+.orca-v1-notification-dot.is-read {
+  background: var(--nc-border);
+}
+
+@media (max-width: 639px) {
+  .orca-v1-notification-panel {
+    width: min(420px, calc(100vw - 1rem));
+    max-height: calc(100dvh - 1rem);
+    border-radius: 0.875rem;
+  }
+
+  .orca-v1-notification-list {
+    max-height: calc(100dvh - 9.5rem);
+  }
+}
+/* ORCA_NOTIFICATION_WINDOW_CONTRACT_END */

@@ -8,7 +8,7 @@ import type { DisplayLocale } from '@/lib/display';
 import React, { useState, useTransition, useEffect } from 'react';
 import {
   LayoutDashboard, FileText, Calculator, Megaphone, Plus, Search, Eye,
-  Landmark, ChevronRight, AlertCircle, FileCheck, ArrowRight,
+  Landmark, ChevronRight, AlertCircle, FileCheck,
   UserCheck, CloudUpload, Key, Trash2, Settings, Bot, Clock, HelpCircle, CheckCircle2, QrCode,
   Receipt, PenLine, SlidersHorizontal,
 } from 'lucide-react';
@@ -29,8 +29,26 @@ import { DataTable, type Column } from '@/components/ui/DataTable';
 import { MoneyCell } from '@/components/ui/orca-table/cells/MoneyCell';
 import { StatusCell } from '@/components/ui/orca-table/cells/StatusCell';
 import { formatLeaseStatus, formatInvoiceStatus } from '@/lib/ui-status';
-import { formatCurrency } from '@/lib/ui-formatters';
-import { formatDisplayDate, formatDisplayDateTime } from '@/lib/display/dateTime';
+import { formatCurrency, formatShortId } from '@/lib/ui-formatters';
+import { formatDisplayDateTime } from '@/lib/display/dateTime';
+import {
+  OperationsBackAction,
+  OperationsDialog,
+  OperationsEmptyState,
+  OperationsExecutiveGrid,
+  OperationsFormField,
+  OperationsMasterList,
+  OperationsMasterRow,
+  OPERATIONS_TABLE_PAGE_SIZE,
+  OperationsNumberField,
+  OperationsPagination,
+  OperationsPanel,
+  OperationsPanelHeader,
+  OperationsTabs,
+  OperationsTextField,
+  OperationsTabPanel,
+} from '@/components/operations';
+import { operationsVisual } from '@/features/operations/visual';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 interface Lease {
@@ -131,7 +149,7 @@ const initialInvoices: Invoice[] = []; // Loaded from API
 const initialPayments: Payment[] = [];
 const initialSettlements: Settlement[] = [];
 const initialEvents: EventLog[] = [];
-const CONTRACTS_PAGE_SIZE = 6;
+const CONTRACTS_PAGE_SIZE = OPERATIONS_TABLE_PAGE_SIZE;
 const DETAIL_TAB_PAGE_SIZE = 4;
 
 function createPaymentIdempotencyKey(): string {
@@ -310,9 +328,16 @@ function formatMoneyValue(value: number, locale: RentalLocale): string {
 
 function formatDateValue(value: string, locale: RentalLocale): string {
   if (!value) return emptyValue(locale);
+  const raw = String(value).trim();
+  const isoDate = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoDate) return `${isoDate[3]}/${isoDate[2]}/${isoDate[1]}`;
+
   const date = new Date(value);
   if (!Number.isNaN(date.getTime())) {
-    return formatDisplayDate(date);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = String(date.getFullYear());
+    return `${day}/${month}/${year}`;
   }
   return safeDisplayValue(value, locale);
 }
@@ -324,24 +349,19 @@ function isTechnicalReference(value?: string | null): boolean {
     /^[0-9a-f]{12,}$/i.test(text);
 }
 
-function getLeaseDisplayNumber(lease?: Pick<Lease, 'unit' | 'tenant'> | null, locale: RentalLocale = 'ar'): string {
-  if (!lease) return textFor(locale, 'عقد إيجار', 'Lease');
-
-  const unit = safeDisplayValue(lease.unit, locale);
-  if (unit !== emptyValue(locale)) return textFor(locale, `عقد ${unit}`, `Lease ${unit}`);
-
-  const tenant = displayPersonSafe(lease.tenant, locale);
-  if (tenant !== emptyValue(locale)) return textFor(locale, `عقد - ${tenant}`, `Lease - ${tenant}`);
-
-  return textFor(locale, 'عقد إيجار', 'Lease');
+function getLeaseDisplayNumber(lease?: Pick<Lease, 'id'> | null, locale: RentalLocale = 'ar'): string {
+  if (!lease?.id) return textFor(locale, 'عقد إيجار', 'Lease');
+  return formatShortId(lease.id, locale === 'ar' ? 'عقد' : 'LEASE');
 }
 
 interface ContractsPaymentsCenterProps {
   defaultPane?: ContractsPaymentsPane;
+  detailLeaseId?: string;
 }
 
 export default function ContractsPaymentsCenter({
   defaultPane = 'leases',
+  detailLeaseId,
 }: ContractsPaymentsCenterProps) {
   const { lang } = useApp();
   const isRTL = lang === 'AR';
@@ -352,9 +372,11 @@ export default function ContractsPaymentsCenter({
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedPane = searchParams.get('pane');
-  const initialPane: ActivePane = isActivePane(requestedPane)
-    ? requestedPane
-    : defaultPane;
+  const initialPane: ActivePane = detailLeaseId
+    ? 'leases'
+    : isActivePane(requestedPane)
+      ? requestedPane
+      : defaultPane;
   const [activePane, setActivePane] = useState<ActivePane>(initialPane);
 
   // Core entities state
@@ -365,7 +387,7 @@ export default function ContractsPaymentsCenter({
   const [events, setEvents] = useState<EventLog[]>(initialEvents);
 
   // Filters & selection
-  const [selectedLeaseId, setSelectedLeaseId] = useState<string | null>(null);
+  const [selectedLeaseId, setSelectedLeaseId] = useState<string | null>(detailLeaseId ?? null);
   const [leaseSearch, setLeaseSearch] = useState('');
   const [leaseStatusFilter, setLeaseStatusFilter] = useState('');
   const [leasePage, setLeasePage] = useState(0);
@@ -1010,7 +1032,7 @@ export default function ContractsPaymentsCenter({
   const detailsContent = (
     <div className="orca-contracts-container space-y-4">
 
-      {isPending ? (
+      {isPending || isLoading ? (
         <div className="py-20 flex flex-col items-center justify-center gap-2">
           <div className="w-8 h-8 rounded-full border-2 border-[var(--nc-accent-border)] border-t-transparent animate-spin"></div>
           <span className="text-xs text-[var(--nc-foreground-muted)] font-bold">{L('جاري تحميل بيانات القسم...', 'Loading section data...')}</span>
@@ -1020,43 +1042,46 @@ export default function ContractsPaymentsCenter({
           
           {/* ── Pane 1: Leases (Master-Detail) ── */}
           {activePane === 'leases' && (
-            <div className="orca-master-detail">
+            <OperationsExecutiveGrid variant="singlePane" data-lease-detail-grid>
               
-              {/* Leases List (Master) */}
-              <div className="orca-master-pane h-fit w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-2xl overflow-hidden fade-in-up">
-                <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 bg-[var(--nc-surface-solid)]">
-                  <span className="text-sm font-bold text-white">{L('قائمة عقود الإيجار', 'Leases list')}</span>
-                  <div className="flex gap-2">
-                    <SettingsButton
-                       type="button"
-                       variant="primary"
-                       onClick={() => {
-                         if (!isAllowed('CREATE_LEASE')) {
-                           alert(L('عذراً، لا تملك الصلاحية لإضافة عقد جديد.', 'Sorry, you do not have permission to add a new lease.'));
-                           return;
-                         }
-                          setActiveModal('new_lease');
-                       }}
+              {/* Rental leases list — full-width list workspace, matching Sales contracts. */}
+              {!detailLeaseId ? (
+              <OperationsPanel className="h-fit overflow-hidden" data-rental-leases-list>
+                <OperationsPanelHeader
+                  dir={isRTL ? 'rtl' : 'ltr'}
+                  title={L('قائمة عقود الإيجار', 'Leases list')}
+                  description={L('اختر عقدًا لعرض دورة الفوترة والتحصيل والمستندات والتسويات.', 'Select a lease to review invoicing, collection, documents, and settlements.')}
+                  icon={Landmark}
+                  actions={
+                    <button
+                      type="button"
+                      className={operationsVisual.primaryButton}
+                      onClick={() => {
+                        if (!isAllowed('CREATE_LEASE')) {
+                          alert(L('عذراً، لا تملك الصلاحية لإضافة عقد جديد.', 'Sorry, you do not have permission to add a new lease.'));
+                          return;
+                        }
+                        setActiveModal('new_lease');
+                      }}
                     >
                       <Plus size={13} />
                       {L('عقد جديد', 'New lease')}
-                    </SettingsButton>
-              </div>
-            </div>
+                    </button>
+                  }
+                />
 
-                <div className="px-4 pb-3 pt-3 border-b border-white/5 flex gap-2">
-                  <div className="relative flex-1">
+                <div className={selectedLease ? "grid gap-2 border-b border-white/5 px-3 py-2" : "flex gap-2 border-b border-white/5 px-3 py-2"}>
+                  <div className="relative min-w-0 flex-1">
                     <Search className="absolute right-3 top-2.5 text-[var(--nc-text-dim)]" size={13} />
-                    <input 
-                      type="text"
+                    <OperationsTextField
                       placeholder={L("بحث باسم المستأجر، العقد أو الوحدة...", "Search tenant, lease, or unit...")}
                       value={leaseSearch}
                       onChange={(e) => setLeaseSearch(e.target.value)}
-                      className="w-full bg-[var(--nc-surface-solid)] border border-white/10 rounded-xl pr-8 pl-3 py-2 text-xs text-white outline-none focus:border-[var(--nc-accent-border)]"
+                      className="pl-3 pr-8"
                     />
                   </div>
                   <SettingsSelect
-                    className="w-40"
+                    className={selectedLease ? "w-full" : "w-40"}
                     placement="bottom"
                     value={leaseStatusFilter}
                     aria-label={L("تصفية حالة العقد", "Filter lease status")}
@@ -1070,125 +1095,133 @@ export default function ContractsPaymentsCenter({
                   />
                 </div>
 
-                <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  <table className="nc-table nc-table-striped">
-                    <thead>
-                      <tr>
-                        <th>{L('رقم العقد', 'Lease')}</th>
-                        <th>{L('الوحدة', 'Unit')}</th>
-                        <th>{L('المستأجر', 'Tenant')}</th>
-                        <th>{L('الحالة', 'Status')}</th>
-                        <th className="text-left">{L('الإيجار', 'Rent')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredLeases.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="py-6 text-center text-xs font-medium text-[var(--nc-text-dim)]">
-                            {L('لا توجد عقود إيجار مسجلة', 'No leases are registered')}
-                          </td>
-                        </tr>
-                      ) : (
-                        pagedLeases.map((lease) => {
-                          const isSelected = selectedLeaseId === lease.id;
-                          return (
-                            <tr
-                              key={lease.id}
-                              onClick={() => {
-                                setSelectedLeaseId(lease.id);
-                                setDetailActiveTab('summary');
-                                addTelemetryEvent('lease.opened', { contractId: lease.id, status: lease.status });
-                              }}
-                              className={`cursor-pointer transition-colors ${
-                                isSelected
-                                  ? '!bg-[var(--nc-accent-soft)] border-r-[3px] border-r-[var(--nc-accent)]'
-                                  : 'orca-data-row'
-                              }`}
-                            >
-                              <td>
-                                <span className={`font-bold ${isSelected ? 'text-[var(--nc-accent)]' : 'text-[var(--nc-text-primary)]'}`}>{getLeaseDisplayNumber(lease, displayLocale)}</span>
-                              </td>
-                              <td className={`font-mono ${isSelected ? 'text-[var(--nc-text-primary)]' : 'text-[var(--nc-text-dim)]'}`}>{displayEntitySafe(lease.unit, 'unit', displayLocale)}</td>
-                              <td className={isSelected ? 'text-[var(--nc-text-primary)]' : 'text-[var(--nc-text-dim)]'}>{displayPersonSafe(lease.tenant, displayLocale)}</td>
-                              <td>
-                                <span className={`inline-flex min-w-[82px] justify-center rounded-full px-2.5 py-1 text-[10px] font-black ${leaseStatusBadgeClass(lease.status)}`}>
-                                  {leaseStatusLabel(lease.status, displayLocale)}
-                                </span>
-                              </td>
-                              <td className="text-left">
-                                <MoneyCell amount={lease.rent} lang={isRTL ? 'AR' : 'EN'} />
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
+                <div className="border-b border-[var(--nc-border)] px-3 py-2">
+                  <div
+                    dir="ltr"
+                    data-lease-columns="lease-unit-tenant-status-rent"
+                    className={isRTL
+                      ? "hidden grid-cols-[minmax(24ch,.8fr)_112px_minmax(150px,1fr)_minmax(110px,.75fr)_minmax(150px,1.1fr)] gap-3 px-3 font-black text-[var(--nc-text-dim)] lg:grid orca-contracts-grid-header"
+                      : "hidden grid-cols-[minmax(150px,1.1fr)_minmax(110px,.75fr)_minmax(150px,1fr)_112px_minmax(24ch,.8fr)] gap-3 px-3 font-black text-[var(--nc-text-dim)] lg:grid orca-contracts-grid-header"}
+                  >
+                    {isRTL ? (
+                      <>
+                        <span dir="ltr" className="text-start">{L('الإيجار', 'Rent')}</span>
+                        <span className="text-center">{L('الحالة', 'Status')}</span>
+                        <span dir="rtl" className="text-start">{L('المستأجر', 'Tenant')}</span>
+                        <span dir="rtl" className="text-start">{L('الوحدة', 'Unit')}</span>
+                        <span dir="rtl" className="text-start">{L('رقم العقد', 'Lease')}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-start">{L('رقم العقد', 'Lease')}</span>
+                        <span className="text-start">{L('الوحدة', 'Unit')}</span>
+                        <span className="text-start">{L('المستأجر', 'Tenant')}</span>
+                        <span className="text-center">{L('الحالة', 'Status')}</span>
+                        <span dir="ltr" className="text-start">{L('الإيجار', 'Rent')}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
 
-                {filteredLeases.length > CONTRACTS_PAGE_SIZE && (
-                  <div className="flex flex-col gap-2 border-t border-[var(--nc-glass-border)] px-4 py-3 text-xs text-[var(--nc-text-dim)] sm:flex-row sm:items-center sm:justify-between">
-                    <span className="font-bold">
-                      {L(`${formatNumberValue(leaseRangeStart, displayLocale)}-${formatNumberValue(leaseRangeEnd, displayLocale)} من ${formatNumberValue(filteredLeases.length, displayLocale)}`, `${formatNumberValue(leaseRangeStart, displayLocale)}-${formatNumberValue(leaseRangeEnd, displayLocale)} of ${formatNumberValue(filteredLeases.length, displayLocale)}`)}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setLeasePage((current) => Math.max(0, current - 1))}
-                        disabled={normalizedLeasePage === 0}
-                        className="rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-1.5 font-bold text-[var(--nc-foreground)] transition-colors hover:bg-[var(--nc-surface-strong)] disabled:cursor-not-allowed disabled:opacity-30"
-                      >
-                        {L('السابق', 'Previous')}
-                      </button>
-                      <span className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 font-mono text-[var(--nc-foreground)]">
-                        {L(`صفحة ${formatNumberValue(normalizedLeasePage + 1, displayLocale)} من ${formatNumberValue(leaseTotalPages, displayLocale)}`, `Page ${formatNumberValue(normalizedLeasePage + 1, displayLocale)} of ${formatNumberValue(leaseTotalPages, displayLocale)}`)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setLeasePage((current) => Math.min(leaseTotalPages - 1, current + 1))}
-                        disabled={normalizedLeasePage >= leaseTotalPages - 1}
-                        className="rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-1.5 font-bold text-[var(--nc-foreground)] transition-colors hover:bg-[var(--nc-surface-strong)] disabled:cursor-not-allowed disabled:opacity-30"
-                      >
-                        {L('التالي', 'Next')}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Lease Detail Panel (Detail) */}
-              <div className="orca-detail-pane h-fit w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-2xl overflow-hidden fade-in-up" style={{ animationDelay: '100ms' }}>
-              <div className="p-5">
-                {!selectedLease ? (
-                  <div className="flex items-start gap-3 rounded-xl border border-dashed border-white/10 bg-[var(--nc-surface)]/50 px-4 py-5 text-right text-[var(--nc-text-dim)] text-xs">
-                    <Landmark size={20} className="mt-0.5 shrink-0 text-[var(--nc-text-dim)]" />
-                    <span>{L('اختر عقدًا من القائمة لعرض تفاصيله.', 'Select a lease from the list to view details.')}</span>
+                {filteredLeases.length === 0 ? (
+                  <div className="p-3">
+                    <OperationsEmptyState>
+                      {L('لا توجد عقود إيجار مسجلة', 'No leases are registered')}
+                    </OperationsEmptyState>
                   </div>
                 ) : (
+                  <OperationsMasterList>
+                    {pagedLeases.map((lease) => {
+                      const isSelected = selectedLeaseId === lease.id;
+                      return (
+                        <OperationsMasterRow
+                          key={lease.id}
+                          selected={isSelected}
+                          aria-pressed={isSelected}
+                          onClick={() => {
+                            addTelemetryEvent('lease.opened', { contractId: lease.id, status: lease.status });
+                            router.push(`/operations/rental/leases/${lease.id}`);
+                          }}
+                          dir="ltr"
+                          data-lease-columns="lease-unit-tenant-status-rent"
+                          className={isRTL
+                            ? "orca-contracts-grid-row grid min-h-[68px] grid-cols-2 items-center gap-3 px-3 py-2 lg:grid-cols-[minmax(24ch,.8fr)_112px_minmax(150px,1fr)_minmax(110px,.75fr)_minmax(150px,1.1fr)]"
+                            : "orca-contracts-grid-row grid min-h-[68px] grid-cols-2 items-center gap-3 px-3 py-2 lg:grid-cols-[minmax(150px,1.1fr)_minmax(110px,.75fr)_minmax(150px,1fr)_112px_minmax(24ch,.8fr)]"}
+                        >
+                          {isRTL ? (
+                            <>
+                              <span dir="ltr" className="orca-table-primary orca-number-column text-start font-black text-[var(--nc-text-primary)]">
+                                {formatMoneyValue(lease.rent, displayLocale)}
+                              </span>
+                              <span className={`inline-flex w-fit min-w-[82px] justify-center rounded-full px-2.5 py-1 font-black orca-table-badge ${leaseStatusBadgeClass(lease.status)}`}>
+                                {leaseStatusLabel(lease.status, displayLocale)}
+                              </span>
+                              <span dir="rtl" className="orca-table-primary hidden truncate text-start text-[var(--nc-text-secondary)] lg:block">
+                                {displayPersonSafe(lease.tenant, displayLocale)}
+                              </span>
+                              <span dir="rtl" className="orca-table-primary truncate text-start font-mono text-[var(--nc-text-secondary)]">
+                                {displayEntitySafe(lease.unit, 'unit', displayLocale)}
+                              </span>
+                              <span dir="rtl" className="min-w-0 text-start">
+                                <strong className={`orca-table-primary block truncate ${isSelected ? 'text-[var(--nc-accent-text)]' : 'text-[var(--nc-text-primary)]'}`}>
+                                  {getLeaseDisplayNumber(lease, displayLocale)}
+                                </strong>
+                                <span className="orca-table-secondary mt-0.5 block truncate text-[var(--nc-text-dim)] lg:hidden">
+                                  {displayPersonSafe(lease.tenant, displayLocale)}
+                                </span>
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="min-w-0 text-start">
+                                <strong className={`orca-table-primary block truncate ${isSelected ? 'text-[var(--nc-accent-text)]' : 'text-[var(--nc-text-primary)]'}`}>
+                                  {getLeaseDisplayNumber(lease, displayLocale)}
+                                </strong>
+                                <span className="orca-table-secondary mt-0.5 block truncate text-[var(--nc-text-dim)] lg:hidden">
+                                  {displayPersonSafe(lease.tenant, displayLocale)}
+                                </span>
+                              </span>
+                              <span className="orca-table-primary truncate text-start font-mono text-[var(--nc-text-secondary)]">
+                                {displayEntitySafe(lease.unit, 'unit', displayLocale)}
+                              </span>
+                              <span className="orca-table-primary hidden truncate text-start text-[var(--nc-text-secondary)] lg:block">
+                                {displayPersonSafe(lease.tenant, displayLocale)}
+                              </span>
+                              <span className={`inline-flex w-fit min-w-[82px] justify-center rounded-full px-2.5 py-1 font-black orca-table-badge ${leaseStatusBadgeClass(lease.status)}`}>
+                                {leaseStatusLabel(lease.status, displayLocale)}
+                              </span>
+                              <span dir="ltr" className="orca-table-primary orca-number-column text-start font-black text-[var(--nc-text-primary)]">
+                                {formatMoneyValue(lease.rent, displayLocale)}
+                              </span>
+                            </>
+                          )}
+                        </OperationsMasterRow>
+                      );
+                    })}
+                  </OperationsMasterList>
+                )}
+
+                <OperationsPagination
+                  page={normalizedLeasePage}
+                  totalPages={leaseTotalPages}
+                  totalItems={filteredLeases.length}
+                  pageSize={CONTRACTS_PAGE_SIZE}
+                  locale={displayLocale}
+                  onPageChange={setLeasePage}
+                />
+              </OperationsPanel>
+              ) : null}
+
+
+
+              {/* Lease Detail Panel (Detail) */}
+              {detailLeaseId && selectedLease ? (
+                <OperationsPanel padded className="h-fit overflow-hidden" data-rental-lease-detail>
                   <div className="space-y-4 text-center">
                     
-                    {/* Detail Panel Header */}
-                    <div className="space-y-3 border-b border-white/5 pb-4">
-                      <div className="flex flex-col items-center gap-1.5 text-center">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-base font-black text-white">
-                            {getLeaseDisplayNumber(selectedLease, displayLocale)}
-                          </h3>
-                          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
-                            selectedLease.status === 'active' 
-                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                              : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                          }`}>
-                            {leaseStatusLabel(selectedLease.status, displayLocale)}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-[var(--nc-text-dim)]">
-                          {L('المستأجر:', 'Tenant:')} {displayPersonSafe(selectedLease.tenant, displayLocale)} · {L('الوحدة:', 'Unit:')} {displayEntitySafe(selectedLease.unit, 'unit', displayLocale)}
-                        </p>
-                      </div>
+                    {/* Contextual contract actions live below the dedicated page header. */}
+                    <div className="flex flex-wrap items-center justify-start gap-2 border-b border-[var(--nc-border)] pb-3">
 
-                      {/* Contextual Actions (only inside detail panel!) */}
-                      <div className="flex flex-wrap items-center justify-center gap-1.5">
                         <button
                           onClick={() => {
                              if (!isAllowed('CREATE_INVOICE')) {
@@ -1200,7 +1233,7 @@ export default function ContractsPaymentsCenter({
                             setInvVatType('STANDARD');
                             setActiveModal('create_invoice');
                           }}
-                          className="px-2.5 py-1.5 bg-[var(--nc-op-blue)] hover:bg-[var(--nc-op-blue-hover)] text-white text-[11px] font-black rounded-lg transition-all border border-white/10"
+                          className={operationsVisual.primaryButton}
                         >
                            {L('فاتورة عقد إيجار (تسجيل يدوي)', 'Lease invoice (manual)')}
                         </button>
@@ -1208,7 +1241,7 @@ export default function ContractsPaymentsCenter({
                         {selectedLease.status === 'expired' && !selectedLease.financialRef && (
                           <button
                             disabled
-                            className="px-2.5 py-1.5 bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] text-[var(--nc-text-disabled)] text-[11px] font-black rounded-lg cursor-not-allowed"
+                            className={operationsVisual.secondaryButton}
                             title={isRTL ? "محاكاة غير إنتاجية — قيد التطوير" : "Non-production simulation — under development"}
                           >
                             {L('طلب تسوية المالك (قيد الربط)', 'Request payout (pending)')}
@@ -1216,16 +1249,19 @@ export default function ContractsPaymentsCenter({
                         )}
                       <button
                         disabled
-                        className="px-2.5 py-1.5 bg-[var(--nc-surface)] border border-[var(--nc-glass-border)] text-[var(--nc-foreground-muted)] text-[11px] font-black rounded-lg transition-all opacity-60 cursor-not-allowed"
+                        className={operationsVisual.secondaryButton}
                         title={isRTL ? "قيد الربط المحاسبي" : "Accounting integration pending"}
                       >
                         {L("إرسال تذكير (قيد الربط)", "Send Reminder (pending)")}
                       </button>
                       </div>
-                    </div>
 
                     {/* Sub-tabs list */}
-                    <div className="orca-workspace-tabs flex flex-wrap justify-center gap-1.5 border-b border-white/5 pb-2">
+                    <OperationsTabs
+                      dir={isRTL ? 'rtl' : 'ltr'}
+                      className="w-full justify-start"
+                      data-rental-lease-detail-tabs
+                    >
                       {[
                         { id: 'summary', name: L('الملخص', 'Summary') },
                         { id: 'invoices', name: L('الفواتير', 'Invoices') },
@@ -1237,23 +1273,21 @@ export default function ContractsPaymentsCenter({
                         <button
                           key={tab.id}
                           onClick={() => setDetailActiveTab(tab.id)}
-                          className={`min-h-[28px] whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
-                            detailActiveTab === tab.id 
-                              ? 'border border-[var(--orca-action-gold)] bg-[var(--orca-action-gold-soft)] text-[var(--orca-action-gold)] shadow-sm'
-                              : 'bg-[var(--nc-surface)] dark:bg-white/5 border border-white/10 text-[var(--nc-text-dim)] hover:border-[var(--orca-action-gold)] hover:bg-[var(--orca-action-gold-soft)] hover:text-[var(--orca-action-gold)]'
-                          }`}
+                          role="tab"
+                          aria-selected={detailActiveTab === tab.id}
+                          className={detailActiveTab === tab.id ? operationsVisual.activeTab : operationsVisual.tab}
                         >
                           {tab.name}
                         </button>
                       ))}
-                    </div>
+                    </OperationsTabs>
 
                     {/* Sub-tab Panes */}
                     <div className="text-xs text-[var(--nc-text-dim)]">
                       
                       {/* Summary Tab */}
                       {detailActiveTab === 'summary' && (
-                        <div className="space-y-4">
+                        <OperationsTabPanel className="space-y-4" data-lease-tab-panel="summary">
                           <FinancialLifecycleProgress
                             locale={displayLocale}
                             title={L('مسار عقد الإيجار المالي', 'Rental lease financial progress')}
@@ -1262,7 +1296,7 @@ export default function ContractsPaymentsCenter({
                             compact
                           />
 
-                          <div className="orca-auto-grid">
+                          <div className="orca-lease-summary-grid">
                             <div className="bg-[var(--nc-surface)] dark:bg-white/5 p-4 rounded-xl border border-white/10">
                               <span className="text-[10px] text-[var(--nc-text-dim)] font-bold block">{L('تاريخ صلاحية العقد', 'Lease term')}</span>
                               <span className="font-bold text-white mt-1.5 block">
@@ -1283,13 +1317,13 @@ export default function ContractsPaymentsCenter({
                             <span>{L('المرجع المالي للتسوية:', 'Settlement reference:')}</span>
                             <span className="text-cyan-400 font-bold">{selectedLease.financialRef ? safeDisplayValue(selectedLease.financialRef, displayLocale) : L('لا توجد تسويات جارية لهذا العقد حالياً', 'No active settlement for this lease')}</span>
                           </div>
-                        </div>
+                        </OperationsTabPanel>
                       )}
 
                       {/* Invoices Tab */}
                       {detailActiveTab === 'invoices' && (
-                        <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                          <table className="w-full text-right border-collapse">
+                        <OperationsTabPanel horizontalScroll data-lease-tab-panel="invoices">
+                          <table className="min-w-[560px] w-full text-right border-collapse">
                             <thead>
                               <tr className="border-b border-white/5 text-[var(--nc-text-dim)] font-bold">
                                 <th className="pb-2">{L('رقم الفاتورة', 'Invoice')}</th>
@@ -1325,13 +1359,13 @@ export default function ContractsPaymentsCenter({
                             </tbody>
                           </table>
                           {renderDetailPager('invoices', selectedLeaseInvoices.length, detailInvoicePage.page, detailInvoicePage.totalPages)}
-                        </div>
+                        </OperationsTabPanel>
                       )}
 
                       {/* Payments Tab */}
                       {detailActiveTab === 'payments' && (
-                        <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden space-y-4">
-                          <table className="w-full text-right border-collapse">
+                        <OperationsTabPanel horizontalScroll className="space-y-4" data-lease-tab-panel="payments">
+                          <table className="min-w-[560px] w-full text-right border-collapse">
                             <thead>
                               <tr className="border-b border-white/5 text-[var(--nc-text-dim)] font-bold">
                                 <th className="pb-2">{L('التاريخ', 'Date')}</th>
@@ -1368,12 +1402,12 @@ export default function ContractsPaymentsCenter({
                             </tbody>
                           </table>
                           {renderDetailPager('payments', selectedLeasePayments.length, detailPaymentPage.page, detailPaymentPage.totalPages)}
-                        </div>
+                        </OperationsTabPanel>
                       )}
 
                       {/* Documents Tab */}
                       {detailActiveTab === 'docs' && (
-                        <div className="space-y-3">
+                        <OperationsTabPanel className="space-y-3" data-lease-tab-panel="docs">
                           <div className="bg-[var(--nc-surface)] dark:bg-white/5 p-3 rounded-xl border border-white/5 flex flex-wrap items-center justify-between gap-3">
                             <span className="text-[11px] text-[var(--nc-text-dim)]">{L('إضافة مستند أو ملف عقد مصدق:', 'Add a document or certified lease file:')}</span>
                             <div className="flex flex-wrap gap-2">
@@ -1384,7 +1418,7 @@ export default function ContractsPaymentsCenter({
                           />
                               <button 
                                 onClick={handleLeaseDocumentUpload}
-                                className="px-3 py-1 bg-[var(--nc-surface-strong)] border border-white/10 hover:bg-white/5 rounded text-[10px] text-white"
+                                className={operationsVisual.secondaryButton}
                               >
                                 {L('رفع الملف', 'Upload file')}
                               </button>
@@ -1408,13 +1442,13 @@ export default function ContractsPaymentsCenter({
                             <p className="py-3 text-right text-[var(--nc-text-dim)]">{L('لا توجد مستندات مرتبطة بهذا العقد.', 'No documents are linked to this lease.')}</p>
                           )}
                           {renderDetailPager('docs', selectedLeaseDocuments.length, detailDocumentPage.page, detailDocumentPage.totalPages)}
-                        </div>
+                        </OperationsTabPanel>
                       )}
 
                       {/* Settlements Tab */}
                       {detailActiveTab === 'settlements' && (
-                        <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                          <table className="w-full text-right border-collapse">
+                        <OperationsTabPanel horizontalScroll data-lease-tab-panel="settlements">
+                          <table className="min-w-[560px] w-full text-right border-collapse">
                             <thead>
                               <tr className="border-b border-white/5 text-[var(--nc-text-dim)] font-bold">
                                 <th className="pb-2">{L('التاريخ', 'Date')}</th>
@@ -1448,12 +1482,12 @@ export default function ContractsPaymentsCenter({
                             </tbody>
                           </table>
                           {renderDetailPager('settlements', selectedLeaseSettlements.length, detailSettlementPage.page, detailSettlementPage.totalPages)}
-                        </div>
+                        </OperationsTabPanel>
                       )}
 
                       {/* Events Tab */}
                       {detailActiveTab === 'events' && (
-                        <div className="space-y-3">
+                        <OperationsTabPanel className="space-y-3" data-lease-tab-panel="events">
                           <div className="border-r-2 border-white/5 pr-4 space-y-3">
                             {detailEventPage.items.map(evt => (
                               <div key={evt.id} className="relative">
@@ -1470,16 +1504,23 @@ export default function ContractsPaymentsCenter({
                             )}
                           </div>
                           {renderDetailPager('events', selectedLeaseEvents.length, detailEventPage.page, detailEventPage.totalPages)}
-                        </div>
+                        </OperationsTabPanel>
                       )}
 
                     </div>
                   </div>
-                )}
-              </div>
-              </div>
+                </OperationsPanel>
+              ) : null}
 
-            </div>
+              {detailLeaseId && !selectedLease && !isLoading ? (
+                <div className="p-3">
+                  <OperationsEmptyState>
+                    {L('تعذر العثور على عقد الإيجار المطلوب.', 'The requested rental lease could not be found.')}
+                  </OperationsEmptyState>
+                </div>
+              ) : null}
+
+            </OperationsExecutiveGrid>
           )}
 
           {/* ── Pane 2: Sales Contracts ── */}
@@ -1512,10 +1553,9 @@ export default function ContractsPaymentsCenter({
               onOpenSaleContract={(contractId) =>
                 router.push(`/operations/rental/sales/contracts/${contractId}`)
               }
-              onOpenLease={(leaseId) => {
-                setSelectedLeaseId(leaseId);
-                changePane('leases');
-              }}
+              onOpenLease={(leaseId) =>
+                router.push(`/operations/rental/leases/${leaseId}`)
+              }
             />
           )}
 
@@ -1553,38 +1593,83 @@ export default function ContractsPaymentsCenter({
       activePane={activePane}
       onPaneChange={changePane}
       loading={isLoading}
-      title={L('مركز العقود والتحصيل المالي', 'Contracts & Financial Collection Center')}
-      description={L(
-        'إدارة دورة العقد من الالتزام التعاقدي حتى التحصيل والمصالحة والتسوية والإغلاق.',
-        'Manage the contract lifecycle from commitment through collection, reconciliation, settlement, and close.',
-      )}
-      metrics={[
-        {
-          label: L('العقود النشطة', 'Active contracts'),
-          value: formatNumberValue(activeLeases.length, displayLocale),
-          hint: L('عقود الإيجار النشطة حاليًا', 'Active rental leases'),
-          tone: 'default',
-        },
-        {
-          label: L('إجمالي المستحقات', 'Total receivables'),
-          value: formatMoneyValue(totalReceivables, displayLocale),
-          hint: L('فواتير لم تغلق ماليًا', 'Invoices not financially closed'),
-          tone: 'default',
-        },
-        {
-          label: L('المتأخرات', 'Overdue'),
-          value: formatMoneyValue(totalOverdue, displayLocale),
-          hint: L(`${formatNumberValue(overdueInvoicesCount, displayLocale)} فواتير متأخرة`, `${formatNumberValue(overdueInvoicesCount, displayLocale)} overdue invoices`),
-          tone: totalOverdue > 0 ? 'danger' : 'success',
-        },
-        {
-          label: L('المحصل الفعلي', 'Collected'),
-          value: formatMoneyValue(completedPaymentTotal, displayLocale),
-          hint: L(`${formatNumberValue(completedPayments.length, displayLocale)} دفعات مكتملة`, `${formatNumberValue(completedPayments.length, displayLocale)} completed payments`),
-          tone: 'success',
-        },
-      ]}
-      alerts={[
+      title={
+        detailLeaseId
+          ? selectedLease
+            ? getLeaseDisplayNumber(selectedLease, displayLocale)
+            : L('عقد الإيجار', 'Rental lease')
+          : L('مركز العقود والتحصيل المالي', 'Contracts & Financial Collection Center')
+      }
+      description={
+        detailLeaseId && selectedLease
+          ? `${L('المستأجر:', 'Tenant:')} ${displayPersonSafe(selectedLease.tenant, displayLocale)} · ${L('الوحدة:', 'Unit:')} ${displayEntitySafe(selectedLease.unit, 'unit', displayLocale)}`
+          : L(
+              'إدارة دورة العقد من الالتزام التعاقدي حتى التحصيل والمصالحة والتسوية والإغلاق.',
+              'Manage the contract lifecycle from commitment through collection, reconciliation, settlement, and close.',
+            )
+      }
+      metrics={
+        detailLeaseId
+          ? [
+              {
+                label: L('الإيجار الدوري', 'Periodic rent'),
+                value: selectedLease ? formatMoneyValue(selectedLease.rent, displayLocale) : '—',
+                hint: L('القيمة الدورية للعقد', 'Lease periodic value'),
+                tone: 'default' as const,
+              },
+              {
+                label: L('التأمين', 'Deposit'),
+                value: selectedLease ? formatMoneyValue(selectedLease.deposit, displayLocale) : '—',
+                hint: L('التأمين المحتجز', 'Security deposit'),
+                tone: 'default' as const,
+              },
+              {
+                label: L('الفواتير', 'Invoices'),
+                value: formatNumberValue(selectedLeaseInvoices.length, displayLocale),
+                hint: L('الفواتير المرتبطة بالعقد', 'Invoices linked to the lease'),
+                tone: 'default' as const,
+              },
+              {
+                label: L('المحصل', 'Collected'),
+                value: formatMoneyValue(
+                  selectedLeaseCompletedPayments.reduce((sum, payment) => sum + payment.amount, 0),
+                  displayLocale,
+                ),
+                hint: L(
+                  `${formatNumberValue(selectedLeaseCompletedPayments.length, displayLocale)} دفعات مكتملة`,
+                  `${formatNumberValue(selectedLeaseCompletedPayments.length, displayLocale)} completed payments`,
+                ),
+                tone: 'success' as const,
+              },
+            ]
+          : [
+              {
+                label: L('العقود النشطة', 'Active contracts'),
+                value: formatNumberValue(activeLeases.length, displayLocale),
+                hint: L('عقود الإيجار النشطة حاليًا', 'Active rental leases'),
+                tone: 'default' as const,
+              },
+              {
+                label: L('إجمالي المستحقات', 'Total receivables'),
+                value: formatMoneyValue(totalReceivables, displayLocale),
+                hint: L('فواتير لم تغلق ماليًا', 'Invoices not financially closed'),
+                tone: 'default' as const,
+              },
+              {
+                label: L('المتأخرات', 'Overdue'),
+                value: formatMoneyValue(totalOverdue, displayLocale),
+                hint: L(`${formatNumberValue(overdueInvoicesCount, displayLocale)} فواتير متأخرة`, `${formatNumberValue(overdueInvoicesCount, displayLocale)} overdue invoices`),
+                tone: totalOverdue > 0 ? 'danger' as const : 'success' as const,
+              },
+              {
+                label: L('المحصل الفعلي', 'Collected'),
+                value: formatMoneyValue(completedPaymentTotal, displayLocale),
+                hint: L(`${formatNumberValue(completedPayments.length, displayLocale)} دفعات مكتملة`, `${formatNumberValue(completedPayments.length, displayLocale)} completed payments`),
+                tone: 'success' as const,
+              },
+            ]
+      }
+      alerts={detailLeaseId ? [] : [
         ...(overdueInvoicesCount > 0
           ? [{
               label: L(`${formatNumberValue(overdueInvoicesCount, displayLocale)} فواتير متأخرة`, `${formatNumberValue(overdueInvoicesCount, displayLocale)} overdue invoices`),
@@ -1604,7 +1689,15 @@ export default function ContractsPaymentsCenter({
             }]
           : []),
       ]}
+      showWorkspaceNavigation={!detailLeaseId}
       actions={
+        detailLeaseId ? (
+          <OperationsBackAction
+            href="/operations/rental/leases"
+            label={L('العودة إلى عقود الإيجار', 'Back to rental leases')}
+            locale={displayLocale}
+          />
+        ) : (
         <>
           <SettingsButton
             type="button"
@@ -1643,153 +1736,176 @@ export default function ContractsPaymentsCenter({
             {L('إصدار فاتورة', 'Issue invoice')}
           </SettingsButton>
         </>
+        )
       }
     >
       <section className="w-full">
         {detailsContent}
       </section>
 
-      {/* ── Modal 1: New Lease Form ── */}
-      {activeModal === 'new_lease' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm shadow-inner" onClick={() => setActiveModal(null)}></div>
-          <form 
-            onSubmit={handleCreateLease}
-            className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
-          >
-            <h3 className="text-base font-extrabold text-[var(--nc-op-blue)] border-b border-white/5 pb-2 flex items-center gap-2">
-              <Plus size={18} />
-              {L('إضافة عقد إيجار جديد', 'Add new lease')}
-            </h3>
-            
-            <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] block">{L('رقم أو رمز الوحدة العقارية:', 'Unit number or code:')}</label>
-              <input 
-                type="text"
+      <OperationsDialog
+        open={activeModal === 'new_lease'}
+        onClose={() => setActiveModal(null)}
+        title={L('إضافة عقد إيجار جديد', 'Add new lease')}
+        description={L(
+          'أدخل بيانات الوحدة والمستأجر وفترة العقد والقيم المالية.',
+          'Enter the unit, tenant, lease period, and financial values.',
+        )}
+        closeLabel={L('إغلاق', 'Close')}
+        dir={displayLocale === 'ar' ? 'rtl' : 'ltr'}
+        className="max-w-2xl"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setActiveModal(null)}
+              className={operationsVisual.secondaryButton}
+            >
+              {L('إلغاء', 'Cancel')}
+            </button>
+            <button
+              type="submit"
+              form="contracts-new-lease-form"
+              className={operationsVisual.primaryButton}
+            >
+              {L('تأكيد وتسجيل العقد', 'Create lease')}
+            </button>
+          </>
+        }
+      >
+        <form
+          id="contracts-new-lease-form"
+          onSubmit={handleCreateLease}
+          noValidate
+          data-contracts-modal="true"
+          className="grid gap-4"
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <OperationsFormField label={L('رقم أو رمز الوحدة العقارية', 'Unit number or code')}>
+              <OperationsTextField
                 required
                 value={newUnit}
                 onChange={(e) => setNewUnit(e.target.value)}
-                placeholder={L("مثال: A-101", "Example: A-101")}
-                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-op-blue)]"
+                placeholder={L('مثال: A-101', 'Example: A-101')}
               />
-            </div>
+            </OperationsFormField>
 
-            <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] block">{L('اسم المستأجر:', 'Tenant name:')}</label>
-              <input 
-                type="text"
+            <OperationsFormField label={L('اسم المستأجر', 'Tenant name')}>
+              <OperationsTextField
                 required
                 value={newTenant}
                 onChange={(e) => setNewTenant(e.target.value)}
-                placeholder={L("الاسم الكامل للمستأجر...", "Tenant full name...")}
-                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-op-blue)]"
+                placeholder={L('الاسم الكامل للمستأجر...', 'Tenant full name...')}
               />
-            </div>
+            </OperationsFormField>
+          </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <DateField 
-                  value={newStart}
-                  onChange={(val) => setNewStart(val)}
-                  label={L("بداية العقد", "Lease start")}
-                />
+          <div className="grid gap-4 md:grid-cols-2">
+            <DateField
+              value={newStart}
+              onChange={(val) => setNewStart(val)}
+              label={L('بداية العقد', 'Lease start')}
+            />
+            <DateField
+              value={newEnd}
+              onChange={(val) => setNewEnd(val)}
+              label={L('نهاية العقد', 'Lease end')}
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <OperationsFormField label={L('قيمة الإيجار الدوري (ر.س)', 'Periodic rent (SAR)')}>
+              <OperationsNumberField
+                mode="decimal"
+                value={newRent ? String(newRent) : ''}
+                onValueChange={(value) => setNewRent(Number(value || 0))}
+                className="orca-operations-input"
+              />
+            </OperationsFormField>
+
+            <OperationsFormField label={L('قيمة التأمين المحتجز (ر.س)', 'Security deposit (SAR)')}>
+              <OperationsNumberField
+                mode="decimal"
+                value={newDeposit ? String(newDeposit) : ''}
+                onValueChange={(value) => setNewDeposit(Number(value || 0))}
+                className="orca-operations-input"
+              />
+            </OperationsFormField>
+          </div>
+        </form>
+      </OperationsDialog>
+
+      <OperationsDialog
+        open={activeModal === 'create_invoice'}
+        onClose={() => {
+          setPrefilledContractId('');
+          setActiveModal(null);
+        }}
+        title={L('إصدار فاتورة ضريبية', 'Issue tax invoice')}
+        description={L(
+          'اربط الفاتورة بالعقد وحدد المبلغ والضريبة وتاريخ الاستحقاق.',
+          'Link the invoice to a lease, then set subtotal, VAT, and due date.',
+        )}
+        closeLabel={L('إغلاق', 'Close')}
+        dir={displayLocale === 'ar' ? 'rtl' : 'ltr'}
+        className="max-w-2xl"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setPrefilledContractId('');
+                setActiveModal(null);
+              }}
+              className={operationsVisual.secondaryButton}
+            >
+              {L('إلغاء', 'Cancel')}
+            </button>
+            <button
+              type="submit"
+              form="contracts-create-invoice-form"
+              className={operationsVisual.primaryButton}
+            >
+              {L('إصدار الفاتورة الضريبية', 'Issue tax invoice')}
+            </button>
+          </>
+        }
+      >
+        <form
+          id="contracts-create-invoice-form"
+          onSubmit={handleCreateInvoice}
+          noValidate
+          data-contracts-modal="true"
+          className="grid gap-4"
+        >
+          <OperationsFormField label={L('رقم العقد', 'Lease')}>
+            {prefilledContractId ? (
+              <div className="orca-operations-input flex items-center font-bold">
+                {getLeaseDisplayNumber(selectedLease || undefined, displayLocale)}
               </div>
-              <div className="space-y-1">
-                <DateField 
-                  value={newEnd}
-                  onChange={(val) => setNewEnd(val)}
-                  label={L("نهاية العقد", "Lease end")}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[var(--nc-text-dim)] block">{L('قيمة الإيجار الدوري (ر.س):', 'Periodic rent (SAR):')}</label>
-                <input 
-                  type="number"
-                  required
-                  value={newRent}
-                  onChange={(e) => setNewRent(Number(e.target.value))}
-                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-op-blue)]"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[var(--nc-text-dim)] block">{L('قيمة التأمين المحتجز (ر.س):', 'Security deposit (SAR):')}</label>
-                <input 
-                  type="number"
-                  required
-                  value={newDeposit}
-                  onChange={(e) => setNewDeposit(Number(e.target.value))}
-                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-op-blue)]"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button 
-                type="submit"
-                className="flex-1 py-2.5 bg-[var(--nc-op-blue)] hover:bg-[var(--nc-op-blue-hover)] text-white font-bold rounded-xl transition-all"
-              >
-                {L('تأكيد وتسجيل العقد', 'Create lease')}
-              </button>
-              <button 
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="flex-1 py-2.5 bg-[var(--nc-surface)] border border-white/5 hover:bg-[var(--nc-surface)] text-[var(--nc-text-dim)] rounded-xl transition-all"
-              >
-                {L('إلغاء', 'Cancel')}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* ── Modal 2: Create Invoice Form ── */}
-      {activeModal === 'create_invoice' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
-          <form 
-            onSubmit={handleCreateInvoice}
-            className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
-          >
-            <h3 className="text-base font-extrabold text-[var(--nc-op-blue)] border-b border-white/5 pb-2 flex items-center gap-2">
-              <FileCheck size={18} />
-              {L('إصدار فاتورة ضريبية', 'Issue tax invoice')}
-            </h3>
-            
-            <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] block">{L('رقم العقد:', 'Lease:')}</label>
-              {prefilledContractId ? (
-                <div className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] font-bold text-xs disabled:opacity-50">
-                  {getLeaseDisplayNumber(selectedLease || undefined, displayLocale)}
-                </div>
-              ) : (
-                <input 
-                  type="text"
-                  required
-                  value={invLeaseId}
-                  onChange={(e) => setInvLeaseId(e.target.value)}
-                  placeholder={L("مثال: L-1001", "Example: L-1001")}
-                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-op-blue)] font-mono"
-                />
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] block">{L('المبلغ قبل الضريبة (ر.س):', 'Subtotal before VAT (SAR):')}</label>
-              <input 
-                type="number"
-                name="inv-subtotal"
+            ) : (
+              <OperationsTextField
                 required
-                value={invSubtotal || ''}
-                onChange={(e) => setInvSubtotal(Number(e.target.value))}
-                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-op-blue)]"
+                value={invLeaseId}
+                onChange={(e) => setInvLeaseId(e.target.value)}
+                placeholder={L('مثال: L-1001', 'Example: L-1001')}
+                className="font-mono"
               />
-            </div>
+            )}
+          </OperationsFormField>
 
-            <div className="space-y-1">
-               <label className="text-[var(--nc-text-dim)] block">{L('نوع الضريبة:', 'VAT type:')}</label>
+          <div className="grid gap-4 md:grid-cols-2">
+            <OperationsFormField label={L('المبلغ قبل الضريبة (ر.س)', 'Subtotal before VAT (SAR)')}>
+              <OperationsNumberField
+                mode="decimal"
+                name="inv-subtotal"
+                value={invSubtotal ? String(invSubtotal) : ''}
+                onValueChange={(value) => setInvSubtotal(Number(value || 0))}
+                className="orca-operations-input"
+              />
+            </OperationsFormField>
+
+            <OperationsFormField label={L('نوع الضريبة', 'VAT type')}>
               <SettingsSelect
                 className="w-full"
                 placement="bottom"
@@ -1801,92 +1917,110 @@ export default function ContractsPaymentsCenter({
                   { value: 'EXEMPT', label: vatTypeLabel('EXEMPT', displayLocale) },
                 ]}
               />
-            </div>
+            </OperationsFormField>
+          </div>
 
-            {invSubtotal > 0 && (
-              <div className="bg-[var(--nc-surface)] border border-white/5 p-3 rounded-xl space-y-1">
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-[var(--nc-text-dim)]">{L('قبل الضريبة:', 'Subtotal:')}</span>
-                  <span className="text-[var(--nc-text-primary)]">{formatMoneyValue(invSubtotal, displayLocale)}</span>
-                </div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-[var(--nc-text-dim)]">
-                    {L('ضريبة', 'VAT')} ({invVatType === 'EXEMPT' ? 0 : invVatType === 'ZERO_RATED' ? 0 : 15}%):
-                  </span>
-                  <span className="text-warning">
-                    {formatMoneyValue(invVatType === 'EXEMPT' || invVatType === 'ZERO_RATED' ? 0 : invSubtotal * 0.15, displayLocale)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs font-bold pt-1 border-t border-white/10">
-                  <span className="text-[var(--nc-text-dim)]">{L('الإجمالي:', 'Total:')}</span>
-                  <span className="text-emerald-400">
-                    {formatMoneyValue(invVatType === 'EXEMPT' || invVatType === 'ZERO_RATED' ? invSubtotal : invSubtotal * 1.15, displayLocale)}
-                  </span>
-                </div>
+          {invSubtotal > 0 ? (
+            <div className={operationsVisual.softPanel + ' grid gap-2 p-3'}>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-[var(--nc-text-dim)]">{L('قبل الضريبة', 'Subtotal')}</span>
+                <strong>{formatMoneyValue(invSubtotal, displayLocale)}</strong>
               </div>
-            )}
-
-            <div className="space-y-1">
-              <DateField 
-                value={invDueDate}
-                onChange={(val) => setInvDueDate(val)}
-                label={L("تاريخ الاستحقاق", "Due date")}
-              />
+              <div className="flex justify-between text-[11px]">
+                <span className="text-[var(--nc-text-dim)]">
+                  {L('الضريبة', 'VAT')} ({invVatType === 'STANDARD' ? 15 : 0}%)
+                </span>
+                <strong>
+                  {formatMoneyValue(
+                    invVatType === 'STANDARD' ? invSubtotal * 0.15 : 0,
+                    displayLocale,
+                  )}
+                </strong>
+              </div>
+              <div className="flex justify-between border-t border-[var(--nc-border)] pt-2 text-xs">
+                <span>{L('الإجمالي', 'Total')}</span>
+                <strong className="text-emerald-400">
+                  {formatMoneyValue(
+                    invVatType === 'STANDARD' ? invSubtotal * 1.15 : invSubtotal,
+                    displayLocale,
+                  )}
+                </strong>
+              </div>
             </div>
+          ) : null}
 
-            <div className="flex gap-2 pt-2">
-              <button 
-                type="submit"
-                className="flex-1 py-2.5 bg-[var(--nc-op-blue)] hover:bg-[var(--nc-op-blue-hover)] text-white font-bold rounded-xl transition-all"
-              >
-                 {L('إصدار الفاتورة الضريبية', 'Issue tax invoice')}
-              </button>
-              <button 
-                type="button"
-                onClick={() => {
-                  setPrefilledContractId('');
-                  setActiveModal(null);
-                }}
-                className="flex-1 py-2.5 bg-[var(--nc-surface)] border border-white/5 hover:bg-[var(--nc-surface)] text-[var(--nc-text-dim)] rounded-xl transition-all"
-              >
-                {L('إلغاء', 'Cancel')}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+          <DateField
+            value={invDueDate}
+            onChange={(val) => setInvDueDate(val)}
+            label={L('تاريخ الاستحقاق', 'Due date')}
+          />
+        </form>
+      </OperationsDialog>
 
-      {/* ── Modal 3: Register Payment Form (Idempotency Key validation) ── */}
-      {activeModal === 'register_payment' && selectedInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveModal(null)}></div>
-          <form 
+      <OperationsDialog
+        open={activeModal === 'register_payment' && Boolean(selectedInvoice)}
+        onClose={() => {
+          setSelectedInvoice(null);
+          setActiveModal(null);
+        }}
+        title={L('تسجيل دفعة يدوية للفاتورة', 'Record manual invoice payment')}
+        description={L(
+          'هذا تسجيل داخلي للسداد ولا يمثل دفعًا إلكترونيًا عبر بوابة دفع.',
+          'This records an internal/manual payment and does not process an online gateway payment.',
+        )}
+        closeLabel={L('إغلاق', 'Close')}
+        closeDisabled={isPaying}
+        dir={displayLocale === 'ar' ? 'rtl' : 'ltr'}
+        className="max-w-2xl"
+        footer={
+          <>
+            <button
+              type="button"
+              disabled={isPaying}
+              onClick={() => {
+                setSelectedInvoice(null);
+                setActiveModal(null);
+              }}
+              className={operationsVisual.secondaryButton}
+            >
+              {L('إلغاء', 'Cancel')}
+            </button>
+            <button
+              type="submit"
+              form="contracts-register-payment-form"
+              disabled={isPaying}
+              className={operationsVisual.primaryButton}
+            >
+              {isPaying
+                ? L('جاري التسجيل...', 'Recording...')
+                : L('تأكيد التحصيل والتسوية', 'Confirm collection')}
+            </button>
+          </>
+        }
+      >
+        {selectedInvoice ? (
+          <form
+            id="contracts-register-payment-form"
             onSubmit={handleRegisterPayment}
-            className="relative bg-[var(--nc-surface-strong)] border border-white/10 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl text-right text-xs"
+            noValidate
+            data-contracts-modal="true"
+            className="grid gap-4"
           >
-            <h3 className="text-base font-extrabold text-[var(--nc-op-blue)] border-b border-white/5 pb-2 flex items-center gap-2">
-              <Key size={18} />
-              {L('تسجيل دفعة يدوية للفاتورة', 'Record manual invoice payment')}
-            </h3>
-            <p className="flex items-center gap-1.5 text-[10px] text-warning bg-warning/5 border border-warning/10 px-2 py-1 rounded-lg mb-3">
-              <AlertCircle size={12} className="shrink-0" />
-              {L('هذا تسجيل داخلي للسداد ولا يمثل دفعًا إلكترونيًا عبر بوابة دفع.', 'This records an internal/manual payment and does not process an online gateway payment.')}
-            </p>
-            
-            <div className="space-y-2 bg-[var(--nc-surface)] border border-white/5 p-3 rounded-xl border border-white/5">
-              <div className="flex justify-between">
-                <span className="text-[var(--nc-text-dim)]">{L('رقم الفاتورة:', 'Invoice:')}</span>
-                <span className="text-white font-bold">{safeDisplayValue(selectedInvoice.invoiceLabel, displayLocale)}</span>
+            <div className={operationsVisual.softPanel + ' grid gap-2 p-3'}>
+              <div className="flex justify-between gap-3 text-[11px]">
+                <span className="text-[var(--nc-text-dim)]">{L('رقم الفاتورة', 'Invoice')}</span>
+                <strong>{safeDisplayValue(selectedInvoice.invoiceLabel, displayLocale)}</strong>
               </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--nc-text-dim)]">{L('القيمة الإجمالية المطلوبة:', 'Total due:')}</span>
-                <span className="text-emerald-400 font-bold">{formatMoneyValue(selectedInvoice.totalAmount, displayLocale)}</span>
+              <div className="flex justify-between gap-3 text-[11px]">
+                <span className="text-[var(--nc-text-dim)]">{L('القيمة الإجمالية المطلوبة', 'Total due')}</span>
+                <strong className="text-emerald-400">
+                  {formatMoneyValue(selectedInvoice.totalAmount, displayLocale)}
+                </strong>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[var(--nc-text-dim)] block">{L('طريقة التحصيل:', 'Collection method:')}</label>
+            <div className="grid gap-4 md:grid-cols-2">
+              <OperationsFormField label={L('طريقة التحصيل', 'Collection method')}>
                 <SettingsSelect
                   className="w-full"
                   placement="bottom"
@@ -1898,60 +2032,39 @@ export default function ContractsPaymentsCenter({
                     { value: 'cash', label: paymentMethodLabel('cash', displayLocale) },
                   ]}
                 />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[var(--nc-text-dim)] block">{L('رقم المرجع:', 'Reference number:')}</label>
-                <input 
-                  type="text"
+              </OperationsFormField>
+
+              <OperationsFormField label={L('رقم المرجع', 'Reference number')}>
+                <OperationsTextField
                   value={payRef}
                   onChange={(e) => setPayRef(e.target.value)}
-                  placeholder={L("رقم الحوالة البنكية...", "Bank transfer reference...")}
-                  className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-primary)] outline-none focus:border-[var(--nc-op-blue)]"
+                  placeholder={L('رقم الحوالة البنكية...', 'Bank transfer reference...')}
                 />
-              </div>
+              </OperationsFormField>
             </div>
 
-            <div className="space-y-1">
-              <DateField 
-                value={payDate}
-                onChange={(val) => setPayDate(val)}
-                label={L("تاريخ الاستلام والتحصيل", "Collection date")}
-              />
-            </div>
+            <DateField
+              value={payDate}
+              onChange={(val) => setPayDate(val)}
+              label={L('تاريخ الاستلام والتحصيل', 'Collection date')}
+            />
 
-            <div className="space-y-1">
-              <label className="text-[var(--nc-text-dim)] block">{L('مفتاح تفادي التكرار:', 'Idempotency key:')}</label>
-              <input 
-                type="text"
+            <OperationsFormField
+              label={L('مفتاح تفادي التكرار', 'Idempotency key')}
+              hint={L(
+                'يمنع هذا المفتاح تكرار تسجيل عمليات السداد عند الضغط المتكرر.',
+                'This key prevents duplicate payment registration on repeated clicks.',
+              )}
+            >
+              <OperationsTextField
                 disabled
                 value={payIdempotencyKey}
-                className="w-full bg-[var(--nc-surface-strong)] border border-white/10 rounded-xl p-2.5 text-[var(--nc-text-dim)] outline-none font-mono text-[10px]"
+                className="font-mono text-[10px]"
               />
-              <p className="text-[9px] text-[var(--nc-text-dim)] mt-1">{L('يمنع هذا المفتاح تكرار تسجيل عمليات السداد عند الضغط المتكرر.', 'This key prevents duplicate payment registration on repeated clicks.')}</p>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button 
-                type="submit"
-                disabled={isPaying}
-                className="flex-1 py-2.5 bg-[var(--nc-op-blue)] hover:bg-[var(--nc-op-blue-hover)] text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isPaying ? L('جاري التسجيل...', 'Recording...') : L('تأكيد التحصيل والتسوية', 'Confirm collection')}
-              </button>
-              <button 
-                type="button"
-                onClick={() => {
-                  setSelectedInvoice(null);
-                  setActiveModal(null);
-                }}
-                className="flex-1 py-2.5 bg-[var(--nc-surface)] border border-white/5 hover:bg-[var(--nc-surface)] text-[var(--nc-text-dim)] rounded-xl transition-all"
-              >
-                {L('إلغاء', 'Cancel')}
-              </button>
-            </div>
+            </OperationsFormField>
           </form>
-        </div>
-      )}
+        ) : null}
+      </OperationsDialog>
 
     </ContractsPaymentsShell>
   );

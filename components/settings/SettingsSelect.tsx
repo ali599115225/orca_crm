@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
+import OperationsScrollRegion from "@/components/operations/OperationsScrollRegion";
 
 export interface SettingsSelectOption {
   value: string;
@@ -19,23 +20,26 @@ interface SettingsSelectProps {
   /** When provided, a hidden native input mirrors the value so this select
    * still participates in plain `<form>` + `FormData` submission. */
   name?: string;
+  id?: string;
+  autoFocus?: boolean;
+  required?: boolean;
   disabled?: boolean;
   mono?: boolean;
   placement?: "auto" | "bottom";
   portalZIndex?: number;
+  dir?: "ltr" | "rtl" | "auto";
   "aria-label"?: string;
 }
 
 function firstEnabledIndex(options: SettingsSelectOption[]): number {
-  const index = options.findIndex((option) => !option.disabled);
-  return index === -1 ? 0 : index;
+  return options.findIndex((option) => !option.disabled);
 }
 
 function lastEnabledIndex(options: SettingsSelectOption[]): number {
   for (let i = options.length - 1; i >= 0; i -= 1) {
     if (!options[i].disabled) return i;
   }
-  return options.length - 1;
+  return -1;
 }
 
 function nextEnabledIndex(
@@ -44,6 +48,12 @@ function nextEnabledIndex(
   direction: 1 | -1,
 ): number {
   if (options.length === 0) return -1;
+  if (current < 0) {
+    return direction === 1
+      ? firstEnabledIndex(options)
+      : lastEnabledIndex(options);
+  }
+
   let next = current;
   for (let step = 0; step < options.length; step += 1) {
     next = (next + direction + options.length) % options.length;
@@ -66,6 +76,7 @@ export default function SettingsSelect({
   className,
   name,
   disabled,
+  required,
   mono,
   placement = "auto",
   portalZIndex = 200,
@@ -125,7 +136,11 @@ export default function SettingsSelect({
   function openList() {
     if (disabled) return;
     computePosition();
-    setActiveIndex(selectedIndex >= 0 ? selectedIndex : firstEnabledIndex(options));
+    setActiveIndex(
+      selectedIndex >= 0 && !options[selectedIndex]?.disabled
+        ? selectedIndex
+        : firstEnabledIndex(options),
+    );
     setOpen(true);
   }
 
@@ -163,6 +178,15 @@ export default function SettingsSelect({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  useEffect(() => {
+    if (!open || activeIndex < 0) return;
+
+    const activeOption = document.getElementById(
+      `${listboxId}-option-${activeIndex}`,
+    );
+    activeOption?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, listboxId, open]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (disabled) return;
@@ -218,6 +242,7 @@ export default function SettingsSelect({
         type="button"
         role="combobox"
         aria-haspopup="listbox"
+        aria-required={required || undefined}
         aria-expanded={open}
         aria-controls={listboxId}
         aria-activedescendant={open ? activeOptionId : undefined}
@@ -233,49 +258,73 @@ export default function SettingsSelect({
         <ChevronDown size={14} className="shrink-0 text-[var(--nc-foreground-muted)]" aria-hidden="true" />
       </button>
 
-      {name && <input type="hidden" name={name} value={value} />}
+      {name && <input type="hidden" name={name} value={value} disabled={disabled} />}
+      {required ? (
+        <input
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
+          required
+          disabled={disabled}
+          value={selected && !selected.disabled ? value : ""}
+          onChange={() => {}}
+          onInvalid={(event) => {
+            event.preventDefault();
+            buttonRef.current?.focus();
+          }}
+        />
+      ) : null}
 
       {open &&
         position &&
         createPortal(
           <div
             ref={listRef}
-            id={listboxId}
-            role="listbox"
             dir={position.direction}
             style={{
               position: "fixed",
               top: position.top,
               left: position.left,
               width: position.width,
-              maxHeight: position.maxHeight,
               zIndex: portalZIndex,
             }}
-            className="overflow-y-auto overscroll-contain rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] py-1 shadow-2xl"
+            className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] shadow-2xl"
           >
-            {options.map((option, index) => (
-              <div
-                key={option.value}
-                id={`${listboxId}-option-${index}`}
-                role="option"
-                aria-selected={option.value === value}
-                aria-disabled={option.disabled || undefined}
-                onMouseEnter={() => setActiveIndex(index)}
-                onClick={() => selectOption(index)}
-                className={`flex cursor-pointer items-center justify-between gap-2 px-4 py-2 text-start text-sm transition-colors ${mono ? "font-mono" : ""} ${
-                  option.disabled
-                    ? "cursor-not-allowed text-[var(--nc-foreground-muted)] opacity-50"
-                    : option.value === value || index === activeIndex
-                      ? "bg-[var(--nc-surface-strong)] text-[var(--nc-foreground)]"
-                      : "text-[var(--nc-foreground)] hover:bg-[var(--nc-surface-strong)]"
-                }`}
-              >
-                <span className="truncate">{option.label}</span>
-                {option.value === value && (
-                  <Check size={14} className="shrink-0" aria-hidden="true" />
-                )}
-              </div>
-            ))}
+            <OperationsScrollRegion
+              scrollRole="menu"
+              data-operations-portal-scroll="true"
+              id={listboxId}
+              role="listbox"
+              dir={position.direction}
+              style={{ maxHeight: position.maxHeight }}
+              className="rounded-xl py-1"
+            >
+              {options.map((option, index) => (
+                <div
+                  key={option.value}
+                  id={`${listboxId}-option-${index}`}
+                  role="option"
+                  aria-selected={option.value === value}
+                  aria-disabled={option.disabled || undefined}
+                  onMouseEnter={() => {
+                    if (!option.disabled) setActiveIndex(index);
+                  }}
+                  onClick={() => selectOption(index)}
+                  className={`flex cursor-pointer items-center justify-between gap-2 px-4 py-2 text-start text-sm transition-colors ${mono ? "font-mono" : ""} ${
+                    option.disabled
+                      ? "cursor-not-allowed text-[var(--nc-foreground-muted)] opacity-50"
+                      : option.value === value || index === activeIndex
+                        ? "bg-[var(--nc-surface-strong)] text-[var(--nc-foreground)]"
+                        : "text-[var(--nc-foreground)] hover:bg-[var(--nc-surface-strong)]"
+                  }`}
+                >
+                  <span className="truncate">{option.label}</span>
+                  {option.value === value && (
+                    <Check size={14} className="shrink-0" aria-hidden="true" />
+                  )}
+                </div>
+              ))}
+            </OperationsScrollRegion>
           </div>,
           document.body,
         )}

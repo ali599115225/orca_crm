@@ -167,12 +167,12 @@ export default function RentFlexPropertyAvailabilityPanel({
   return (
     <section
       dir={ar ? "rtl" : "ltr"}
-      className="orca-container mt-4 rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-4"
+      className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5"
       aria-label={t("إتاحة الدفع المرن للعقار", "Property Rent Flex availability")}
     >
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-start gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-accent)]">
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-accent)]">
             <CircleDollarSign size={19} />
           </span>
           <div className="min-w-0">
@@ -200,7 +200,7 @@ export default function RentFlexPropertyAvailabilityPanel({
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="min-w-[220px]">
+          <div className="min-w-[200px]">
             <SettingsSelect
               value={selectedUnitId}
               onChange={setSelectedUnitId}
@@ -236,7 +236,7 @@ export default function RentFlexPropertyAvailabilityPanel({
       </div>
 
       {selectedUnit && (
-        <p className="mt-3 text-xs text-[var(--nc-text-dim)]">
+        <p className="mt-2 text-xs text-[var(--nc-text-dim)]">
           {selectedUnit.unitNumber} · {selectedUnit.projectName}
           {[selectedUnit.city, selectedUnit.district].filter(Boolean).length
             ? ` · ${[selectedUnit.city, selectedUnit.district].filter(Boolean).join(" / ")}`

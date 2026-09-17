@@ -15,29 +15,43 @@ const actions = readFileSync(
   resolve(root, "app/actions/email.ts"),
   "utf8",
 );
+const operationsVisual = readFileSync(
+  resolve(root, "features/operations/visual.ts"),
+  "utf8",
+);
+const operationsCss = readFileSync(
+  resolve(root, "app/operations/orca-page-contract-v1.css"),
+  "utf8",
+);
 
 describe("Email operational closure", () => {
-  it("uses the approved two-card workspace without module tabs", () => {
+  it("uses the approved shared two-card workspace without module tabs", () => {
     expect(view).toContain("data-email-two-card-workspace");
     expect(view).toContain("data-operational-list-card");
     expect(view).toContain("data-operational-detail-card");
-    expect(view).toContain("lg:grid-cols-[340px_minmax(0,1fr)]");
+    expect(view).toContain("OperationsExecutiveGrid");
     expect(view).not.toContain("UnifiedOperationsWorkspace");
     expect(view).not.toContain("MODULE_LINKS");
   });
 
-  it("keeps the approved upper visual identity", () => {
-    expect(view).toContain("orca-workspace-hero");
-    expect(view).toContain("orca-workspace-metrics");
-    expect(view).toContain("orca-workspace-note");
+  it("keeps the approved shared upper visual identity", () => {
+    expect(view).toContain("OperationsPageHeader");
+    expect(view).toContain("OperationsKpiGrid");
+    expect(view).toContain("OperationsMetricCard");
     expect(view).toContain("العميل ← الرسالة ← الإرسال ← المتابعة");
+    expect(operationsVisual).toContain('hero: "orca-workspace-hero"');
+    expect(operationsVisual).toContain('metrics: "orca-workspace-metrics"');
   });
 
-  it("keeps dense stable cards and five messages per page", () => {
+  it("keeps dense stable shared cards and five messages per page without local viewport traps", () => {
     expect(view).toContain("const PAGE_SIZE = 5");
-    expect(view).toContain('lg:h-[520px]');
-    expect(view).toContain('h-[68px]');
-    expect(view).toContain("[scrollbar-width:none]");
+    expect(view).not.toContain('lg:h-[460px]');
+    expect(view).toContain("OperationsMasterRow");
+    expect(view).toContain('min-h-[64px]');
+    expect(view).toContain("orca-operations-flow-region");
+    expect(view).toContain("OperationsScrollRegion");
+    expect(view).toContain('scrollRole="conversation"');
+    expect(view).not.toContain('className="min-h-0 flex-1 overflow-y-auto p-3"');
   });
 
   it("keeps search, filters, and all actionable controls at least 44px high", () => {
@@ -60,6 +74,8 @@ describe("Email operational closure", () => {
     expect(view).toContain("recipientOptions");
     expect(view).toContain("setLeadId(match?.leadId ||");
     expect(view).toContain("EMAIL_PATTERN");
+    expect(view).toContain('scrollRole="menu"');
+    expect(view).not.toContain("max-h-52 overflow-y-auto");
   });
 
   it("shows message body from stored html or text content", () => {
@@ -69,9 +85,12 @@ describe("Email operational closure", () => {
   });
 
   it("keeps the send button compact and prevents grid stretching", () => {
-    expect(view).toContain('w-[120px]');
-    expect(view).toContain("h-11 min-h-11 max-h-11");
+    expect(view).toContain('className={operationsVisual.primaryButton}');
+    expect(view).toContain('className="flex justify-end"');
     expect(view).not.toContain("w-full items-center justify-center gap-2 self-center");
+    expect(operationsCss).toContain(".orca-v1-shell .orca-operations-primary-button");
+    expect(operationsCss).toContain("display: inline-flex;");
+    expect(operationsCss).toContain("min-height: 44px;");
   });
 
   it("never displays provider ids or technical UUIDs", () => {

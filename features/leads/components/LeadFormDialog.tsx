@@ -4,7 +4,6 @@
 // detail page (edit). Permission gating is re-checked on the server; here
 // we only shape the available options.
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { X } from "lucide-react";
 import {
   createManagedLeadAction,
   updateLeadAction,
@@ -14,11 +13,15 @@ import {
   type AssignableUser,
 } from "@/app/actions/leads";
 import { isLeadsManagerRole } from "@/lib/leads/model";
-import { FieldError } from "@/components/leads/helpers";
 import { localizeLeadError, type LeadsCopy } from "@/features/leads/copy/leadsCopy";
 import SettingsSelect from "@/components/settings/SettingsSelect";
 import type { SettingsSelectOption } from "@/components/settings/SettingsSelect";
-import { leadVisual } from "@/features/leads/visual";
+import {
+  OperationsDialog,
+  OperationsFormField,
+  OperationsTextField,
+} from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
 
 export interface LeadFormInitial {
   id?: string;
@@ -96,19 +99,6 @@ export default function LeadFormDialog({
       cancelled = true;
     };
   }, [mode]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [onClose]);
 
   const assigneeOptions = useMemo(() => {
     if (isManager) return users;
@@ -191,201 +181,67 @@ export default function LeadFormDialog({
     }
   };
 
-  const inputClass = `lead-form-field ${leadVisual.input}`;
-  const selectClass = `${leadVisual.select} w-full`;
-  const labelClass = `mb-1.5 block ${leadVisual.label}`;
-
   return (
-    <div
-      className={leadVisual.modalOverlay}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="lead-form-title"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !saving) onClose();
-      }}
-    >
-      <form
-        onSubmit={handleSubmit}
-        dir={direction}
-        className={leadVisual.modal}
-      >
-        <style>{`
-          .lead-form-field:-webkit-autofill,
-          .lead-form-field:-webkit-autofill:hover,
-          .lead-form-field:-webkit-autofill:focus {
-            -webkit-text-fill-color: var(--nc-text-primary);
-            box-shadow: 0 0 0 1000px var(--nc-surface-solid) inset;
-            transition: background-color 9999s ease-out;
-          }
-          .dark .lead-form-field:-webkit-autofill,
-          .dark .lead-form-field:-webkit-autofill:hover,
-          .dark .lead-form-field:-webkit-autofill:focus {
-            -webkit-text-fill-color: var(--nc-text-primary);
-            box-shadow: 0 0 0 1000px var(--nc-surface-solid) inset;
-          }
-        `}</style>
-        <div className={leadVisual.modalHeader}>
-          <h2 id="lead-form-title" className="text-base font-bold text-[var(--nc-text-primary)]">
-            {mode === "create" ? labels.formTitleCreate : labels.formTitleEdit}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className={leadVisual.closeButton}
-            aria-label={labels.cancel}
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </div>
-
-        <div className={leadVisual.modalBody}>
-          {formError && (
-            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500">
-              <p>{formError}</p>
-              {duplicateArchivedId && (
-                <button
-                  type="button"
-                  onClick={() => void handleRestoreDuplicate()}
-                  disabled={restoring}
-                  className={leadVisual.secondaryButton}
-                >
-                  {restoring ? labels.saving : labels.restoreAndOpen}
-                </button>
-              )}
-            </div>
-          )}
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className={labelClass} htmlFor="lead-first-name">
-                {labels.firstNameLabel} *
-              </label>
-              <input
-                id="lead-first-name"
-                type="text"
-                value={firstName}
-                onChange={(event) => setFirstName(event.target.value)}
-                className={inputClass}
-                required
-              />
-              <FieldError message={fieldErrors.firstName} />
-            </div>
-            <div>
-              <label className={labelClass} htmlFor="lead-last-name">
-                {labels.lastNameLabel}
-              </label>
-              <input
-                id="lead-last-name"
-                type="text"
-                value={lastName}
-                onChange={(event) => setLastName(event.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass} htmlFor="lead-phone">
-                {labels.phoneLabel} *
-              </label>
-              <input
-                id="lead-phone"
-                type="tel"
-                dir="ltr"
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                className={`${inputClass} text-left`}
-                required
-              />
-              <FieldError message={fieldErrors.phone} />
-            </div>
-            <div>
-              <label className={labelClass} htmlFor="lead-email">
-                {labels.emailLabel}
-              </label>
-              <input
-                id="lead-email"
-                type="email"
-                dir="ltr"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className={`${inputClass} text-left`}
-              />
-            </div>
-            <div>
-              <label className={labelClass} htmlFor="lead-city">
-                {labels.city}
-              </label>
-              <input
-                id="lead-city"
-                type="text"
-                value={city}
-                onChange={(event) => setCity(event.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass} htmlFor="lead-source">
-                {labels.sourceLabel}
-              </label>
-              <input
-                id="lead-source"
-                type="text"
-                value={source}
-                onChange={(event) => setSource(event.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass} htmlFor="lead-project">
-                {labels.projectLabel}
-              </label>
-              <SettingsSelect
-                value={projectId}
-                onChange={setProjectId}
-                options={[
-                  { value: "", label: labels.noProject },
-                  ...projects.map((p): SettingsSelectOption => ({ value: p.id, label: p.name })),
-                ]}
-                className={selectClass}
-              />
-            </div>
-            {mode === "create" && (
-              <div>
-                <label className={labelClass} htmlFor="lead-assignee">
-                  {labels.assigneeLabel}
-                </label>
-                <SettingsSelect
-                  value={assignedTo}
-                  onChange={setAssignedTo}
-                  options={[
-                    { value: "", label: labels.unassigned },
-                    ...assigneeOptions.map((u): SettingsSelectOption => ({ value: u.id, label: u.name })),
-                  ]}
-                  className={selectClass}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className={leadVisual.modalFooter}>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            className={leadVisual.secondaryButton}
-          >
+    <OperationsDialog
+      open
+      onClose={onClose}
+      title={mode === "create" ? labels.formTitleCreate : labels.formTitleEdit}
+      description={mode === "create" ? labels.subtitle : labels.formTitleEdit}
+      closeLabel={labels.cancel}
+      closeDisabled={saving || restoring}
+      dir={direction}
+      footer={
+        <>
+          <button type="button" onClick={onClose} disabled={saving || restoring} className={operationsVisual.secondaryButton}>
             {labels.cancel}
           </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className={leadVisual.primaryButton}
-          >
+          <button form="lead-form-contract" type="submit" disabled={saving || restoring} className={operationsVisual.primaryButton}>
             {saving ? labels.saving : labels.save}
           </button>
+        </>
+      }
+    >
+      <form id="lead-form-contract" onSubmit={handleSubmit} noValidate className="space-y-4">
+        {formError ? (
+          <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500">
+            <p>{formError}</p>
+            {duplicateArchivedId ? (
+              <button type="button" onClick={() => void handleRestoreDuplicate()} disabled={restoring} className={`${operationsVisual.secondaryButton} mt-2`}>
+                {restoring ? labels.saving : labels.restoreAndOpen}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <OperationsFormField label={labels.firstNameLabel} error={fieldErrors.firstName}>
+            <OperationsTextField id="lead-first-name" value={firstName} onChange={(event) => setFirstName(event.target.value)} autoFocus />
+          </OperationsFormField>
+          <OperationsFormField label={labels.lastNameLabel}>
+            <OperationsTextField id="lead-last-name" value={lastName} onChange={(event) => setLastName(event.target.value)} />
+          </OperationsFormField>
+          <OperationsFormField label={labels.phoneLabel} error={fieldErrors.phone}>
+            <OperationsTextField id="lead-phone" type="tel" dir="ltr" value={phone} onChange={(event) => setPhone(event.target.value)} className="text-left" />
+          </OperationsFormField>
+          <OperationsFormField label={labels.emailLabel}>
+            <OperationsTextField id="lead-email" type="email" dir="ltr" value={email} onChange={(event) => setEmail(event.target.value)} className="text-left" />
+          </OperationsFormField>
+          <OperationsFormField label={labels.city}>
+            <OperationsTextField id="lead-city" value={city} onChange={(event) => setCity(event.target.value)} />
+          </OperationsFormField>
+          <OperationsFormField label={labels.sourceLabel}>
+            <OperationsTextField id="lead-source" value={source} onChange={(event) => setSource(event.target.value)} />
+          </OperationsFormField>
+          <OperationsFormField label={labels.projectLabel}>
+            <SettingsSelect value={projectId} onChange={setProjectId} options={[{ value: "", label: labels.noProject }, ...projects.map((p): SettingsSelectOption => ({ value: p.id, label: p.name }))]} className="w-full" />
+          </OperationsFormField>
+          {mode === "create" ? (
+            <OperationsFormField label={labels.assigneeLabel}>
+              <SettingsSelect value={assignedTo} onChange={setAssignedTo} options={[{ value: "", label: labels.unassigned }, ...assigneeOptions.map((u): SettingsSelectOption => ({ value: u.id, label: u.name }))]} className="w-full" />
+            </OperationsFormField>
+          ) : null}
         </div>
       </form>
-    </div>
+    </OperationsDialog>
   );
 }

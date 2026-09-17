@@ -1,31 +1,38 @@
-// app/operations/onboarding/OnboardingForm.tsx
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { completeOnboardingAction } from '@/app/actions/onboarding';
+import SettingsSelect from "@/components/settings/SettingsSelect";
+
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Building2, Loader2 } from "lucide-react";
+import { completeOnboardingAction } from "@/app/actions/onboarding";
+import {
+  OperationsFormField,
+  OperationsTextField,
+} from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
 
 export function OnboardingForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [city, setCity] = useState("الرياض");
   const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setError(null);
     setSuccess(null);
     setLoading(true);
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData(event.currentTarget);
     const result = await completeOnboardingAction(formData);
     setLoading(false);
 
     if (result.success) {
-      setSuccess("تم تفعيل وتحديث ملف منشأتك العقارية بنجاح! جاري الانتقال للوحة التحكم...");
-      setTimeout(() => {
-        // تحديث كاش السيرفر والانتقال التلقائي للوحة التحكم
-        router.refresh(); 
+      setSuccess("تم تفعيل وتحديث ملف منشأتك العقارية بنجاح. جاري الانتقال إلى لوحة العمليات…");
+      window.setTimeout(() => {
+        router.refresh();
         router.push("/operations");
       }, 1500);
     } else {
@@ -34,69 +41,61 @@ export function OnboardingForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs p-3 rounded-lg font-bold">
+    <form onSubmit={handleSubmit} noValidate className="grid gap-4" data-onboarding-form-contract>
+      {error ? (
+        <div role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2.5 text-xs font-bold text-rose-300">
           {error}
         </div>
-      )}
-      {success && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3 rounded-lg font-bold">
+      ) : null}
+      {success ? (
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-xs font-bold text-emerald-300">
           {success}
         </div>
-      )}
+      ) : null}
 
-      <div>
-        <label className="block text-xs font-bold text-[var(--nc-text-dim)] font-medium mb-1">الاسم الرسمي والكامل للمنشأة العقارية *</label>
-        <input 
-          type="text" 
-          name="companyName" 
+      <OperationsFormField label="الاسم الرسمي والكامل للمنشأة العقارية">
+        <OperationsTextField
+          name="companyName"
           required
           placeholder="مثال: شركة صرح الوطن العقارية"
-          className="w-full border rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
         />
-      </div>
+      </OperationsFormField>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="block text-xs font-bold text-[var(--nc-text-dim)] font-medium mb-1">المدينة (المقر الرئيسي) *</label>
-          <select name="city" className="w-full border rounded-lg p-2 text-xs">
-            <option>الرياض</option>
-            <option>جدة</option>
-            <option>الدمام</option>
-            <option>مكة المكرمة</option>
-            <option>الخبر</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-bold text-[var(--nc-text-dim)] font-medium mb-1">هاتف التواصل الإداري *</label>
-          <input 
-            type="tel" 
-            name="phone" 
-            required
-            placeholder="05xxxxxxxx"
-            className="w-full border rounded-lg p-2 text-xs focus:outline-none"
+      <div className="grid gap-3 sm:grid-cols-2">
+        <OperationsFormField label="المدينة (المقر الرئيسي)">
+          <SettingsSelect name="city" className="orca-operations-input" value={city} onChange={(value) => setCity(value)}
+            options={[{ value: "الرياض", label: "الرياض" },
+              { value: "جدة", label: "جدة" },
+              { value: "الدمام", label: "الدمام" },
+              { value: "مكة المكرمة", label: "مكة المكرمة" },
+              { value: "الخبر", label: "الخبر" }]}
           />
-        </div>
+        </OperationsFormField>
+
+        <OperationsFormField label="هاتف التواصل الإداري">
+          <OperationsTextField
+            type="tel"
+            name="phone"
+            required
+            inputMode="tel"
+            placeholder="05xxxxxxxx"
+            dir="ltr"
+          />
+        </OperationsFormField>
       </div>
 
-      <div>
-        <label className="block text-xs font-bold text-[var(--nc-text-dim)] font-medium mb-1">رقم السجل التجاري أو وثيقة العمل الحر المعنية *</label>
-        <input 
-          type="text" 
-          name="documentNumber" 
+      <OperationsFormField label="رقم السجل التجاري أو وثيقة العمل الحر">
+        <OperationsTextField
+          name="documentNumber"
           required
           placeholder="مثال: FL-837482"
-          className="w-full border rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+          dir="ltr"
         />
-      </div>
+      </OperationsFormField>
 
-      <button 
-        type="submit" 
-        disabled={loading}
-        className="w-full bg-[var(--nc-surface-solid)] text-white hover:bg-[var(--nc-surface-solid)] transition-colors p-2.5 rounded-lg text-xs font-bold cursor-pointer"
-      >
-        {loading ? "جاري تفعيل وحفظ المنشأة..." : "تنشيط وتفعيل كامل لوحة التحكم"}
+      <button type="submit" disabled={loading} className={`${operationsVisual.primaryButton} w-full`}>
+        {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Building2 aria-hidden="true" />}
+        {loading ? "جاري تفعيل المنشأة…" : "تنشيط لوحة العمليات"}
       </button>
     </form>
   );

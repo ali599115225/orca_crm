@@ -18,6 +18,8 @@ const documentsRoute = read("app/api/v1/documents/route.ts");
 const documentRoute = read("app/api/v1/documents/[id]/route.ts");
 const schema = read("prisma/schema.prisma");
 const policy = read("lib/tenant-model-policy.ts");
+const operationsDialog = read("components/operations/OperationsDialog.tsx");
+const operationsCss = read("app/operations/orca-page-contract-v1.css");
 
 describe("agents operational closure", () => {
   it("removes licensing and subscription concepts from the agents workspace", () => {
@@ -46,8 +48,15 @@ describe("agents operational closure", () => {
     expect(agentView).not.toContain("GEMINI_API_KEY");
   });
 
-  it("keeps action controls at least 44px high", () => {
-    expect(agentView.match(/min-h-\[44px\]/g)?.length || 0).toBeGreaterThanOrEqual(4);
+  it("routes agent actions through shared 44px Operations controls", () => {
+    const visual = read("features/operations/visual.ts");
+    const css = read("app/operations/orca-page-contract-v1.css");
+
+    expect(agentView).toContain("operationsVisual.primaryButton");
+    expect(agentView).toContain("operationsVisual.secondaryButton");
+    expect(agentView).toContain("operationsVisual.iconButton");
+    expect(visual).toContain('primaryButton: "orca-operations-primary-button"');
+    expect(css).toMatch(/orca-operations-primary-button[\s\S]*?min-height:\s*44px/);
   });
 });
 
@@ -62,19 +71,27 @@ describe("document repository closure", () => {
     expect(documentRoute).toContain("new Uint8Array(document.content)");
   });
 
-  it("enforces tenant isolation and role-based writes", () => {
-    expect(documentsRoute).toContain("runWithDatabaseSession");
-    expect(documentsRoute).toContain("tenantId: session.tenantId");
-    expect(documentRoute).toContain("tenantId: session.tenantId");
+  it("enforces the current document access boundary and tenant-scoped writes", () => {
+    const access = read("lib/documents/access.ts");
+
+    expect(documentsRoute).toContain("runWithDocumentAccess");
+    expect(documentRoute).toContain("runWithDocumentAccess");
+    expect(documentsRoute).not.toContain("runWithDatabaseSession");
+    expect(documentRoute).not.toContain("runWithDatabaseSession");
+    expect(access).toContain("runWithTenantContext");
+    expect(documentsRoute).toContain("tenantId: access.tenantId");
+    expect(documentRoute).toContain("tenantId: access.tenantId");
     expect(documentRoute).toContain("DOCUMENT_DELETE_ROLES");
     expect(documentRoute).toContain("deleteMany");
   });
 
-  it("uses portal dialogs, hidden internal scrolling, and 44px controls", () => {
-    expect(documentsView).toContain("createPortal");
-    expect(documentsView).toContain("pt-24");
-    expect(documentsView).toContain('scrollbarWidth: "none"');
-    expect(documentsView.match(/min-h-\[44px\]/g)?.length || 0).toBeGreaterThanOrEqual(10);
+  it("uses shared portal dialogs, hidden internal scrolling, and 44px controls", () => {
+    expect(documentsView).toContain("OperationsDialog");
+    expect(operationsDialog).toContain("createPortal(");
+    expect(operationsDialog).toContain("document.body");
+    expect(operationsCss).toContain(".orca-operations-dialog-body");
+    expect(operationsCss).toContain("scrollbar-width: none;");
+    expect(operationsCss).toContain("min-height: 44px;");
   });
 
   it("does not render storage paths, checksums, or visible UUID labels", () => {

@@ -50,13 +50,23 @@ describe("contract and dashboard architecture", () => {
     expect(wizardSource).toContain("selectedProperty");
   });
 
-  it("keeps destructive submission behind the final review step", () => {
-    const submitIndex = wizardSource.indexOf('type="submit"');
+  it("keeps destructive issuance behind an explicit final-review click", () => {
     const reviewIndex = wizardSource.indexOf("currentStep === 2");
+    const handlerIndex = wizardSource.indexOf(
+      "const handleIssueContract = async () =>",
+    );
+    const issueButtonIndex = wizardSource.indexOf(
+      "onClick={() => void handleIssueContract()}",
+    );
 
     expect(reviewIndex).toBeGreaterThan(-1);
-    expect(submitIndex).toBeGreaterThan(reviewIndex);
+    expect(handlerIndex).toBeGreaterThan(-1);
+    expect(issueButtonIndex).toBeGreaterThan(reviewIndex);
     expect(wizardSource).toContain("currentStep !== 2 || !canReview");
+    expect(wizardSource).toContain(
+      '<form onSubmit={(event) => event.preventDefault()}',
+    );
+    expect(wizardSource).not.toContain('type="submit"');
   });
 
   it("supports modal keyboard handling and focus restoration", () => {

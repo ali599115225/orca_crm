@@ -20,7 +20,6 @@ import {
 import { useApp } from "@/app/context/AppContext";
 import { displayPerson, displayGeo, displayEnum } from "@/lib/display";
 import type { DisplayLocale } from "@/lib/display";
-import InteractiveSurface from "@/components/ui/InteractiveSurface";
 import { formatNumber, formatDate } from "@/components/leads/helpers";
 import { LEAD_STATUS_VALUES, type LeadStatusValue } from "@/lib/leads/model";
 import { getLeadsAction, type GetLeadsResult, type LeadListRow, type LeadSortField } from "@/app/actions/leads";
@@ -28,7 +27,19 @@ import { leadsCopy } from "@/features/leads/copy/leadsCopy";
 import LeadFormDialog from "@/features/leads/components/LeadFormDialog";
 import SettingsSelect from "@/components/settings/SettingsSelect";
 import type { SettingsSelectOption } from "@/components/settings/SettingsSelect";
-import { leadStatusTone, leadVisual } from "@/features/leads/visual";
+import {
+  OperationsEmptyState,
+  OperationsKpiGrid,
+  OperationsMasterList,
+  OperationsMasterRow,
+  OperationsMetricCard,
+  OperationsPageHeader,
+  OperationsPanel,
+  OperationsPanelHeader,
+  OperationsTextField,
+} from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
+import { leadStatusTone } from "@/features/leads/visual";
 
 const PAGE_SIZE = 5;
 
@@ -170,82 +181,32 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
   };
 
   return (
-    <section ref={pageRootRef} dir={direction} className={leadVisual.page}>
-      {/* Scoped rule for the tagged layout scroller (Chromium/WebKit). */}
-      <style>{`[data-leads-hide-scrollbar]::-webkit-scrollbar{display:none;width:0;height:0}`}</style>
-      <div className={leadVisual.pageStack}>
-        <header className={leadVisual.workspaceHero}>
-          <div>
-            <p className={leadVisual.pageEyebrow}>{labels.breadcrumb}</p>
-            <h1 className={leadVisual.pageTitle}>{labels.title}</h1>
-            <p className={leadVisual.pageDescription}>{labels.subtitle}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowCreateDialog(true)}
-            className={leadVisual.primaryButton}
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            {labels.addLead}
-          </button>
-        </header>
+    <section ref={pageRootRef} dir={direction} className={operationsVisual.page} data-leads-workspace data-operations-contract="dashboard-v2">
+      <div className={operationsVisual.pageStack}>
+        <OperationsPageHeader
+          eyebrow={labels.breadcrumb}
+          title={labels.title}
+          description={labels.subtitle}
+          icon={UsersRound}
+          actions={
+            <button type="button" onClick={() => setShowCreateDialog(true)} className={operationsVisual.primaryButton}>
+              <Plus aria-hidden="true" />{labels.addLead}
+            </button>
+          }
+        />
 
-        {kpis && (
-          <div className={leadVisual.workspaceMetrics}>
-            {[
-              {
-                label: labels.totalLeads,
-                value: formatNumber(kpis.total, isArabic),
-                note: labels.leadRegistry,
-                icon: UsersRound,
-              },
-              {
-                label: labels.newLeads,
-                value: formatNumber(kpis.newCount, isArabic),
-                note: labels.thisWeek,
-                icon: UserPlus,
-              },
-              {
-                label: labels.qualified,
-                value: formatNumber(kpis.qualifiedCount, isArabic),
-                note: labels.readyFollowUp,
-                icon: BadgeCheck,
-              },
-              {
-                label: labels.conversion,
-                value: `${formatNumber(kpis.conversion, isArabic)}%`,
-                note: labels.closedRate,
-                icon: TrendingUp,
-              },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.label} className={leadVisual.metricCard}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className={leadVisual.label}>{item.label}</p>
-                      <strong className="mt-3 block text-2xl font-black tabular-nums tracking-tight text-[var(--nc-text-primary)]">
-                        {item.value}
-                      </strong>
-                    </div>
-                    <span className={leadVisual.metricIconTile}>
-                      <Icon className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                  </div>
-                  <p className="mt-4 text-xs font-medium leading-5 text-[var(--nc-text-secondary)]">
-                    {item.note}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        {kpis ? (
+          <OperationsKpiGrid aria-label={labels.title}>
+            <OperationsMetricCard title={labels.totalLeads} value={formatNumber(kpis.total, isArabic)} description={labels.leadRegistry} icon={UsersRound} />
+            <OperationsMetricCard title={labels.newLeads} value={formatNumber(kpis.newCount, isArabic)} description={labels.thisWeek} icon={UserPlus} />
+            <OperationsMetricCard title={labels.qualified} value={formatNumber(kpis.qualifiedCount, isArabic)} description={labels.readyFollowUp} icon={BadgeCheck} />
+            <OperationsMetricCard title={labels.conversion} value={`${formatNumber(kpis.conversion, isArabic)}%`} description={labels.closedRate} icon={TrendingUp} />
+          </OperationsKpiGrid>
+        ) : null}
 
-        <div
-          className={`${leadVisual.workspacePanel} lg:max-h-[560px]`}
-          data-operational-list-card
-        >
-          <div className={`${leadVisual.workspaceToolbar} p-3`}>
+        <OperationsPanel className="min-w-0 overflow-hidden" data-operational-list-card>
+          <OperationsPanelHeader title={labels.leadsList} description={`${formatNumber(result?.total || 0, isArabic)} ${labels.resultsCount}`} icon={UsersRound} />
+          <div className="border-b border-[var(--nc-border)] p-2.5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="relative flex-1">
               <Search
@@ -258,7 +219,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder={labels.searchPlaceholder}
                 aria-label={labels.searchPlaceholder}
-                className={`${leadVisual.input} ${isArabic ? "pr-9 pl-3" : "pl-9 pr-3"}`}
+                className={`orca-operations-input ${isArabic ? "pr-9 pl-3" : "pl-9 pr-3"}`}
               />
             </div>
 
@@ -271,7 +232,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                   setPage(1);
                 }}
                 options={[allStatusesOption, ...statusOptions]}
-                className={leadVisual.select}
+                className="w-full"
               />
 
               <SettingsSelect
@@ -282,7 +243,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                   setPage(1);
                 }}
                 options={sortOptions}
-                className={leadVisual.select}
+                className="w-full"
               />
 
               <button
@@ -294,8 +255,8 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                 aria-pressed={showArchived}
                 className={
                   showArchived
-                    ? `${leadVisual.secondaryButton} border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-accent-text)]`
-                    : leadVisual.secondaryButton
+                    ? `${operationsVisual.secondaryButton} border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-accent-text)]`
+                    : operationsVisual.secondaryButton
                 }
               >
                 <Archive className="h-3.5 w-3.5" aria-hidden="true" />
@@ -306,28 +267,27 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
           </div>
 
           <div
-            data-leads-hide-scrollbar
-            style={{ scrollbarWidth: "none" }}
-            className="min-h-0 flex-1 overflow-y-auto p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            data-leads-page-flow
+            className="orca-operations-flow-region p-3"
           >
             {loading ? (
-              <div className={leadVisual.emptyState}>
+              <div className={operationsVisual.emptyState}>
                 <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{labels.loading}</p>
               </div>
             ) : loadFailed ? (
-              <div className={`${leadVisual.emptyState} flex flex-col items-center gap-3`}>
+              <div className={`${operationsVisual.emptyState} flex flex-col items-center gap-3`}>
                 <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{labels.loadError}</p>
                 <button
                   type="button"
                   onClick={() => void loadLeads()}
-                  className={leadVisual.secondaryButton}
+                  className={operationsVisual.secondaryButton}
                 >
                   <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                   {labels.retry}
                 </button>
               </div>
             ) : rows.length === 0 ? (
-              <div className={leadVisual.emptyState}>
+              <div className={operationsVisual.emptyState}>
                 <p className="text-sm font-medium text-[var(--nc-text-secondary)]">{labels.noLeads}</p>
               </div>
             ) : (
@@ -344,66 +304,31 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                   <span>{labels.createdAtLabel}</span>
                 </div>
 
-                <ul className="space-y-2" aria-label={labels.leadsList}>
+                <OperationsMasterList aria-label={labels.leadsList}>
                   {rows.map((lead) => (
-                    <li key={lead.id}>
-                      <InteractiveSurface
-                        variant="row"
-                        onClick={() => openLead(lead.id)}
-                        aria-label={`${labels.lead}: ${leadDisplayName(lead)}`}
-                        className={`${leadVisual.interactiveRow} px-4 py-3 text-start`}
-                      >
-                        <span className="grid w-full grid-cols-1 items-center gap-2 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px_minmax(0,1fr)] md:gap-3 md:text-center">
-                          <span className="min-w-0 md:text-center">
-                            <span className="flex items-center gap-2 md:justify-center">
-                              <span className="block min-w-0 truncate text-sm font-bold text-[var(--nc-text-primary)]">
-                                <bdi dir="auto">{leadDisplayName(lead)}</bdi>
-                              </span>
-                              {lead.isArchived && (
-                                <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-2 py-0.5 text-[10px] font-bold text-[var(--nc-text-secondary)]">
-                                  {labels.archivedBadge}
-                                </span>
-                              )}
-                            </span>
-                            <span className="mt-1 block truncate text-start text-xs font-medium text-[var(--nc-text-secondary)] md:text-center">
-                              <bdi dir="ltr" className="inline-block tabular-nums">{lead.phone}</bdi>
-                            </span>
+                    <OperationsMasterRow
+                      key={lead.id}
+                      onClick={() => openLead(lead.id)}
+                      aria-label={`${labels.lead}: ${leadDisplayName(lead)}`}
+                      className="px-4 py-3"
+                    >
+                      <span className="grid w-full grid-cols-1 items-center gap-2 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px_minmax(0,1fr)] md:gap-3 md:text-center">
+                        <span className="min-w-0 md:text-center">
+                          <span className="flex items-center gap-2 md:justify-center">
+                            <span className="block min-w-0 truncate text-sm font-bold text-[var(--nc-text-primary)]"><bdi dir="auto">{leadDisplayName(lead)}</bdi></span>
+                            {lead.isArchived ? <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-2 py-0.5 text-[10px] font-bold text-[var(--nc-text-secondary)]">{labels.archivedBadge}</span> : null}
                           </span>
-
-                          <span className="min-w-0 md:flex md:justify-center">
-                            <span className={`inline-flex min-h-7 items-center rounded-full border px-2.5 text-xs font-bold ${leadStatusTone(lead.status)}`}>
-                              {displayEnum(lead.status, "leadStatus", displayLocale)}
-                            </span>
-                          </span>
-
-                          <span className="min-w-0 truncate text-xs font-semibold text-[var(--nc-text-secondary)] md:text-center">
-                            <bdi dir="auto">{displayEnum(lead.source, "leadSource", displayLocale)}</bdi>
-                            <span aria-hidden="true"> · </span>
-                            <bdi dir="auto">
-                              {displayGeo(lead.city, "city", displayLocale, { route: "/operations/leads" })}
-                            </bdi>
-                          </span>
-
-                          <span className="min-w-0 truncate text-xs font-semibold text-[var(--nc-text-secondary)] md:text-center">
-                            <bdi dir="auto">
-                              {lead.assignedUserName
-                                ? displayPerson(lead.assignedUserName, displayLocale, { route: "/operations/leads" })
-                                : labels.unassigned}
-                            </bdi>
-                          </span>
-
-                          <span className="text-center text-xs font-bold tabular-nums text-[var(--nc-text-primary)]">
-                            <bdi dir="ltr">{formatNumber(lead.leadScore, isArabic)}/{formatNumber(100, isArabic)}</bdi>
-                          </span>
-
-                          <span className="min-w-0 truncate text-xs font-semibold text-[var(--nc-text-secondary)] md:text-center">
-                            {formatDate(lead.createdAt, isArabic, labels.notSpecified)}
-                          </span>
+                          <span className="mt-1 block truncate text-start text-xs font-medium text-[var(--nc-text-secondary)] md:text-center"><bdi dir="ltr" className="inline-block tabular-nums">{lead.phone}</bdi></span>
                         </span>
-                      </InteractiveSurface>
-                    </li>
+                        <span className="min-w-0 md:flex md:justify-center"><span className={`inline-flex min-h-7 items-center rounded-full border px-2.5 text-xs font-bold ${leadStatusTone(lead.status)}`}>{displayEnum(lead.status, "leadStatus", displayLocale)}</span></span>
+                        <span className="min-w-0 truncate text-xs font-semibold text-[var(--nc-text-secondary)] md:text-center"><bdi dir="auto">{displayEnum(lead.source, "leadSource", displayLocale)}</bdi><span aria-hidden="true"> · </span><bdi dir="auto">{displayGeo(lead.city, "city", displayLocale, { route: "/operations/leads" })}</bdi></span>
+                        <span className="min-w-0 truncate text-xs font-semibold text-[var(--nc-text-secondary)] md:text-center"><bdi dir="auto">{lead.assignedUserName ? displayPerson(lead.assignedUserName, displayLocale, { route: "/operations/leads" }) : labels.unassigned}</bdi></span>
+                        <span className="text-center text-xs font-bold tabular-nums text-[var(--nc-text-primary)]"><bdi dir="ltr">{formatNumber(lead.leadScore, isArabic)}/{formatNumber(100, isArabic)}</bdi></span>
+                        <span className="min-w-0 truncate text-xs font-semibold text-[var(--nc-text-secondary)] md:text-center">{formatDate(lead.createdAt, isArabic, labels.notSpecified)}</span>
+                      </span>
+                    </OperationsMasterRow>
                   ))}
-                </ul>
+                </OperationsMasterList>
 
                 <div className="mt-3 flex items-center justify-between gap-3 text-xs font-medium text-[var(--nc-text-secondary)]">
                   <span>
@@ -412,7 +337,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                 </div>
 
                 {(result?.totalPages || 1) > 1 && (
-                  <div className={`${leadVisual.workspacePagination} mt-4 flex min-h-[56px] flex-col gap-3 px-1 pt-3 text-sm font-medium text-[var(--nc-text-secondary)] sm:flex-row sm:items-center sm:justify-between`}>
+                  <div className={`${operationsVisual.pagination} mt-4 flex min-h-[56px] flex-col gap-3 px-1 pt-3 text-sm font-medium text-[var(--nc-text-secondary)] sm:flex-row sm:items-center sm:justify-between`}>
                     <span>
                       {labels.page} {formatNumber(page, isArabic)} {labels.of}{" "}
                       {formatNumber(result?.totalPages || 1, isArabic)}
@@ -422,7 +347,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                         type="button"
                         disabled={page <= 1}
                         onClick={() => setPage((value) => Math.max(1, value - 1))}
-                        className={leadVisual.secondaryButton}
+                        className={operationsVisual.secondaryButton}
                       >
                         {labels.previous}
                       </button>
@@ -430,7 +355,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
                         type="button"
                         disabled={page >= (result?.totalPages || 1)}
                         onClick={() => setPage((value) => Math.min(result?.totalPages || 1, value + 1))}
-                        className={leadVisual.secondaryButton}
+                        className={operationsVisual.secondaryButton}
                       >
                         {labels.next}
                       </button>
@@ -440,7 +365,7 @@ export default function LeadsWorkspace({ viewerRole, viewerUserId }: LeadsWorksp
               </>
             )}
           </div>
-        </div>
+        </OperationsPanel>
       </div>
 
       {showCreateDialog && (

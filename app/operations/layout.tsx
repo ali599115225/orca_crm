@@ -1,5 +1,7 @@
 // app/operations/layout.tsx
 import React from 'react';
+import './orca-operations-v1.css';
+import './orca-page-contract-v1.css';
 import { getSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
@@ -20,10 +22,10 @@ function logOperationsDiagnostic(code: OperationsDiagnosticCode) {
 
 function TenantUnavailableState() {
   return (
-    <div dir="rtl" className="min-h-screen bg-slate-950 px-6 py-16 text-white">
-      <main className="mx-auto max-w-2xl">
-        <h1 className="text-2xl font-semibold">تعذر فتح لوحة العمليات</h1>
-        <p className="mt-4 text-sm leading-7 text-slate-300">
+    <div dir="rtl" className="orca-v1-unavailable-page">
+      <main className="orca-v1-unavailable-card">
+        <h1>تعذر فتح لوحة العمليات</h1>
+        <p>
           لا يمكن فتح اللوحة حالياً. يرجى التواصل مع مسؤول النظام للتحقق من حالة المنشأة.
         </p>
       </main>

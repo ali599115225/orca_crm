@@ -12,8 +12,15 @@ import {
   saveCustomAdvertisingProviderAction,
   saveStandardAdvertisingConnectionAction,
 } from "@/app/actions/advertising-integrations";
-import { SmartCard } from "@/components/ui/SmartCard";
-import SettingsButton from "@/components/settings/SettingsButton";
+import {
+  OperationsDialog,
+  OperationsFormField,
+  OperationsPanel,
+  OperationsPanelHeader,
+  OperationsTextField,
+  OperationsTextareaField,
+} from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
 import SettingsSelect from "@/components/settings/SettingsSelect";
 
 type StandardPlatform =
@@ -470,26 +477,24 @@ export default function AdvertisingPlatformIntegrations({
   }
 
   return (
-    <section className="orca-settings-section orca-settings-advertising-section">
-      <header className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-5 py-4">
-        <h2 className="text-xl font-black text-[var(--nc-foreground)]">
-          {L("الحملات الإعلانية", "Advertising Campaigns")}
-        </h2>
-        <p className="mt-1 max-w-3xl text-sm font-medium leading-6 text-[var(--nc-foreground-secondary)]">
-          {L(
+    <section className="orca-settings-section orca-settings-advertising-section grid gap-4">
+      <OperationsPanel>
+        <OperationsPanelHeader
+          title={L("الحملات الإعلانية", "Advertising Campaigns")}
+          description={L(
             "إدارة حسابات الإعلانات وبيانات اعتماد كل شركة. إنشاء الحملات وتشغيلها يتم من مساحة الحملات التشغيلية.",
             "Manage advertising accounts and each company’s credentials. Campaign creation and execution remain in the operational campaigns workspace.",
           )}
-        </p>
-      </header>
+        />
+      </OperationsPanel>
 
       {notice ? (
         <div
-          role="status"
-          className={`rounded-2xl border px-4 py-3 text-sm font-bold ${
+          role={notice.type === "error" ? "alert" : "status"}
+          className={`rounded-xl border px-4 py-3 text-xs font-bold ${
             notice.type === "success"
-              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-              : "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+              : "border-rose-500/30 bg-rose-500/10 text-rose-300"
           }`}
         >
           {notice.text}
@@ -497,9 +502,11 @@ export default function AdvertisingPlatformIntegrations({
       ) : null}
 
       {loading ? (
-        <SmartCard className="p-6 text-center text-sm text-[var(--nc-foreground-muted)]">
-          {L("جاري تحميل المنصات...", "Loading platforms...")}
-        </SmartCard>
+        <OperationsPanel padded>
+          <p className="text-center text-xs text-[var(--nc-text-secondary)]">
+            {L("جاري تحميل المنصات...", "Loading platforms...")}
+          </p>
+        </OperationsPanel>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {PLATFORMS.map((platform) => {
@@ -509,41 +516,24 @@ export default function AdvertisingPlatformIntegrations({
             const status = platformStatus(connection);
 
             return (
-              <SmartCard
-                key={platform.id}
-                className="orca-settings-card flex min-h-[230px] flex-col rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 transition-all duration-150 hover:border-[var(--nc-border-strong)] hover:bg-[var(--nc-surface-strong)]"
-              >
+              <OperationsPanel key={platform.id} padded className="flex min-h-[230px] flex-col">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]">
-                      <i
-                        className={`ph-bold ${platform.icon} text-lg`}
-                        aria-hidden="true"
-                      />
-                    </span>
-
-                    <div className="min-w-0">
-                      <h3 className="truncate text-sm font-black text-[var(--nc-foreground)]">
-                        {L(platform.ar, platform.en)}
-                      </h3>
-                      <p className="mt-1 text-xs text-[var(--nc-foreground-muted)]">
-                        {connection?.accountId
-                          ? `${L("الحساب", "Account")}: ••••${connection.accountId.slice(-4)}`
-                          : L("لا يوجد حساب محفوظ", "No saved account")}
-                      </p>
-                    </div>
+                  <div className="min-w-0">
+                    <h3 className={operationsVisual.sectionTitle}>
+                      {L(platform.ar, platform.en)}
+                    </h3>
+                    <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+                      {connection?.accountId
+                        ? `${L("الحساب", "Account")}: ••••${connection.accountId.slice(-4)}`
+                        : L("لا يوجد حساب محفوظ", "No saved account")}
+                    </p>
                   </div>
-
-                  <span
-                    className={`min-w-[88px] shrink-0 rounded-full border px-2.5 py-1 text-center text-[10px] font-black ${statusClasses(
-                      status.value,
-                    )}`}
-                  >
+                  <span className={`min-w-[88px] shrink-0 rounded-full border px-2.5 py-1 text-center text-[10px] font-black ${statusClasses(status.value)}`}>
                     {status.label}
                   </span>
                 </div>
 
-                <p className="mt-4 text-xs leading-6 text-[var(--nc-foreground-muted)]">
+                <p className="mt-4 text-xs leading-6 text-[var(--nc-text-secondary)]">
                   {platform.id === "TIKTOK"
                     ? L(
                         "ربط آمن عبر OAuth واختيار حساب المعلن.",
@@ -555,19 +545,14 @@ export default function AdvertisingPlatformIntegrations({
                       )}
                 </p>
 
-                <SettingsButton
-                  variant={
-                    connection ? "secondary" : "primary"
-                  }
-                  className="mt-auto w-[148px] justify-center self-start"
+                <button
+                  type="button"
+                  className={`${connection ? operationsVisual.secondaryButton : operationsVisual.primaryButton} mt-auto self-start`}
                   onClick={() => {
                     if (platform.id === "TIKTOK") {
-                      window.location.assign(
-                        "/api/integrations/tiktok/oauth/start",
-                      );
+                      window.location.assign("/api/integrations/tiktok/oauth/start");
                       return;
                     }
-
                     openStandardPlatform(platform.id);
                   }}
                 >
@@ -578,455 +563,252 @@ export default function AdvertisingPlatformIntegrations({
                     : connection
                       ? L("إدارة الربط", "Manage connection")
                       : L("تهيئة المنصة", "Configure platform")}
-                </SettingsButton>
-              </SmartCard>
+                </button>
+              </OperationsPanel>
             );
           })}
 
           {(() => {
             const status = platformStatus(customConnection);
-
             return (
-              <SmartCard className="orca-settings-card flex min-h-[230px] flex-col rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 transition-all duration-150 hover:border-[var(--nc-border-strong)] hover:bg-[var(--nc-surface-strong)] md:col-span-2 xl:col-span-3">
+              <OperationsPanel padded className="flex min-h-[230px] flex-col md:col-span-2 xl:col-span-3">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-foreground)]">
-                      <i
-                        className="ph-bold ph-plugs-connected text-lg"
-                        aria-hidden="true"
-                      />
-                    </span>
-
-                    <div className="min-w-0">
-                      <h3 className="truncate text-sm font-black text-[var(--nc-foreground)]">
-                        {customConnection?.displayName ||
-                          L("مزود إعلاني آخر", "Other advertising provider")}
-                      </h3>
-                      <p className="mt-1 text-xs text-[var(--nc-foreground-muted)]">
-                        {customConnection?.accountId
-                          ? `${L("الحساب", "Account")}: ••••${customConnection.accountId.slice(-4)}`
-                          : L("مزود مخصص للشركة", "Company-specific provider")}
-                      </p>
-                    </div>
+                  <div className="min-w-0">
+                    <h3 className={operationsVisual.sectionTitle}>
+                      {customConnection?.displayName || L("مزود إعلاني آخر", "Other advertising provider")}
+                    </h3>
+                    <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
+                      {customConnection?.accountId
+                        ? `${L("الحساب", "Account")}: ••••${customConnection.accountId.slice(-4)}`
+                        : L("مزود مخصص للشركة", "Company-specific provider")}
+                    </p>
                   </div>
-
-                  <span
-                    className={`min-w-[88px] shrink-0 rounded-full border px-2.5 py-1 text-center text-[10px] font-black ${statusClasses(
-                      status.value,
-                    )}`}
-                  >
+                  <span className={`min-w-[88px] shrink-0 rounded-full border px-2.5 py-1 text-center text-[10px] font-black ${statusClasses(status.value)}`}>
                     {status.label}
                   </span>
                 </div>
-
-                <p className="mt-4 text-xs leading-6 text-[var(--nc-foreground-muted)]">
+                <p className="mt-4 text-xs leading-6 text-[var(--nc-text-secondary)]">
                   {L(
                     "ربط API أو OAuth أو رابط خارجي مع مسارات تشغيل الحملات.",
                     "API, OAuth, or external-link connection with campaign operation paths.",
                   )}
                 </p>
-
-                <SettingsButton
-                  variant={customConnection ? "secondary" : "primary"}
-                  className="mt-auto w-[148px] justify-center self-start"
+                <button
+                  type="button"
+                  className={`${customConnection ? operationsVisual.secondaryButton : operationsVisual.primaryButton} mt-auto self-start`}
                   onClick={openCustomProvider}
                 >
-                  {customConnection
-                    ? L("إدارة المزود", "Manage provider")
-                    : L("إضافة مزود", "Add provider")}
-                </SettingsButton>
-              </SmartCard>
+                  {customConnection ? L("إدارة المزود", "Manage provider") : L("إضافة مزود", "Add provider")}
+                </button>
+              </OperationsPanel>
             );
           })()}
         </div>
       )}
 
       {tiktokAdvertisers.length > 0 ? (
-        <SmartCard className="p-5">
-          <h3 className="text-base font-black text-[var(--nc-foreground)]">
-            {L(
-              "اختر حساب TikTok الإعلاني",
-              "Select a TikTok advertiser account",
-            )}
+        <OperationsPanel padded>
+          <h3 className={operationsVisual.sectionTitle}>
+            {L("اختر حساب TikTok الإعلاني", "Select a TikTok advertiser account")}
           </h3>
-
-          <div className="mt-4 space-y-2">
+          <div className="mt-4 grid gap-2">
             {tiktokAdvertisers.map((advertiser) => (
-              <label
-                key={advertiser.advertiserId}
-                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-[var(--nc-border)] px-4 py-3"
-              >
+              <label key={advertiser.advertiserId} className={operationsVisual.interactiveContentCard + " flex min-h-11 cursor-pointer items-center gap-3 p-3"}>
                 <input
                   type="radio"
                   name="tiktok-advertiser"
-                  checked={
-                    tiktokAdvertiserId === advertiser.advertiserId
-                  }
-                  onChange={() =>
-                    setTikTokAdvertiserId(advertiser.advertiserId)
-                  }
+                  checked={tiktokAdvertiserId === advertiser.advertiserId}
+                  onChange={() => setTikTokAdvertiserId(advertiser.advertiserId)}
                 />
                 <span className="min-w-0">
-                  <strong className="block truncate text-sm text-[var(--nc-foreground)]">
-                    {advertiser.advertiserName}
-                  </strong>
-                  <span className="text-xs text-[var(--nc-foreground-muted)]">
-                    {advertiser.advertiserId}
-                  </span>
+                  <strong className="block truncate text-xs text-[var(--nc-text-primary)]">{advertiser.advertiserName}</strong>
+                  <span className={operationsVisual.meta}>{advertiser.advertiserId}</span>
                 </span>
               </label>
             ))}
           </div>
-
-          <SettingsButton
-            variant="primary"
-            className="mt-4"
+          <button
+            type="button"
+            className={`${operationsVisual.primaryButton} mt-4`}
             disabled={tiktokCompleting || !tiktokAdvertiserId}
             onClick={() => void completeTikTokConnection()}
           >
-            {tiktokCompleting
-              ? L("جاري الربط...", "Connecting...")
-              : L("اعتماد الحساب المحدد", "Connect selected account")}
-          </SettingsButton>
-        </SmartCard>
+            {tiktokCompleting ? L("جاري الربط...", "Connecting...") : L("اعتماد الحساب المحدد", "Connect selected account")}
+          </button>
+        </OperationsPanel>
       ) : null}
 
-      {selectedPlatform ? (
-        <SmartCard className="p-6">
-          <form onSubmit={submitStandard} className="space-y-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-base font-black text-[var(--nc-foreground)]">
-                  {L("إعداد المنصة", "Platform configuration")}
-                </h3>
-                <p className="mt-1 text-xs text-[var(--nc-foreground-muted)]">
-                  {L(
-                    PLATFORMS.find(
-                      (item) => item.id === selectedPlatform,
-                    )?.ar || selectedPlatform,
-                    PLATFORMS.find(
-                      (item) => item.id === selectedPlatform,
-                    )?.en || selectedPlatform,
-                  )}
-                </p>
-              </div>
+      <OperationsDialog
+        open={Boolean(selectedPlatform)}
+        onClose={() => setSelectedPlatform(null)}
+        title={L("إعداد المنصة", "Platform configuration")}
+        description={selectedPlatform ? L(
+          PLATFORMS.find((item) => item.id === selectedPlatform)?.ar || selectedPlatform,
+          PLATFORMS.find((item) => item.id === selectedPlatform)?.en || selectedPlatform,
+        ) : undefined}
+        closeLabel={L("إغلاق", "Close")}
+        closeDisabled={pending}
+        dir={isArabic ? "rtl" : "ltr"}
+        className="max-w-2xl"
+        footer={
+          <>
+            <button type="button" className={operationsVisual.secondaryButton} onClick={() => setSelectedPlatform(null)} disabled={pending}>
+              {L("إلغاء", "Cancel")}
+            </button>
+            <button type="submit" form="settings-ad-platform-form" className={operationsVisual.primaryButton} disabled={pending}>
+              {pending ? L("جاري الحفظ...", "Saving...") : L("حفظ إعدادات الربط", "Save connection settings")}
+            </button>
+          </>
+        }
+      >
+        {selectedPlatform ? (
+          <form id="settings-ad-platform-form" onSubmit={submitStandard} noValidate className="grid gap-4 md:grid-cols-2">
+            <OperationsFormField label={`${L("معرّف الحساب", "Account ID")} *`}>
+              <OperationsTextField required value={accountId} onChange={(event) => setAccountId(event.target.value)} />
+            </OperationsFormField>
 
-              <SettingsButton
-                variant="ghost"
-                onClick={() => setSelectedPlatform(null)}
+            <OperationsFormField
+              label={selectedConnection?.hasApiKey
+                ? L("مفتاح جديد — اتركه فارغًا للإبقاء على الحالي", "New key — leave blank to retain the current one")
+                : L("مفتاح API", "API key")}
+            >
+              <OperationsTextField
+                type="password"
+                value={apiKey}
+                required={!selectedConnection?.hasApiKey}
+                autoComplete="new-password"
+                onChange={(event) => setApiKey(event.target.value)}
+              />
+            </OperationsFormField>
+
+            <OperationsFormField label={L("نبرة التواصل", "Lead communication tone")}>
+              <SettingsSelect
+                className="w-full"
+                value={leadTone}
+                onChange={setLeadTone}
+                options={[
+                  { value: "PROFESSIONAL", label: L("مهنية", "Professional") },
+                  { value: "FRIENDLY", label: L("ودية", "Friendly") },
+                  { value: "FORMAL", label: L("رسمية", "Formal") },
+                ]}
+              />
+            </OperationsFormField>
+
+            <OperationsFormField className="md:col-span-2" label={L("رسالة الترحيب التلقائية", "Automatic welcome message")}>
+              <OperationsTextareaField rows={3} value={autoWelcomeMsg} onChange={(event) => setAutoWelcomeMsg(event.target.value)} />
+            </OperationsFormField>
+          </form>
+        ) : null}
+      </OperationsDialog>
+
+      <OperationsDialog
+        open={customOpen}
+        onClose={() => setCustomOpen(false)}
+        title={L("مزود إعلاني آخر", "Other advertising provider")}
+        description={L(
+          "لا يتم ادعاء نجاح الاتصال قبل توفر موصل حقيقي من المزود.",
+          "Connection is not marked successful until a real provider connector is available.",
+        )}
+        closeLabel={L("إغلاق", "Close")}
+        closeDisabled={pending}
+        dir={isArabic ? "rtl" : "ltr"}
+        className="max-w-3xl"
+        footer={
+          <>
+            <button type="button" className={operationsVisual.secondaryButton} onClick={() => setCustomOpen(false)} disabled={pending}>
+              {L("إلغاء", "Cancel")}
+            </button>
+            <button type="submit" form="settings-custom-ad-provider-form" className={operationsVisual.primaryButton} disabled={pending}>
+              {pending ? L("جاري الحفظ...", "Saving...") : L("حفظ المزود الإعلاني", "Save advertising provider")}
+            </button>
+          </>
+        }
+      >
+        <form id="settings-custom-ad-provider-form" onSubmit={submitCustom} noValidate className="grid gap-4 md:grid-cols-2">
+          <OperationsFormField label={`${L("اسم المزود", "Provider name")} *`}>
+            <OperationsTextField
+              required
+              value={customForm.displayName}
+              onChange={(event) => setCustomForm((current) => ({ ...current, displayName: event.target.value }))}
+            />
+          </OperationsFormField>
+
+          <OperationsFormField label={`${L("معرّف الحساب الإعلاني", "Advertising account ID")} *`}>
+            <OperationsTextField
+              required
+              value={customForm.accountId}
+              onChange={(event) => setCustomForm((current) => ({ ...current, accountId: event.target.value }))}
+            />
+          </OperationsFormField>
+
+          <OperationsFormField label={`${L("طريقة الربط", "Connection method")} *`}>
+            <SettingsSelect
+              className="w-full"
+              value={customForm.connectionMode}
+              onChange={(value) => setCustomForm((current) => ({ ...current, connectionMode: value as ConnectionMode }))}
+              options={[
+                { value: "API", label: "API" },
+                { value: "OAUTH", label: "OAuth" },
+                { value: "EXTERNAL_LINK", label: L("رابط خارجي", "External link") },
+              ]}
+            />
+          </OperationsFormField>
+
+          <OperationsFormField label={`${L("رابط API الأساسي", "Base API URL")} *`}>
+            <OperationsTextField
+              required
+              type="url"
+              placeholder="https://api.provider.example"
+              value={customForm.baseUrl}
+              onChange={(event) => setCustomForm((current) => ({ ...current, baseUrl: event.target.value }))}
+            />
+          </OperationsFormField>
+
+          {customForm.connectionMode !== "EXTERNAL_LINK" ? (
+            <>
+              <OperationsFormField
+                className="md:col-span-2"
+                label={customConnection?.hasCredentials
+                  ? L("بيانات اعتماد جديدة — اتركها فارغة للإبقاء على الحالية", "New credential — leave blank to retain the current one")
+                  : L("مفتاح أو رمز الوصول", "API key or access token")}
               >
-                {L("إغلاق", "Close")}
-              </SettingsButton>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <label className="space-y-2">
-                <span className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
-                  {L("معرّف الحساب", "Account ID")} *
-                </span>
-                <input
-                  required
-                  value={accountId}
-                  onChange={(event) => setAccountId(event.target.value)}
-                  className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] outline-none focus:border-[var(--nc-accent-border)]"
-                />
-              </label>
-
-              <label className="space-y-2">
-                <span className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
-                  {selectedConnection?.hasApiKey
-                    ? L(
-                        "مفتاح جديد — اتركه فارغًا للإبقاء على الحالي",
-                        "New key — leave blank to retain the current one",
-                      )
-                    : L("مفتاح API", "API key")}
-                </span>
-                <input
+                <OperationsTextField
                   type="password"
-                  value={apiKey}
-                  required={!selectedConnection?.hasApiKey}
+                  required={!customConnection?.hasCredentials}
                   autoComplete="new-password"
-                  onChange={(event) => setApiKey(event.target.value)}
-                  className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] outline-none focus:border-[var(--nc-accent-border)]"
+                  value={customForm.credential}
+                  onChange={(event) => setCustomForm((current) => ({ ...current, credential: event.target.value }))}
                 />
-              </label>
+              </OperationsFormField>
 
-              <label className="space-y-2">
-                <span className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
-                  {L("نبرة التواصل", "Lead communication tone")}
-                </span>
-                <SettingsSelect
-                  className="w-full"
-                  value={leadTone}
-                  onChange={setLeadTone}
-                  options={[
-                    {
-                      value: "PROFESSIONAL",
-                      label: L("مهنية", "Professional"),
-                    },
-                    {
-                      value: "FRIENDLY",
-                      label: L("ودية", "Friendly"),
-                    },
-                    {
-                      value: "FORMAL",
-                      label: L("رسمية", "Formal"),
-                    },
-                  ]}
-                />
-              </label>
+              <OperationsFormField label={L("اسم ترويسة التوثيق", "Authorization header")}>
+                <OperationsTextField value={customForm.authHeaderName} onChange={(event) => setCustomForm((current) => ({ ...current, authHeaderName: event.target.value }))} />
+              </OperationsFormField>
 
-              <label className="space-y-2 md:col-span-2">
-                <span className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
-                  {L(
-                    "رسالة الترحيب التلقائية",
-                    "Automatic welcome message",
-                  )}
-                </span>
-                <textarea
-                  rows={3}
-                  value={autoWelcomeMsg}
-                  onChange={(event) =>
-                    setAutoWelcomeMsg(event.target.value)
-                  }
-                  className="w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 py-3 text-sm text-[var(--nc-foreground)] outline-none focus:border-[var(--nc-accent-border)]"
-                />
-              </label>
-            </div>
+              <OperationsFormField label={L("نظام التوثيق", "Authorization scheme")}>
+                <OperationsTextField value={customForm.authScheme} onChange={(event) => setCustomForm((current) => ({ ...current, authScheme: event.target.value }))} />
+              </OperationsFormField>
 
-            <SettingsButton
-              type="submit"
-              variant="primary"
-              disabled={pending}
-            >
-              {pending
-                ? L("جاري الحفظ...", "Saving...")
-                : L("حفظ إعدادات الربط", "Save connection settings")}
-            </SettingsButton>
-          </form>
-        </SmartCard>
-      ) : null}
-
-      {customOpen ? (
-        <SmartCard className="p-6">
-          <form onSubmit={submitCustom} className="space-y-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-base font-black text-[var(--nc-foreground)]">
-                  {L("مزود إعلاني آخر", "Other advertising provider")}
-                </h3>
-                <p className="mt-1 text-xs text-[var(--nc-foreground-muted)]">
-                  {L(
-                    "لا يتم ادعاء نجاح الاتصال قبل توفر موصل حقيقي من المزود.",
-                    "Connection is not marked successful until a real provider connector is available.",
-                  )}
-                </p>
-              </div>
-
-              <SettingsButton
-                variant="ghost"
-                onClick={() => setCustomOpen(false)}
-              >
-                {L("إغلاق", "Close")}
-              </SettingsButton>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <label className="space-y-2">
-                <span className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
-                  {L("اسم المزود", "Provider name")} *
-                </span>
-                <input
-                  required
-                  value={customForm.displayName}
-                  onChange={(event) =>
-                    setCustomForm((current) => ({
-                      ...current,
-                      displayName: event.target.value,
-                    }))
-                  }
-                  className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
-                />
-              </label>
-
-              <label className="space-y-2">
-                <span className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
-                  {L("معرّف الحساب الإعلاني", "Advertising account ID")} *
-                </span>
-                <input
-                  required
-                  value={customForm.accountId}
-                  onChange={(event) =>
-                    setCustomForm((current) => ({
-                      ...current,
-                      accountId: event.target.value,
-                    }))
-                  }
-                  className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
-                />
-              </label>
-
-              <label className="space-y-2">
-                <span className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
-                  {L("طريقة الربط", "Connection method")} *
-                </span>
-                <SettingsSelect
-                  className="w-full"
-                  value={customForm.connectionMode}
-                  onChange={(value) =>
-                    setCustomForm((current) => ({
-                      ...current,
-                      connectionMode: value as ConnectionMode,
-                    }))
-                  }
-                  options={[
-                    { value: "API", label: "API" },
-                    { value: "OAUTH", label: "OAuth" },
-                    {
-                      value: "EXTERNAL_LINK",
-                      label: L("رابط خارجي", "External link"),
-                    },
-                  ]}
-                />
-              </label>
-
-              <label className="space-y-2">
-                <span className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
-                  {L("رابط API الأساسي", "Base API URL")} *
-                </span>
-                <input
-                  required
-                  type="url"
-                  placeholder="https://api.provider.example"
-                  value={customForm.baseUrl}
-                  onChange={(event) =>
-                    setCustomForm((current) => ({
-                      ...current,
-                      baseUrl: event.target.value,
-                    }))
-                  }
-                  className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
-                />
-              </label>
-
-              {customForm.connectionMode !== "EXTERNAL_LINK" ? (
-                <>
-                  <label className="space-y-2 md:col-span-2">
-                    <span className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
-                      {customConnection?.hasCredentials
-                        ? L(
-                            "بيانات اعتماد جديدة — اتركها فارغة للإبقاء على الحالية",
-                            "New credential — leave blank to retain the current one",
-                          )
-                        : L(
-                            "مفتاح أو رمز الوصول",
-                            "API key or access token",
-                          )}
-                    </span>
-                    <input
-                      type="password"
-                      required={!customConnection?.hasCredentials}
-                      autoComplete="new-password"
-                      value={customForm.credential}
-                      onChange={(event) =>
-                        setCustomForm((current) => ({
-                          ...current,
-                          credential: event.target.value,
-                        }))
-                      }
-                      className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
-                    />
-                  </label>
-
-                  <label className="space-y-2">
-                    <span className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
-                      {L("اسم ترويسة التوثيق", "Authorization header")}
-                    </span>
-                    <input
-                      value={customForm.authHeaderName}
-                      onChange={(event) =>
-                        setCustomForm((current) => ({
-                          ...current,
-                          authHeaderName: event.target.value,
-                        }))
-                      }
-                      className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
-                    />
-                  </label>
-
-                  <label className="space-y-2">
-                    <span className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
-                      {L("نظام التوثيق", "Authorization scheme")}
-                    </span>
-                    <input
-                      value={customForm.authScheme}
-                      onChange={(event) =>
-                        setCustomForm((current) => ({
-                          ...current,
-                          authScheme: event.target.value,
-                        }))
-                      }
-                      className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)]"
-                    />
-                  </label>
-
-                  {[
-                    [
-                      "createCampaignPath",
-                      L("مسار إنشاء الحملة", "Create campaign path"),
-                    ],
-                    [
-                      "pauseCampaignPath",
-                      L("مسار إيقاف الحملة", "Pause campaign path"),
-                    ],
-                    [
-                      "resumeCampaignPath",
-                      L("مسار استئناف الحملة", "Resume campaign path"),
-                    ],
-                    [
-                      "syncCampaignPath",
-                      L("مسار مزامنة الحملة", "Sync campaign path"),
-                    ],
-                  ].map(([key, label]) => (
-                    <label key={key} className="space-y-2">
-                      <span className="block text-xs font-bold text-[var(--nc-foreground-muted)]">
-                        {label} *
-                      </span>
-                      <input
-                        required
-                        placeholder="/v1/campaigns/..."
-                        value={
-                          customForm[
-                            key as keyof typeof customForm
-                          ] as string
-                        }
-                        onChange={(event) =>
-                          setCustomForm((current) => ({
-                            ...current,
-                            [key]: event.target.value,
-                          }))
-                        }
-                        className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 font-mono text-sm text-[var(--nc-foreground)]"
-                      />
-                    </label>
-                  ))}
-                </>
-              ) : null}
-            </div>
-
-            <SettingsButton
-              type="submit"
-              variant="primary"
-              disabled={pending}
-            >
-              {pending
-                ? L("جاري الحفظ...", "Saving...")
-                : L("حفظ المزود الإعلاني", "Save advertising provider")}
-            </SettingsButton>
-          </form>
-        </SmartCard>
-      ) : null}
+              {([
+                ["createCampaignPath", L("مسار إنشاء الحملة", "Create campaign path")],
+                ["pauseCampaignPath", L("مسار إيقاف الحملة", "Pause campaign path")],
+                ["resumeCampaignPath", L("مسار استئناف الحملة", "Resume campaign path")],
+                ["syncCampaignPath", L("مسار مزامنة الحملة", "Sync campaign path")],
+              ] as const).map(([key, label]) => (
+                <OperationsFormField key={key} label={`${label} *`}>
+                  <OperationsTextField
+                    required
+                    placeholder="/v1/campaigns/..."
+                    value={customForm[key]}
+                    onChange={(event) => setCustomForm((current) => ({ ...current, [key]: event.target.value }))}
+                    className="font-mono"
+                  />
+                </OperationsFormField>
+              ))}
+            </>
+          ) : null}
+        </form>
+      </OperationsDialog>
     </section>
   );
 }
-

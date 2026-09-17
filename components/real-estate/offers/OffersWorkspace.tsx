@@ -14,10 +14,26 @@ import {
   Search,
   Send,
   TrendingUp,
-  X,
 } from "lucide-react";
-import SettingsSelect from "@/components/settings/SettingsSelect";
 import { useApp } from "@/app/context/AppContext";
+import SettingsSelect from "@/components/settings/SettingsSelect";
+import {
+  OperationsDateTimeFields,
+  OperationsDialog,
+  OperationsEmptyState,
+  OperationsKpiGrid,
+  OperationsMetricCard,
+  OperationsMasterList,
+  OperationsMasterRow,
+  OperationsNumberField,
+  OperationsPageHeader,
+  OperationsPanel,
+} from "@/components/operations";
+import {
+  parseOperationsDate,
+  parseOperationsLocalDateTime,
+} from "@/components/operations/OperationsDateTimeFields";
+import { operationsVisual } from "@/features/operations/visual";
 
 type OfferRow = {
   id: string;
@@ -71,6 +87,8 @@ type Stats = {
   activeValue: number;
 };
 
+type FormErrors = Partial<Record<"opportunity" | "price" | "validUntil" | "tourTime", string>>;
+
 const EMPTY_STATS: Stats = {
   total: 0,
   active: 0,
@@ -81,14 +99,16 @@ const EMPTY_STATS: Stats = {
 };
 
 const STATUS_OPTIONS = [
-  { value: "", label: "كل الحالات" },
-  { value: "PENDING", label: "مسودة / معلّق" },
-  { value: "SENT", label: "مرسل" },
-  { value: "NEGOTIATION", label: "قيد التفاوض" },
-  { value: "ACCEPTED", label: "مقبول" },
-  { value: "REJECTED", label: "مرفوض" },
-  { value: "EXPIRED", label: "منتهي" },
+  { value: "", ar: "كل الحالات", en: "All statuses" },
+  { value: "PENDING", ar: "مسودة / معلّق", en: "Draft / pending" },
+  { value: "SENT", ar: "مرسل", en: "Sent" },
+  { value: "NEGOTIATION", ar: "قيد التفاوض", en: "Negotiation" },
+  { value: "ACCEPTED", ar: "مقبول", en: "Accepted" },
+  { value: "REJECTED", ar: "مرفوض", en: "Rejected" },
+  { value: "EXPIRED", ar: "منتهي", en: "Expired" },
 ];
+
+const PAGE_SIZE = 5;
 
 function money(value: number, locale: string) {
   return new Intl.NumberFormat(locale, {
@@ -101,22 +121,14 @@ function money(value: number, locale: string) {
 function shortDate(value: string, locale: string) {
   return new Intl.DateTimeFormat(locale, {
     year: "numeric",
-    month: "short",
-    day: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   }).format(new Date(value));
 }
 
 function statusLabel(status: string, ar: boolean) {
-  const labels: Record<string, [string, string]> = {
-    PENDING: ["مسودة / معلّق", "Draft / pending"],
-    SENT: ["مرسل", "Sent"],
-    NEGOTIATION: ["قيد التفاوض", "Negotiation"],
-    ACCEPTED: ["مقبول", "Accepted"],
-    REJECTED: ["مرفوض", "Rejected"],
-    EXPIRED: ["منتهي", "Expired"],
-  };
-  const item = labels[status] || [status, status];
-  return ar ? item[0] : item[1];
+  const item = STATUS_OPTIONS.find((option) => option.value === status);
+  return item ? (ar ? item.ar : item.en) : status;
 }
 
 function statusClass(status: string) {
@@ -127,18 +139,21 @@ function statusClass(status: string) {
   return "border-amber-500/30 bg-amber-500/10 text-amber-300";
 }
 
-const PAGE_SIZE = 5;
+function fieldClass(error = false) {
+  return [
+    "h-11 w-full rounded-xl border bg-[var(--nc-surface-solid)] px-3 text-sm text-[var(--nc-text-primary)] outline-none transition",
+    error
+      ? "border-rose-500/60 focus:border-rose-400"
+      : "border-[var(--nc-border)] focus:border-[var(--nc-accent-border)]",
+  ].join(" ");
+}
 
-export default function OffersWorkspace({
-  canWrite,
-}: {
-  canWrite: boolean;
-}) {
+export default function OffersWorkspace({ canWrite }: { canWrite: boolean }) {
   const { lang } = useApp();
   const searchParams = useSearchParams();
   const ar = lang !== "EN";
   const locale = ar ? "ar-SA" : "en-SA";
-  const t = (arabic: string, english: string) => (ar ? arabic : english);
+  const t = useCallback((arabic: string, english: string) => (ar ? arabic : english), [ar]);
 
   const [rows, setRows] = useState<OfferRow[]>([]);
   const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
@@ -155,9 +170,11 @@ export default function OffersWorkspace({
   const [tourOpen, setTourOpen] = useState(false);
   const [opportunityId, setOpportunityId] = useState("");
   const [price, setPrice] = useState("");
-  const [validUntil, setValidUntil] = useState("");
-  const [tourStart, setTourStart] = useState("");
+  const [validUntilDate, setValidUntilDate] = useState("");
+  const [tourDate, setTourDate] = useState("");
+  const [tourTime, setTourTime] = useState("");
   const [tourNotes, setTourNotes] = useState("");
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -171,16 +188,14 @@ export default function OffersWorkspace({
       if (!response.ok || !payload.success) {
         throw new Error(payload.error || "تعذر تحميل العروض.");
       }
-      setRows(Array.isArray(payload.data) ? payload.data : []);
-      setOpportunities(
-        Array.isArray(payload.opportunities) ? payload.opportunities : [],
-      );
+
+      const data = Array.isArray(payload.data) ? payload.data : [];
+      setRows(data);
+      setOpportunities(Array.isArray(payload.opportunities) ? payload.opportunities : []);
       setStats(payload.stats || EMPTY_STATS);
       setSelectedId((current) => {
-        if (current && payload.data?.some((row: OfferRow) => row.id === current)) {
-          return current;
-        }
-        return payload.data?.[0]?.id || "";
+        if (current && data.some((row: OfferRow) => row.id === current)) return current;
+        return data[0]?.id || "";
       });
     } catch {
       setRows([]);
@@ -188,11 +203,12 @@ export default function OffersWorkspace({
     } finally {
       setLoading(false);
     }
-  }, [ar]);
+  }, [t]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
   useEffect(() => {
     const requestedOffer = searchParams.get("offerId");
     const requestedUnit = searchParams.get("unitId");
@@ -225,30 +241,64 @@ export default function OffersWorkspace({
       return matchesStatus && (!term || haystack.includes(term));
     });
   }, [rows, search, status]);
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const paged = useMemo(
     () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
     [filtered, currentPage],
   );
+
   useEffect(() => {
     setPage(1);
   }, [search, status]);
 
-
-  const selectedOpportunity = opportunities.find(
-    (item) => item.id === opportunityId,
-  );
+  const selectedOpportunity = opportunities.find((item) => item.id === opportunityId);
 
   function resetCreate() {
     setOpportunityId("");
     setPrice("");
-    setValidUntil("");
+    setValidUntilDate("");
+    setFormErrors({});
+  }
+
+  function openCreate() {
+    setNotice("");
+    setError("");
+    resetCreate();
+    setCreateOpen(true);
+  }
+
+  function validateOffer() {
+    const errors: FormErrors = {};
+    const numericPrice = Number(price);
+    const parsedDate = parseOperationsDate(validUntilDate);
+
+    if (!selectedOpportunity) {
+      errors.opportunity = t("اختر فرصة مرتبطة بوحدة.", "Choose an opportunity linked to a unit.");
+    }
+    if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+      errors.price = t("أدخل سعر عرض أكبر من صفر.", "Enter an offer price greater than zero.");
+    }
+    if (!parsedDate.valid || !parsedDate.native || !parsedDate.date) {
+      errors.validUntil = t("استخدم التاريخ بصيغة DD/MM/YYYY.", "Use DD/MM/YYYY format.");
+    } else {
+      const endOfSelectedDay = new Date(parsedDate.date);
+      endOfSelectedDay.setHours(23, 59, 59, 999);
+      if (endOfSelectedDay.getTime() <= Date.now()) {
+        errors.validUntil = t("اختر تاريخ صلاحية مستقبليًا.", "Choose a future validity date.");
+      }
+    }
+
+    setFormErrors(errors);
+    return { errors, numericPrice, validUntil: parsedDate.native };
   }
 
   async function createOffer(event: React.FormEvent) {
     event.preventDefault();
-    if (!selectedOpportunity) return;
+    const validation = validateOffer();
+    if (Object.keys(validation.errors).length > 0 || !selectedOpportunity || !validation.validUntil) return;
+
     setBusy("create");
     setError("");
     try {
@@ -259,8 +309,8 @@ export default function OffersWorkspace({
         body: JSON.stringify({
           linkedOpportunityId: selectedOpportunity.id,
           unitId: selectedOpportunity.unitId,
-          price: Number(price),
-          validUntil,
+          price: validation.numericPrice,
+          validUntil: validation.validUntil,
         }),
       });
       const payload = await response.json();
@@ -272,11 +322,7 @@ export default function OffersWorkspace({
       setNotice(t("تم إنشاء العرض وربطه بالفرصة والوحدة.", "Offer created and linked."));
       await load();
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : t("تعذر إنشاء العرض.", "Unable to create offer."),
-      );
+      setError(cause instanceof Error ? cause.message : t("تعذر إنشاء العرض.", "Unable to create offer."));
     } finally {
       setBusy("");
     }
@@ -286,6 +332,7 @@ export default function OffersWorkspace({
     if (!selected) return;
     setBusy(`status:${nextStatus}`);
     setError("");
+    setNotice("");
     try {
       const response = await fetch(`/api/v1/offers/${selected.id}`, {
         method: "PATCH",
@@ -294,13 +341,11 @@ export default function OffersWorkspace({
         body: JSON.stringify({ status: nextStatus }),
       });
       const payload = await response.json();
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.error || "تعذر تحديث العرض.");
-      }
+      if (!response.ok || !payload.success) throw new Error(payload.error || "تعذر تحديث العرض.");
       setNotice(t("تم تحديث مسار العرض.", "Offer lifecycle updated."));
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "تعذر تحديث العرض.");
+      setError(cause instanceof Error ? cause.message : t("تعذر تحديث العرض.", "Unable to update offer."));
     } finally {
       setBusy("");
     }
@@ -310,27 +355,40 @@ export default function OffersWorkspace({
     if (!selected) return;
     setBusy("accept");
     setError("");
+    setNotice("");
     try {
       const response = await fetch(`/api/v1/offers/${selected.id}/accept`, {
         method: "POST",
         credentials: "include",
       });
       const payload = await response.json();
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.error || "تعذر قبول العرض.");
-      }
-      window.location.assign(
-        `/operations/rental/sales/contracts/${payload.data.contractId}`,
-      );
+      if (!response.ok || !payload.success) throw new Error(payload.error || "تعذر قبول العرض.");
+      window.location.assign(`/operations/rental/sales/contracts/${payload.data.contractId}`);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "تعذر قبول العرض.");
+      setError(cause instanceof Error ? cause.message : t("تعذر قبول العرض.", "Unable to accept offer."));
       setBusy("");
     }
+  }
+
+  function openTourDialog() {
+    setTourDate("");
+    setTourTime("");
+    setTourNotes("");
+    setFormErrors({});
+    setTourOpen(true);
   }
 
   async function scheduleTour(event: React.FormEvent) {
     event.preventDefault();
     if (!selected) return;
+
+    const parsed = parseOperationsLocalDateTime(tourDate, tourTime);
+
+    if (!parsed.valid || !parsed.iso) {
+      setFormErrors({ tourTime: t("استخدم DD/MM/YYYY و HH:MM.", "Use DD/MM/YYYY and HH:MM.") });
+      return;
+    }
+
     setBusy("tour");
     setError("");
     try {
@@ -339,179 +397,435 @@ export default function OffersWorkspace({
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          startAt: tourStart,
+          startAt: parsed.iso,
           durationMinutes: 45,
           notes: tourNotes,
         }),
       });
       const payload = await response.json();
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.error || "تعذر جدولة الجولة.");
-      }
+      if (!response.ok || !payload.success) throw new Error(payload.error || "تعذر جدولة الجولة.");
       setTourOpen(false);
-      setTourStart("");
-      setTourNotes("");
       setNotice(t("تمت جدولة الجولة وربطها بالعرض.", "Tour scheduled and linked."));
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "تعذر جدولة الجولة.");
+      setError(cause instanceof Error ? cause.message : t("تعذر جدولة الجولة.", "Unable to schedule tour."));
     } finally {
       setBusy("");
     }
   }
 
   const cards = [
-    { label: t("إجمالي العروض", "Total offers"), value: stats.total, icon: FileText },
-    { label: t("العروض النشطة", "Active offers"), value: stats.active, icon: TrendingUp },
-    { label: t("تنتهي خلال 7 أيام", "Expiring in 7 days"), value: stats.expiringSoon, icon: Clock3 },
-    { label: t("محوّلة إلى عقود", "Converted to contracts"), value: stats.converted, icon: CheckCircle2 },
+    {
+      label: t("إجمالي العروض", "Total offers"),
+      value: stats.total,
+      note: t("كل العروض المسجلة", "All recorded offers"),
+      icon: FileText,
+    },
+    {
+      label: t("العروض النشطة", "Active offers"),
+      value: stats.active,
+      note: money(stats.activeValue, locale),
+      icon: TrendingUp,
+    },
+    {
+      label: t("تنتهي خلال 7 أيام", "Expiring in 7 days"),
+      value: stats.expiringSoon,
+      note: t("تحتاج متابعة قريبة", "Require near-term follow-up"),
+      icon: Clock3,
+    },
+    {
+      label: t("محوّلة إلى عقود", "Converted to contracts"),
+      value: stats.converted,
+      note: t(`${stats.accepted} عرض مقبول`, `${stats.accepted} accepted offers`),
+      icon: CheckCircle2,
+    },
   ];
 
   return (
-    <section dir={ar ? "rtl" : "ltr"} className="nc-page nc-stack orca-container pb-10">
-      <header className="orca-workspace-hero">
-        <div>
-          <p className="text-xs font-bold text-[var(--nc-accent)]">
-            {t("العرض → التفاوض → القبول → العقد", "Offer → negotiation → acceptance → contract")}
-          </p>
-          <h1 className="mt-1 text-2xl font-black text-[var(--nc-text-primary)]">
-            {t("مركز العروض العقارية", "Property Offer Command Center")}
-          </h1>
-          <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">
-            {t("إدارة العروض التجارية الحقيقية دون خلطها بمخزون الوحدات.", "Manage real commercial offers without mixing them with inventory.")}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => void load()} className="nc-btn nc-btn-ghost">
-            <RefreshCw size={15} /> {t("تحديث", "Refresh")}
-          </button>
-          {canWrite && (
-            <button type="button" onClick={() => setCreateOpen(true)} className="nc-btn-primary inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-black">
-              <Plus size={16} /> {t("عرض جديد", "New offer")}
-            </button>
+    <main dir={ar ? "rtl" : "ltr"} className={operationsVisual.page} data-offers-rebuild-v1>
+      <div className={operationsVisual.pageStack}>
+        <OperationsPageHeader
+          eyebrow={t("العرض → التفاوض → القبول → العقد", "Offer → negotiation → acceptance → contract")}
+          title={t("العروض العقارية", "Property offers")}
+          description={t(
+            "إدارة العرض التجاري ومساره حتى التحويل إلى عقد، من سجل واحد مرتبط بالعميل والوحدة.",
+            "Manage commercial offers through negotiation and contract conversion from one customer-and-unit-linked record.",
           )}
-        </div>
-      </header>
-
-      <div className="orca-workspace-metrics">
-        {cards.map(({ label, value, icon: Icon }) => (
-          <div key={label} className="orca-workspace-metric">
-            <div className="flex items-center justify-between text-[var(--nc-text-secondary)]">
-              <span className="text-xs font-bold">{label}</span><Icon size={17} />
-            </div>
-            <strong className="mt-3 block text-2xl text-[var(--nc-text-primary)]">{value.toLocaleString(locale)}</strong>
-          </div>
-        ))}
-      </div>
-
-      {(error || notice) && (
-        <div className={`rounded-2xl border px-4 py-3 text-sm font-bold ${error ? "border-rose-500/30 bg-rose-500/10 text-rose-200" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"}`}>
-          {error || notice}
-        </div>
-      )}
-
-      <div className="space-y-4">
-        <div className="orca-workspace-panel min-w-0 overflow-hidden">
-          <div className="orca-workspace-toolbar flex flex-col gap-3 md:flex-row">
-            <label className="relative flex-1">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--nc-text-dim)]" size={16} />
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("ابحث بالعميل أو الوحدة أو المشروع", "Search customer, unit, or project")} className="w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] py-2.5 pl-3 pr-10 text-sm outline-none" />
-            </label>
-            <SettingsSelect value={status} onChange={setStatus} options={STATUS_OPTIONS.map((item) => ({ ...item, label: ar ? item.label : item.value || "All statuses" }))} className="md:w-52" aria-label={t("تصفية الحالة", "Status filter")} />
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
-              <thead className="border-b border-[var(--nc-border)] text-xs text-[var(--nc-text-secondary)]">
-                <tr>
-                  <th className="px-4 py-3 text-start">{t("العميل", "Customer")}</th>
-                  <th className="px-4 py-3 text-start">{t("الوحدة", "Unit")}</th>
-                  <th className="px-4 py-3 text-start">{t("السعر", "Price")}</th>
-                  <th className="px-4 py-3 text-start">{t("الصلاحية", "Validity")}</th>
-                  <th className="px-4 py-3 text-start">{t("الحالة", "Status")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={5} className="p-10 text-center"><Loader2 className="mx-auto animate-spin" /></td></tr>
-                ) : filtered.length === 0 ? (
-                  <tr><td colSpan={5} className="p-10 text-center text-[var(--nc-text-secondary)]">{t("لا توجد عروض مطابقة.", "No matching offers.")}</td></tr>
-                ) : paged.map((row) => (
-                  <tr key={row.id} onClick={() => setSelectedId(row.id)} className={`orca-data-row cursor-pointer border-b border-[var(--nc-border)] ${selectedId === row.id ? "is-selected" : ""}`}>
-                    <td className="px-4 py-3"><strong>{row.customerName}</strong><span className="block text-xs text-[var(--nc-text-secondary)]">{row.customerPhone}</span></td>
-                    <td className="px-4 py-3">{row.unitNumber}<span className="block text-xs text-[var(--nc-text-secondary)]">{row.projectName}</span></td>
-                    <td className="px-4 py-3 font-bold">{money(row.price, locale)}{row.discountPercent > 0 && <span className="block text-xs text-amber-300">-{row.discountPercent.toFixed(1)}%</span>}</td>
-                    <td className="px-4 py-3">{shortDate(row.validUntil, locale)}<span className="block text-xs text-[var(--nc-text-secondary)]">{row.expiresInDays >= 0 ? t(`متبقي ${row.expiresInDays} يوم`, `${row.expiresInDays} days left`) : t("منتهي", "Expired")}</span></td>
-                    <td className="px-4 py-3"><span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${statusClass(row.status)}`}>{statusLabel(row.status, ar)}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <Pagination page={currentPage} totalPages={totalPages} total={filtered.length} locale={locale} ar={ar} onPage={setPage} />
-        </div>
-
-        <aside className="orca-workspace-panel p-5">
-          {selected ? (
-            <div className="orca-workspace-detail">
-              <div className="orca-detail-header">
-                <div className="flex min-w-0 items-start justify-between gap-3">
-                  <div className="min-w-0"><p className="text-xs text-[var(--nc-text-secondary)]">{selected.projectName}</p><h2 className="text-lg font-black">{selected.customerName}</h2><p className="text-sm text-[var(--nc-text-secondary)]">{selected.unitNumber}</p></div>
-                  <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold ${statusClass(selected.status)}`}>{statusLabel(selected.status, ar)}</span>
-                </div>
-              </div>
-              <div className="orca-detail-primary rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-4 text-sm">
-                <Info label={t("سعر العرض", "Offer price")} value={money(selected.price, locale)} />
-                <Info label={t("السعر الأساسي", "Asking price")} value={money(selected.askingPrice, locale)} />
-                <Info label={t("الخصم", "Discount")} value={money(selected.discountAmount, locale)} />
-                <Info label={t("الجولات المرتبطة", "Linked tours")} value={String(selected.tourCount)} />
-                <Info label={t("احتمالية الفرصة", "Opportunity probability")} value={`${selected.probability}%`} />
-              </div>
-              {selected.contractId ? (
-                <button type="button" onClick={() => window.location.assign(`/operations/rental/sales/contracts/${selected.contractId}`)} className="orca-detail-secondary nc-btn-primary w-full rounded-xl py-2.5 font-black">
-                  {t("فتح العقد الناتج", "Open resulting contract")}
+          icon={Handshake}
+          actions={
+            <>
+              {canWrite ? (
+                <button type="button" onClick={openCreate} className={operationsVisual.primaryButton}>
+                  <Plus aria-hidden="true" />
+                  {t("عرض جديد", "New offer")}
                 </button>
-              ) : canWrite ? (
-                <div className="orca-detail-secondary grid gap-2">
-                  <button type="button" onClick={() => setTourOpen(true)} disabled={!selected.unitId || busy !== ""} className="nc-btn nc-btn-ghost justify-center"><CalendarClock size={15} /> {t("جدولة جولة مرتبطة", "Schedule linked tour")}</button>
-                  {selected.status === "PENDING" && <button type="button" onClick={() => void updateStatus("SENT")} disabled={busy !== ""} className="nc-btn nc-btn-ghost justify-center"><Send size={15} /> {t("تسجيل الإرسال", "Mark sent")}</button>}
-                  {["PENDING", "SENT"].includes(selected.status) && <button type="button" onClick={() => void updateStatus("NEGOTIATION")} disabled={busy !== ""} className="nc-btn nc-btn-ghost justify-center"><Handshake size={15} /> {t("بدء التفاوض", "Start negotiation")}</button>}
-                  {["PENDING", "SENT", "NEGOTIATION"].includes(selected.status) && <button type="button" onClick={() => void acceptOffer()} disabled={busy !== "" || selected.expiresInDays < 0} className="nc-btn-primary rounded-xl py-2.5 font-black">{busy === "accept" ? t("جارٍ التحويل...", "Converting...") : t("قبول وتحويل إلى عقد", "Accept and convert to contract")}</button>}
-                  {["PENDING", "SENT", "NEGOTIATION"].includes(selected.status) && <button type="button" onClick={() => void updateStatus("REJECTED")} disabled={busy !== ""} className="rounded-xl border border-rose-500/30 px-3 py-2 text-xs font-bold text-rose-300">{t("تسجيل الرفض", "Mark rejected")}</button>}
-                </div>
-              ) : (
-                <p className="rounded-xl border border-[var(--nc-border)] p-3 text-center text-xs text-[var(--nc-text-secondary)]">{t("صلاحية قراءة فقط.", "Read-only access.")}</p>
-              )}
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void load()}
+                className={operationsVisual.iconButton}
+                aria-label={t("تحديث العروض", "Refresh offers")}
+                title={t("تحديث العروض", "Refresh offers")}
+              >
+                <RefreshCw aria-hidden="true" />
+              </button>
+            </>
+          }
+        />
+
+        <OperationsKpiGrid>
+          {cards.map(({ label, value, note, icon: Icon }) => (
+            <OperationsMetricCard
+              key={label}
+              title={label}
+              value={value.toLocaleString(locale)}
+              description={note}
+              icon={Icon}
+            />
+          ))}
+        </OperationsKpiGrid>
+
+        {error || notice ? (
+          <div
+            role={error ? "alert" : "status"}
+            className={`rounded-xl border px-4 py-3 text-xs font-bold ${
+              error
+                ? "border-rose-500/30 bg-rose-500/10 text-rose-200"
+                : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+            }`}
+          >
+            {error || notice}
+          </div>
+        ) : null}
+
+        <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_360px]" dir="ltr">
+          <OperationsPanel className="min-w-0 overflow-hidden" dir={ar ? "rtl" : "ltr"}>
+            <div className={`${operationsVisual.toolbar} flex flex-col gap-2 border-b border-[var(--nc-border)] p-3 md:flex-row`}>
+              <label className="relative min-w-0 flex-1">
+                <Search
+                  className={`absolute top-1/2 -translate-y-1/2 text-[var(--nc-text-dim)] ${ar ? "right-3" : "left-3"}`}
+                  size={16}
+                  aria-hidden="true"
+                />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={t("ابحث بالعميل أو الوحدة أو المشروع", "Search customer, unit, or project")}
+                  className={`${fieldClass()} ${ar ? "pr-10" : "pl-10"}`}
+                  aria-label={t("البحث في العروض", "Search offers")}
+                />
+              </label>
+              <SettingsSelect
+                value={status}
+                onChange={setStatus}
+                options={STATUS_OPTIONS.map((item) => ({
+                  value: item.value,
+                  label: ar ? item.ar : item.en,
+                }))}
+                className="md:w-52"
+                aria-label={t("تصفية حالة العرض", "Offer status filter")}
+              />
             </div>
-          ) : <p className="py-16 text-center text-sm text-[var(--nc-text-secondary)]">{t("اختر عرضًا لعرض التفاصيل.", "Select an offer.")}</p>}
-        </aside>
+
+            {loading ? (
+              <div className="grid min-h-64 place-items-center">
+                <Loader2 className="animate-spin text-[var(--nc-text-secondary)]" aria-label={t("جارٍ التحميل", "Loading")} />
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="p-3">
+                <OperationsEmptyState>
+                  {t("لا توجد عروض مطابقة للبحث أو الحالة المحددة.", "No offers match the current search or status.")}
+                </OperationsEmptyState>
+              </div>
+            ) : (
+              <OperationsMasterList>
+                <div className="orca-platform-grid-header hidden grid-cols-[minmax(160px,1.2fr)_minmax(120px,.8fr)_120px_118px_105px] gap-3 px-4 py-2 font-black text-[var(--nc-text-dim)] lg:grid">
+                  <span>{t("العميل", "Customer")}</span>
+                  <span>{t("الوحدة", "Unit")}</span>
+                  <span>{t("السعر", "Price")}</span>
+                  <span>{t("الصلاحية", "Validity")}</span>
+                  <span>{t("الحالة", "Status")}</span>
+                </div>
+                {paged.map((row) => (
+                  <OperationsMasterRow
+                    key={row.id}
+                    selected={selectedId === row.id}
+                    onClick={() => setSelectedId(row.id)}
+                    className="orca-platform-grid-row grid min-h-[68px] items-center gap-3 px-4 py-3 lg:grid-cols-[minmax(160px,1.2fr)_minmax(120px,.8fr)_120px_118px_105px]"
+                    aria-pressed={selectedId === row.id}
+                  >
+                    <span className="min-w-0">
+                      <strong className="orca-table-primary block truncate text-sm text-[var(--nc-text-primary)]">{row.customerName}</strong>
+                      <span className="block truncate text-[11px] text-[var(--nc-text-secondary)]">{row.customerPhone}</span>
+                    </span>
+                    <span className="min-w-0">
+                      <strong className="orca-table-primary block truncate text-sm">{row.unitNumber}</strong>
+                      <span className="block truncate text-[11px] text-[var(--nc-text-secondary)]">{row.projectName}</span>
+                    </span>
+                    <span>
+                      <strong className="orca-table-primary block text-sm">{money(row.price, locale)}</strong>
+                      {row.discountPercent > 0 ? (
+                        <span className="block text-[11px] text-[var(--nc-accent-text)]">-{row.discountPercent.toFixed(1)}%</span>
+                      ) : null}
+                    </span>
+                    <span>
+                      <strong className="orca-table-primary block text-sm">{shortDate(row.validUntil, locale)}</strong>
+                      <span className="block text-[11px] text-[var(--nc-text-secondary)]">
+                        {row.expiresInDays >= 0
+                          ? t(`متبقي ${row.expiresInDays} يوم`, `${row.expiresInDays} days left`)
+                          : t("منتهي", "Expired")}
+                      </span>
+                    </span>
+                    <span className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-[12px] font-bold ${statusClass(row.status)}`}>
+                      {statusLabel(row.status, ar)}
+                    </span>
+                  </OperationsMasterRow>
+                ))}
+              </OperationsMasterList>
+            )}
+
+            <Pagination
+              page={currentPage}
+              totalPages={totalPages}
+              total={filtered.length}
+              locale={locale}
+              ar={ar}
+              onPage={setPage}
+            />
+          </OperationsPanel>
+
+          <OperationsPanel padded className="min-w-0" dir={ar ? "rtl" : "ltr"}>
+            {selected ? (
+              <div className="space-y-3">
+                <div className="flex min-w-0 items-start justify-between gap-3 border-b border-[var(--nc-border)] pb-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-[11px] font-bold text-[var(--nc-accent-text)]">{selected.projectName}</p>
+                    <h2 className={operationsVisual.sectionTitle}>{selected.customerName}</h2>
+                    <p className="mt-1 text-[11px] text-[var(--nc-text-secondary)]">{selected.unitNumber}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-bold ${statusClass(selected.status)}`}>
+                    {statusLabel(selected.status, ar)}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Info label={t("سعر العرض", "Offer price")} value={money(selected.price, locale)} />
+                  <Info label={t("السعر الأساسي", "Asking price")} value={money(selected.askingPrice, locale)} />
+                  <Info label={t("الخصم", "Discount")} value={money(selected.discountAmount, locale)} />
+                  <Info label={t("الجولات المرتبطة", "Linked tours")} value={String(selected.tourCount)} />
+                  <Info label={t("احتمالية الفرصة", "Probability")} value={`${selected.probability}%`} />
+                  <Info label={t("صلاحية العرض", "Valid until")} value={shortDate(selected.validUntil, locale)} />
+                </div>
+
+                {selected.contractId ? (
+                  <button
+                    type="button"
+                    onClick={() => window.location.assign(`/operations/rental/sales/contracts/${selected.contractId}`)}
+                    className={`${operationsVisual.primaryButton} w-full`}
+                  >
+                    {t("فتح العقد الناتج", "Open resulting contract")}
+                  </button>
+                ) : canWrite ? (
+                  <div className="space-y-2 border-t border-[var(--nc-border)] pt-3">
+                    {selected.status === "PENDING" ? (
+                      <button
+                        type="button"
+                        onClick={() => void updateStatus("SENT")}
+                        disabled={busy !== ""}
+                        className={`${operationsVisual.secondaryButton} w-full`}
+                      >
+                        <Send aria-hidden="true" />
+                        {t("تسجيل الإرسال", "Mark sent")}
+                      </button>
+                    ) : null}
+
+                    {["PENDING", "SENT"].includes(selected.status) ? (
+                      <button
+                        type="button"
+                        onClick={() => void updateStatus("NEGOTIATION")}
+                        disabled={busy !== ""}
+                        className={`${operationsVisual.secondaryButton} w-full`}
+                      >
+                        <Handshake aria-hidden="true" />
+                        {t("بدء التفاوض", "Start negotiation")}
+                      </button>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      onClick={openTourDialog}
+                      disabled={!selected.unitId || busy !== ""}
+                      className={`${operationsVisual.secondaryButton} w-full`}
+                    >
+                      <CalendarClock aria-hidden="true" />
+                      {t("جدولة جولة مرتبطة", "Schedule linked tour")}
+                    </button>
+
+                    {["PENDING", "SENT", "NEGOTIATION"].includes(selected.status) ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void acceptOffer()}
+                          disabled={busy !== "" || selected.expiresInDays < 0}
+                          className={operationsVisual.primaryButton}
+                        >
+                          {busy === "accept" ? t("جارٍ التحويل...", "Converting...") : t("قبول العرض", "Accept offer")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void updateStatus("REJECTED")}
+                          disabled={busy !== ""}
+                          className={operationsVisual.ghostButton}
+                        >
+                          {t("تسجيل الرفض", "Mark rejected")}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <OperationsEmptyState className="min-h-[92px]">
+                    {t("هذه الصفحة متاحة للقراءة فقط حسب صلاحياتك.", "This page is read-only for your role.")}
+                  </OperationsEmptyState>
+                )}
+              </div>
+            ) : (
+              <OperationsEmptyState>
+                {t("اختر عرضًا من القائمة لعرض تفاصيله.", "Select an offer to view its details.")}
+              </OperationsEmptyState>
+            )}
+          </OperationsPanel>
+        </div>
       </div>
 
-      {createOpen && (
-        <Modal title={t("إنشاء عرض تجاري", "Create commercial offer")} onClose={() => setCreateOpen(false)}>
-          <form onSubmit={createOffer} className="space-y-4">
-            <Field label={t("الفرصة المرتبطة", "Linked opportunity")}>
-              <SettingsSelect value={opportunityId} onChange={(value) => { setOpportunityId(value); const item = opportunities.find((option) => option.id === value); setPrice(item ? String(item.askingPrice) : ""); }} options={opportunities.map((item) => ({ value: item.id, label: `${item.customerName} · ${item.projectName} · ${item.unitNumber}` }))} placeholder={t("اختر فرصة مرتبطة بوحدة", "Choose an opportunity")} />
-            </Field>
-            {selectedOpportunity && <div className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3 text-xs"><Info label={t("الوحدة", "Unit")} value={`${selectedOpportunity.projectName} · ${selectedOpportunity.unitNumber}`} /><Info label={t("السعر الأساسي", "Asking price")} value={money(selectedOpportunity.askingPrice, locale)} /></div>}
-            <Field label={t("سعر العرض", "Offer price")}><input type="number" min="1" value={price} onChange={(event) => setPrice(event.target.value)} required className="w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-2.5" /></Field>
-            <Field label={t("صالح حتى", "Valid until")}><input type="date" dir="ltr" lang="en-CA" value={validUntil} onChange={(event) => setValidUntil(event.target.value)} required className="w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-2.5" /></Field>
-            <button type="submit" disabled={busy === "create" || !selectedOpportunity} className="nc-btn-primary w-full rounded-xl py-2.5 font-black">{busy === "create" ? t("جارٍ الإنشاء...", "Creating...") : t("إنشاء العرض", "Create offer")}</button>
-          </form>
-        </Modal>
-      )}
+      <OperationsDialog
+        open={createOpen}
+        onClose={() => !busy && setCreateOpen(false)}
+        closeDisabled={busy === "create"}
+        title={t("إنشاء عرض تجاري", "Create commercial offer")}
+        description={t("اختر فرصة مرتبطة بوحدة، ثم حدد السعر وتاريخ الصلاحية.", "Choose a unit-linked opportunity, then set price and validity.")}
+        closeLabel={t("إغلاق", "Close")}
+        dir={ar ? "rtl" : "ltr"}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setCreateOpen(false)}
+              disabled={busy === "create"}
+              className={operationsVisual.secondaryButton}
+            >
+              {t("إلغاء", "Cancel")}
+            </button>
+            <button
+              type="submit"
+              form="offer-create-form"
+              disabled={busy === "create"}
+              className={operationsVisual.primaryButton}
+            >
+              {busy === "create" ? t("جارٍ الإنشاء...", "Creating...") : t("إنشاء العرض", "Create offer")}
+            </button>
+          </>
+        }
+      >
+        <form id="offer-create-form" onSubmit={createOffer} noValidate className="space-y-4">
+          <Field label={t("الفرصة المرتبطة", "Linked opportunity")} error={formErrors.opportunity}>
+            <SettingsSelect
+              value={opportunityId}
+              onChange={(value) => {
+                setOpportunityId(value);
+                const item = opportunities.find((option) => option.id === value);
+                setPrice(item ? String(item.askingPrice) : "");
+                setFormErrors((current) => ({ ...current, opportunity: undefined }));
+              }}
+              options={opportunities.map((item) => ({
+                value: item.id,
+                label: `${item.customerName} · ${item.projectName} · ${item.unitNumber}`,
+              }))}
+              placeholder={t("اختر فرصة مرتبطة بوحدة", "Choose an opportunity")}
+            />
+          </Field>
 
-      {tourOpen && selected && (
-        <Modal title={t("جدولة جولة مرتبطة بالعرض", "Schedule offer-linked tour")} onClose={() => setTourOpen(false)}>
-          <form onSubmit={scheduleTour} className="space-y-4">
-            <p className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3 text-sm">{selected.customerName} · {selected.projectName} · {selected.unitNumber}</p>
-            <Field label={t("موعد الجولة", "Tour time")}><input type="datetime-local" dir="ltr" lang="en-CA" value={tourStart} onChange={(event) => setTourStart(event.target.value)} required className="w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-2.5" /></Field>
-            <Field label={t("ملاحظات", "Notes")}><textarea value={tourNotes} onChange={(event) => setTourNotes(event.target.value)} rows={3} className="orca-form-textarea w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-2.5" /></Field>
-            <button type="submit" disabled={busy === "tour"} className="nc-btn-primary w-full rounded-xl py-2.5 font-black">{busy === "tour" ? t("جارٍ الحفظ...", "Saving...") : t("تأكيد الجولة", "Confirm tour")}</button>
-          </form>
-        </Modal>
-      )}
-    </section>
+          {selectedOpportunity ? (
+            <div className="grid grid-cols-2 gap-2 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-3">
+              <Info label={t("الوحدة", "Unit")} value={`${selectedOpportunity.projectName} · ${selectedOpportunity.unitNumber}`} />
+              <Info label={t("السعر الأساسي", "Asking price")} value={money(selectedOpportunity.askingPrice, locale)} />
+            </div>
+          ) : null}
+
+          <Field label={t("سعر العرض", "Offer price")} error={formErrors.price}>
+            <OperationsNumberField
+              mode="decimal"
+              value={price}
+              onValueChange={(value) => {
+                setPrice(value);
+                setFormErrors((current) => ({ ...current, price: undefined }));
+              }}
+              className={fieldClass(Boolean(formErrors.price))}
+              aria-invalid={Boolean(formErrors.price)}
+            />
+          </Field>
+
+          <OperationsDateTimeFields
+            dateOnly
+            dateValue={validUntilDate}
+            timeValue=""
+            onDateChange={(value) => {
+              setValidUntilDate(value);
+              setFormErrors((current) => ({ ...current, validUntil: undefined }));
+            }}
+            onTimeChange={() => undefined}
+            dateLabel={t("صالح حتى", "Valid until")}
+            timeLabel={t("الوقت", "Time")}
+            error={formErrors.validUntil}
+          />
+        </form>
+      </OperationsDialog>
+
+      <OperationsDialog
+        open={tourOpen}
+        onClose={() => !busy && setTourOpen(false)}
+        closeDisabled={busy === "tour"}
+        title={t("جدولة جولة مرتبطة بالعرض", "Schedule offer-linked tour")}
+        description={selected ? `${selected.customerName} · ${selected.projectName} · ${selected.unitNumber}` : undefined}
+        closeLabel={t("إغلاق", "Close")}
+        dir={ar ? "rtl" : "ltr"}
+        footer={
+          <>
+            <button type="button" onClick={() => setTourOpen(false)} disabled={busy === "tour"} className={operationsVisual.secondaryButton}>
+              {t("إلغاء", "Cancel")}
+            </button>
+            <button type="submit" form="offer-tour-form" disabled={busy === "tour"} className={operationsVisual.primaryButton}>
+              {busy === "tour" ? t("جارٍ الحفظ...", "Saving...") : t("تأكيد الجولة", "Confirm tour")}
+            </button>
+          </>
+        }
+      >
+        <form id="offer-tour-form" onSubmit={scheduleTour} noValidate className="space-y-4">
+          <OperationsDateTimeFields
+            dateValue={tourDate}
+            timeValue={tourTime}
+            onDateChange={(value) => {
+              setTourDate(value);
+              setFormErrors((current) => ({ ...current, tourTime: undefined }));
+            }}
+            onTimeChange={(value) => {
+              setTourTime(value);
+              setFormErrors((current) => ({ ...current, tourTime: undefined }));
+            }}
+            dateLabel={t("تاريخ الجولة", "Tour date")}
+            timeLabel={t("الوقت", "Time")}
+            error={formErrors.tourTime}
+          />
+          <Field label={t("ملاحظات", "Notes")}>
+            <textarea
+              value={tourNotes}
+              onChange={(event) => setTourNotes(event.target.value)}
+              rows={4}
+              className="w-full resize-none rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-3 text-sm outline-none focus:border-[var(--nc-accent-border)]"
+            />
+          </Field>
+        </form>
+      </OperationsDialog>
+    </main>
   );
 }
 
@@ -534,30 +848,20 @@ function Pagination({
   const end = Math.min(page * PAGE_SIZE, total);
 
   return (
-    <div className="flex flex-col gap-3 border-t border-[var(--nc-border)] px-4 py-3 text-xs text-[var(--nc-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
+    <div className={`${operationsVisual.pagination} flex min-h-14 flex-col gap-2 border-t border-[var(--nc-border)] px-3 py-2 text-[11px] text-[var(--nc-text-secondary)] sm:flex-row sm:items-center sm:justify-between`}>
       <span>
         {ar
           ? `عرض ${start.toLocaleString(locale)}–${end.toLocaleString(locale)} من ${total.toLocaleString(locale)}`
           : `Showing ${start.toLocaleString(locale)}–${end.toLocaleString(locale)} of ${total.toLocaleString(locale)}`}
       </span>
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => onPage(page - 1)}
-          disabled={page <= 1}
-          className="rounded-lg border border-[var(--nc-border)] px-3 py-1.5 font-bold disabled:cursor-not-allowed disabled:opacity-40"
-        >
+        <button type="button" onClick={() => onPage(page - 1)} disabled={page <= 1} className={operationsVisual.secondaryButton}>
           {ar ? "السابق" : "Previous"}
         </button>
-        <span className="min-w-16 text-center font-bold text-[var(--nc-text-primary)]">
+        <span className="min-w-16 text-center font-black text-[var(--nc-text-primary)]">
           {page.toLocaleString(locale)} / {totalPages.toLocaleString(locale)}
         </span>
-        <button
-          type="button"
-          onClick={() => onPage(page + 1)}
-          disabled={page >= totalPages}
-          className="rounded-lg border border-[var(--nc-border)] px-3 py-1.5 font-bold disabled:cursor-not-allowed disabled:opacity-40"
-        >
+        <button type="button" onClick={() => onPage(page + 1)} disabled={page >= totalPages} className={operationsVisual.secondaryButton}>
           {ar ? "التالي" : "Next"}
         </button>
       </div>
@@ -566,11 +870,28 @@ function Pagination({
 }
 
 function Info({ label, value }: { label: string; value: string }) {
-  return <div className="orca-info-cell"><span>{label}</span><strong>{value}</strong></div>;
+  return (
+    <div className="min-w-0 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-2.5">
+      <span className="block break-words text-[11px] font-bold text-[var(--nc-text-dim)]">{label}</span>
+      <strong className="mt-1 block break-words text-[14px] text-[var(--nc-text-primary)]">{value || "—"}</strong>
+    </div>
+  );
 }
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block space-y-1.5"><span className="text-xs font-bold text-[var(--nc-text-secondary)]">{label}</span>{children}</label>;
-}
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return <div className="orca-dialog-overlay"><div role="dialog" aria-modal="true" className="orca-dialog max-w-lg"><div className="orca-dialog-header"><h2 className="font-black">{title}</h2><button type="button" onClick={onClose} className="orca-dialog-close"><X size={18} /></button></div><div className="orca-dialog-body">{children}</div></div></div>;
+
+function Field({
+  label,
+  error,
+  children,
+}: {
+  label: string;
+  error?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-[11px] font-bold text-[var(--nc-text-dim)]">{label}</span>
+      {children}
+      {error ? <span className="block text-[11px] font-bold text-rose-300">{error}</span> : null}
+    </label>
+  );
 }

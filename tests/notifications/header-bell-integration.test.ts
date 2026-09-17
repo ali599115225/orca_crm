@@ -37,4 +37,23 @@ describe("header notification bell", () => {
     expect(actions).toContain("tenantId: session.tenantId");
     expect(actions).toContain("userId: session.userId");
   });
-});
+
+  it("never refreshes notifications inside a React state updater", () => {
+    expect(header).toContain("const handleNotificationsToggle = () =>");
+    expect(header).toContain("const nextOpen = !notificationsOpen");
+    expect(header).toContain("setNotificationsOpen(nextOpen)");
+    expect(header).toContain("if (nextOpen)");
+    expect(header).toContain("void refreshNotifications()");
+    expect(header).toContain("onClick={handleNotificationsToggle}");
+    expect(header).not.toContain("setNotificationsOpen((open) => {");
+  });
+  it("portals the notification window to document.body", () => {
+    expect(header).toContain("import { createPortal } from 'react-dom'");
+    expect(header).toContain("notificationsPanelRef");
+    expect(header).toContain("createPortal(");
+    expect(header).toContain("document.body");
+    expect(header).toContain("ref={notificationsPanelRef}");
+    expect(header).toContain("clickedTrigger");
+    expect(header).toContain("clickedPanel");
+    expect(header).not.toContain("{notificationsOpen && (");
+  });});

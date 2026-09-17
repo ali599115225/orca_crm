@@ -30,6 +30,22 @@ import { useSearchParams } from "next/navigation";
 import { getEmailMessagesAction, sendEmailAction } from "@/app/actions/email";
 import { useApp } from "@/app/context/AppContext";
 import SettingsSelect from "@/components/settings/SettingsSelect";
+import {
+  OperationsEmptyState,
+  OperationsExecutiveGrid,
+  OperationsFormField,
+  OperationsKpiGrid,
+  OperationsMasterList,
+  OperationsMasterRow,
+  OperationsMetricCard,
+  OperationsPageHeader,
+  OperationsPanel,
+  OperationsPanelHeader,
+  OperationsScrollRegion,
+  OperationsTextField,
+  OperationsTextareaField,
+} from "@/components/operations";
+import { operationsConversationTypography, operationsVisual } from "@/features/operations/visual";
 import { toArabicNumerals } from "@/lib/formatters";
 
 interface EmailMessage {
@@ -574,562 +590,359 @@ export default function EmailClient({
   return (
     <section
       dir={isArabic ? "rtl" : "ltr"}
-      className="nc-page nc-stack orca-container pb-4"
+      className={operationsVisual.page}
       data-email-property-workspace
       data-email-two-card-workspace
+      data-operations-contract="dashboard-v2"
     >
-      <header className="orca-workspace-hero">
-        <div>
-          <p className="text-xs font-bold text-[var(--nc-accent)]">
-            {t.flow}
-          </p>
-          <h1 className="mt-1 text-2xl font-black">{t.title}</h1>
-          <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">
-            {t.description}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <button
-            type="button"
-            onClick={() => void loadMessages(selectedId)}
-            disabled={isLoading}
-            className="nc-btn nc-btn-ghost min-h-[44px] rounded-xl border border-[var(--nc-border)] px-4 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <RefreshCw
-              size={15}
-              className={isLoading ? "animate-spin" : ""}
-            />
-            {t.refresh}
-          </button>
-
-          <button
-            type="button"
-            onClick={beginCompose}
-            className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-black"
-          >
-            <Plus size={16} />
-            {t.newMessage}
-          </button>
-        </div>
-      </header>
-
-      <div className="orca-workspace-metrics">
-        {[
-          {
-            label: t.totalEmails,
-            value: formatNumber(messages.length),
-            icon: Mail,
-          },
-          {
-            label: t.sentEmails,
-            value: formatNumber(sentCount),
-            icon: CheckCircle2,
-          },
-          {
-            label: t.pendingEmails,
-            value: formatNumber(pendingCount),
-            icon: Clock3,
-          },
-          {
-            label: t.failedEmails,
-            value: formatNumber(failedCount),
-            icon: MailOpen,
-          },
-        ].map(({ label, value, icon: Icon }) => (
-          <div key={label} className="orca-workspace-metric min-h-[84px]">
-            <div className="flex items-center justify-between gap-3 text-xs font-bold text-[var(--nc-text-secondary)]">
-              <span>{label}</span>
-              <Icon size={17} />
-            </div>
-            <strong className="mt-3 block text-2xl">{value}</strong>
-          </div>
-        ))}
-      </div>
-
-      <div className="orca-workspace-note flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
-        <span className="text-[var(--nc-text-secondary)]">
-          {t.matching}:
-        </span>
-        <strong>{formatNumber(filteredMessages.length)}</strong>
-        <span className="text-[var(--nc-border)]">|</span>
-        <span className="text-[var(--nc-text-secondary)]">
-          {t.sentEmails}:
-        </span>
-        <strong>{formatNumber(sentCount)}</strong>
-        <span className="text-[var(--nc-border)]">|</span>
-        <span className="text-[var(--nc-text-secondary)]">
-          {t.latestFirst}
-        </span>
-      </div>
-
-      {loadError ? (
-        <div
-          role="alert"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-700 dark:text-rose-200"
-        >
-          <span>{loadError}</span>
-          <button
-            type="button"
-            onClick={() => void loadMessages(selectedId)}
-            className="nc-btn nc-btn-ghost min-h-[44px] rounded-xl border border-rose-500/30 px-4 text-xs font-black"
-          >
-            {t.retry}
-          </button>
-        </div>
-      ) : null}
-
-      <div
-        dir="ltr"
-        className="grid min-w-0 gap-3 lg:grid-cols-[340px_minmax(0,1fr)]"
-        data-four-page-two-card-workspace
-      >
-        <aside
-          dir={isArabic ? "rtl" : "ltr"}
-          data-email-message-list
-          data-operational-list-card
-          className={`orca-workspace-panel min-w-0 flex-col overflow-hidden lg:flex lg:h-[520px] ${
-            mobileDetailOpen ? "hidden lg:flex" : "flex"
-          }`}
-        >
-          <div className="orca-workspace-toolbar border-b border-[var(--nc-border)] p-3">
-            <div className="grid grid-cols-[minmax(0,1fr)_112px] gap-2">
-              <label className="relative min-w-0">
-                <Search
-                  size={16}
-                  className={`absolute top-1/2 -translate-y-1/2 text-[var(--nc-text-dim)] ${
-                    isArabic ? "right-3" : "left-3"
-                  }`}
+      <div className={operationsVisual.pageStack}>
+        <OperationsPageHeader
+          eyebrow={t.flow}
+          title={t.title}
+          description={t.description}
+          icon={Mail}
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={() => void loadMessages(selectedId)}
+                disabled={isLoading}
+                className={operationsVisual.iconButton}
+                aria-label={t.refresh}
+                title={t.refresh}
+              >
+                <RefreshCw
+                  aria-hidden="true"
+                  className={isLoading ? "animate-spin" : ""}
                 />
-                <input
-                  value={query}
-                  onChange={(event) => {
-                    setQuery(event.target.value);
+              </button>
+              <button
+                type="button"
+                onClick={beginCompose}
+                className={operationsVisual.primaryButton}
+              >
+                <Plus aria-hidden="true" />
+                {t.newMessage}
+              </button>
+            </>
+          }
+        />
+
+        <OperationsKpiGrid aria-label={t.title}>
+          <OperationsMetricCard
+            title={t.totalEmails}
+            value={formatNumber(messages.length)}
+            description={`${t.matching}: ${formatNumber(filteredMessages.length)}`}
+            icon={Mail}
+          />
+          <OperationsMetricCard
+            title={t.sentEmails}
+            value={formatNumber(sentCount)}
+            description={t.latestFirst}
+            icon={CheckCircle2}
+          />
+          <OperationsMetricCard
+            title={t.pendingEmails}
+            value={formatNumber(pendingCount)}
+            description={t.pending}
+            icon={Clock3}
+          />
+          <OperationsMetricCard
+            title={t.failedEmails}
+            value={formatNumber(failedCount)}
+            description={t.failed}
+            icon={MailOpen}
+          />
+        </OperationsKpiGrid>
+
+        {loadError ? (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-700 dark:text-rose-200"
+          >
+            <span>{loadError}</span>
+            <button
+              type="button"
+              onClick={() => void loadMessages(selectedId)}
+              className={operationsVisual.secondaryButton}
+            >
+              {t.retry}
+            </button>
+          </div>
+        ) : null}
+
+        <OperationsExecutiveGrid dir="ltr" data-four-page-two-card-workspace>
+          <OperationsPanel
+            dir={isArabic ? "rtl" : "ltr"}
+            data-email-message-list
+            data-operational-list-card
+            className={`min-w-0 flex-col overflow-hidden lg:flex ${
+              mobileDetailOpen ? "hidden lg:flex" : "flex"
+            }`}
+          >
+            <OperationsPanelHeader
+              title={t.title}
+              description={`${formatNumber(filteredMessages.length)} ${t.matching}`}
+              icon={Mail}
+              titleClassName={operationsConversationTypography.listTitle}
+              descriptionClassName={operationsConversationTypography.metadata}
+            />
+
+            <div className="border-b border-[var(--nc-border)] p-2.5">
+              <div className="grid grid-cols-[minmax(0,1fr)_112px] gap-2">
+                <label className="relative min-w-0">
+                  <Search
+                    size={16}
+                    className={`absolute top-1/2 -translate-y-1/2 text-[var(--nc-text-dim)] ${
+                      isArabic ? "right-3" : "left-3"
+                    }`}
+                  />
+                  <OperationsTextField
+                    value={query}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      setPage(1);
+                    }}
+                    placeholder={t.search}
+                    className={isArabic ? "pl-3 pr-10" : "pl-10 pr-3"}
+                  />
+                </label>
+
+                <SettingsSelect
+                  value={filter}
+                  onChange={(value) => {
+                    setFilter(value);
                     setPage(1);
                   }}
-                  placeholder={t.search}
-                  className={`min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] py-2.5 text-sm outline-none focus:border-[var(--nc-accent-border)] ${
-                    isArabic ? "pl-3 pr-10" : "pl-10 pr-3"
-                  }`}
+                  aria-label={t.filter}
+                  options={[
+                    { value: "ALL", label: t.all },
+                    { value: "SENT", label: t.sent },
+                    { value: "READ", label: t.read },
+                    { value: "PENDING", label: t.pending },
+                    { value: "FAILED", label: t.failed },
+                  ]}
                 />
-              </label>
-
-              <SettingsSelect
-                value={filter}
-                onChange={(value) => {
-                  setFilter(value);
-                  setPage(1);
-                }}
-                aria-label={t.filter}
-                options={[
-                  { value: "ALL", label: t.all },
-                  { value: "SENT", label: t.sent },
-                  { value: "READ", label: t.read },
-                  { value: "PENDING", label: t.pending },
-                  { value: "FAILED", label: t.failed },
-                ]}
-              />
+              </div>
             </div>
-          </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {isLoading && messages.length === 0 ? (
-              <div className="flex h-full min-h-[220px] items-center justify-center gap-2 text-sm text-[var(--nc-text-secondary)]">
-                <Loader2
-                  size={18}
-                  className="animate-spin text-[var(--nc-accent)]"
-                />
-                {t.loading}
-              </div>
-            ) : pageItems.length === 0 ? (
-              <div className="flex h-full min-h-[180px] items-center justify-center rounded-2xl border border-dashed border-[var(--nc-border)] p-6 text-center text-sm text-[var(--nc-text-secondary)]">
-                {t.noMessages}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {pageItems.map((message) => {
-                  const selected =
-                    message.id === selectedId && !isComposing;
-
-                  return (
-                    <button
-                      key={message.id}
-                      type="button"
-                      data-email-row
-                      aria-pressed={selected}
-                      onClick={() => openMessage(message.id)}
-                      className={`group flex h-[68px] w-full items-center gap-3 rounded-2xl border px-3 text-start outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--nc-accent-border)] ${
-                        selected
-                          ? "border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] text-[var(--nc-accent)]"
-                          : "border-[var(--nc-border)] bg-[var(--nc-surface-strong)] hover:border-[var(--nc-accent-border)] hover:bg-[var(--nc-accent-soft)] hover:text-[var(--nc-accent)]"
-                      }`}
-                    >
-                      <span
-                        className={`h-9 w-1 shrink-0 rounded-full ${
-                          message.status === "FAILED"
-                            ? "bg-rose-500/70"
-                            : message.status === "PENDING"
-                              ? "bg-amber-500/70"
-                              : "bg-emerald-500/70"
-                        }`}
-                        aria-hidden="true"
-                      />
-
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center justify-between gap-2">
-                          <strong className="truncate text-sm">
-                            {displaySubject(message)}
-                          </strong>
-                          <time
-                            dir="ltr"
-                            className="shrink-0 text-[11px] text-[var(--nc-text-dim)]"
-                          >
-                            {formatDateTime(
-                              message.sentAt || message.createdAt,
-                            )}
-                          </time>
-                        </span>
-
-                        <span className="mt-1 flex items-center justify-between gap-2">
-                          <span className="min-w-0 truncate text-xs text-[var(--nc-text-secondary)]">
-                            {displayRecipient(message.to)}
+            <div className="orca-operations-flow-region">
+              {isLoading && messages.length === 0 ? (
+                <div className="grid min-h-[220px] place-items-center text-sm text-[var(--nc-text-secondary)]">
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="animate-spin text-[var(--nc-accent)]" size={18} />
+                    {t.loading}
+                  </span>
+                </div>
+              ) : pageItems.length === 0 ? (
+                <div className="p-3">
+                  <OperationsEmptyState>{t.noMessages}</OperationsEmptyState>
+                </div>
+              ) : (
+                <OperationsMasterList>
+                  {pageItems.map((message) => {
+                    const selected = message.id === selectedId && !isComposing;
+                    return (
+                      <OperationsMasterRow
+                        key={message.id}
+                        selected={selected}
+                        data-email-row
+                        aria-pressed={selected}
+                        onClick={() => openMessage(message.id)}
+                        className="grid min-h-[64px] grid-cols-[4px_minmax(0,1fr)] items-center gap-3 px-3 py-2.5"
+                      >
+                        <span
+                          className={`h-9 w-1 rounded-full ${
+                            message.status === "FAILED"
+                              ? "bg-rose-500/70"
+                              : message.status === "PENDING"
+                                ? "bg-amber-500/70"
+                                : "bg-emerald-500/70"
+                          }`}
+                          aria-hidden="true"
+                        />
+                        <span className="min-w-0">
+                          <span className="flex items-center justify-between gap-2">
+                            <strong className={`truncate ${operationsConversationTypography.listTitle}`}>{displaySubject(message)}</strong>
+                            <time dir="ltr" className={`shrink-0 text-[var(--nc-text-dim)] ${operationsConversationTypography.metadata}`}>
+                              {formatDateTime(message.sentAt || message.createdAt)}
+                            </time>
                           </span>
-                          <span
-                            className={`inline-flex min-w-[76px] shrink-0 justify-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${statusClass(
-                              message.status,
-                            )}`}
-                          >
-                            {statusLabel(message.status)}
+                          <span className="mt-1 flex items-center justify-between gap-2">
+                            <span className={`truncate text-[var(--nc-text-secondary)] ${operationsConversationTypography.listSecondary}`}>
+                              {displayRecipient(message.to)}
+                            </span>
+                            <span className={`rounded-full border px-2 py-0.5 font-bold ${operationsConversationTypography.statusBadge} ${statusClass(message.status)}`}>
+                              {statusLabel(message.status)}
+                            </span>
                           </span>
                         </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                      </OperationsMasterRow>
+                    );
+                  })}
+                </OperationsMasterList>
+              )}
+            </div>
 
-          <div className="orca-workspace-pagination flex min-h-[56px] items-center justify-between gap-2 border-t border-[var(--nc-border)] px-3 py-2 text-xs text-[var(--nc-text-secondary)]">
-            <span>
-              {isArabic
-                ? `${formatNumber(visibleStart)}–${formatNumber(
-                    visibleEnd,
-                  )} من ${formatNumber(filteredMessages.length)}`
-                : `${visibleStart}–${visibleEnd} of ${filteredMessages.length}`}
-            </span>
-
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() =>
-                  setPage((current) => Math.max(1, current - 1))
-                }
-                disabled={safePage <= 1}
-                className="nc-btn nc-btn-ghost min-h-[44px] min-w-[44px] rounded-xl border border-[var(--nc-border)] px-3 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label={t.pagePrevious}
-              >
-                {isArabic ? (
-                  <ChevronRight size={17} />
-                ) : (
-                  <ChevronLeft size={17} />
-                )}
-              </button>
-
-              <span className="min-w-12 text-center font-bold text-[var(--nc-text-primary)]">
-                {formatNumber(safePage)} / {formatNumber(totalPages)}
+            <div className={operationsVisual.pagination}>
+              <span>
+                {isArabic
+                  ? `${formatNumber(visibleStart)}–${formatNumber(visibleEnd)} من ${formatNumber(filteredMessages.length)}`
+                  : `${visibleStart}–${visibleEnd} of ${filteredMessages.length}`}
               </span>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setPage((current) =>
-                    Math.min(totalPages, current + 1),
-                  )
-                }
-                disabled={safePage >= totalPages}
-                className="nc-btn nc-btn-ghost min-h-[44px] min-w-[44px] rounded-xl border border-[var(--nc-border)] px-3 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label={t.pageNext}
-              >
-                {isArabic ? (
-                  <ChevronLeft size={17} />
-                ) : (
-                  <ChevronRight size={17} />
-                )}
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={safePage <= 1}
+                  className={operationsVisual.iconButton}
+                  aria-label={t.pagePrevious}
+                >
+                  {isArabic ? <ChevronRight /> : <ChevronLeft />}
+                </button>
+                <span className="min-w-12 text-center text-[10px] font-bold">{formatNumber(safePage)} / {formatNumber(totalPages)}</span>
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  disabled={safePage >= totalPages}
+                  className={operationsVisual.iconButton}
+                  aria-label={t.pageNext}
+                >
+                  {isArabic ? <ChevronLeft /> : <ChevronRight />}
+                </button>
+              </div>
             </div>
-          </div>
-        </aside>
+          </OperationsPanel>
 
-        <section
-          dir={isArabic ? "rtl" : "ltr"}
-          data-email-detail-card
-          data-operational-detail-card
-          className={`orca-workspace-panel min-w-0 flex-col overflow-hidden lg:flex lg:h-[520px] ${
-            mobileDetailOpen ? "flex" : "hidden lg:flex"
-          }`}
-        >
-          {isComposing ? (
-            <>
-              <header className="flex min-h-[72px] shrink-0 items-center justify-between gap-3 border-b border-[var(--nc-border)] px-4 py-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setMobileDetailOpen(false)}
-                    className="nc-btn nc-btn-ghost min-h-[44px] min-w-[44px] rounded-xl border border-[var(--nc-border)] px-3 lg:hidden"
-                    aria-label={t.backToMessages}
-                  >
-                    {isArabic ? (
-                      <ChevronRight size={18} />
-                    ) : (
-                      <ChevronLeft size={18} />
-                    )}
-                  </button>
+          <OperationsPanel
+            dir={isArabic ? "rtl" : "ltr"}
+            data-email-detail-card
+            data-operational-detail-card
+            className={`min-w-0 flex-col overflow-hidden lg:flex ${
+              mobileDetailOpen ? "flex" : "hidden lg:flex"
+            }`}
+          >
+            {isComposing ? (
+              <>
+                <OperationsPanelHeader
+                  title={t.newMessage}
+                  description={emailFrom || t.senderUnavailable}
+                  icon={Send}
+                  titleClassName={operationsConversationTypography.detailTitle}
+                  descriptionClassName={operationsConversationTypography.metadata}
+                  actions={
+                    <button
+                      type="button"
+                      onClick={() => setMobileDetailOpen(false)}
+                      className={`${operationsVisual.iconButton} lg:hidden`}
+                      aria-label={t.backToMessages}
+                    >
+                      {isArabic ? <ChevronRight /> : <ChevronLeft />}
+                    </button>
+                  }
+                />
+                <div className="orca-operations-flow-region p-3">
+                  <div className="space-y-3">
+                    {!providerConfigured ? (
+                      <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3" data-email-provider-missing>
+                        <p className="text-sm font-black text-amber-700 dark:text-amber-300">{t.providerMissing}</p>
+                        <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">{t.providerMissingHelp}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <a href="/operations/settings?tab=integrations&category=EMAIL&provider=SMTP&open=1" className={operationsVisual.primaryButton}>{t.connectSmtp}</a>
+                          <a href="/operations/settings?tab=integrations&category=EMAIL&provider=RESEND&open=1" className={operationsVisual.secondaryButton}>{t.connectResend}</a>
+                        </div>
+                      </div>
+                    ) : <p className="sr-only">{providerName || "EMAIL_PROVIDER"}</p>}
 
-                  <div>
-                    <p className="text-xs font-bold text-[var(--nc-accent)]">
-                      {t.draft}
-                    </p>
-                    <h2 className="mt-1 text-lg font-black">
-                      {t.newMessage}
-                    </h2>
+                    <RecipientCombobox
+                      value={to}
+                      onValueChange={(value) => {
+                        setTo(value);
+                        const match = recipientOptions.find((option) => option.value === value);
+                        setLeadId(match?.leadId || "");
+                      }}
+                      options={recipientOptions}
+                      label={t.to}
+                      placeholder={t.recipientPlaceholder}
+                      emptyText={t.noRecipients}
+                    />
+                    <OperationsFormField label={t.subject} className={operationsConversationTypography.formField}>
+                      <OperationsTextField value={subject} onChange={(event) => setSubject(event.target.value)} placeholder={t.subject} className={operationsConversationTypography.composer} />
+                    </OperationsFormField>
+                    <OperationsFormField label={t.body} className={operationsConversationTypography.formField}>
+                      <OperationsTextareaField value={body} onChange={(event) => setBody(event.target.value)} placeholder={t.bodyPlaceholder} rows={6} className={operationsConversationTypography.composer} />
+                    </OperationsFormField>
                   </div>
                 </div>
-
-                <span
-                  dir="ltr"
-                  className="hidden max-w-[46%] truncate text-xs text-[var(--nc-text-secondary)] sm:block"
-                >
-                  {emailFrom || t.senderUnavailable}
-                </span>
-              </header>
-
-              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <div className="mx-auto max-w-4xl space-y-3">
-                  {!providerConfigured ? (
-                    <div
-                      role="status"
-                      className="flex min-h-[64px] flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3"
-                      data-email-provider-missing
+                <footer className="shrink-0 border-t border-[var(--nc-border)] p-3">
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => void handleSend()}
+                      disabled={isSending || !EMAIL_PATTERN.test(to.trim()) || !subject.trim() || !body.trim()}
+                      className={operationsVisual.primaryButton}
                     >
-                      <div>
-                        <p className="text-sm font-black text-amber-700 dark:text-amber-300">
-                          {t.providerMissing}
-                        </p>
-                        <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
-                          {t.providerMissingHelp}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <a
-                          href="/operations/settings?tab=integrations&category=EMAIL&provider=SMTP&open=1"
-                          className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 text-xs font-black"
-                        >
-                          {t.connectSmtp}
-                        </a>
-                        <a
-                          href="/operations/settings?tab=integrations&category=EMAIL&provider=RESEND&open=1"
-                          className="nc-btn nc-btn-secondary inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 text-xs font-black"
-                        >
-                          {t.connectResend}
-                        </a>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="sr-only">
-                      {providerName || "EMAIL_PROVIDER"}
-                    </p>
-                  )}
-
-                  <RecipientCombobox
-                    value={to}
-                    onValueChange={(value) => {
-                      setTo(value);
-                      const match = recipientOptions.find(
-                        (option) => option.value === value,
-                      );
-                      setLeadId(match?.leadId || "");
-                    }}
-                    options={recipientOptions}
-                    label={t.to}
-                    placeholder={t.recipientPlaceholder}
-                    emptyText={t.noRecipients}
-                  />
-
-                  <label className="block space-y-1.5">
-                    <span className="block text-xs font-bold text-[var(--nc-text-secondary)]">
-                      {t.subject}
-                    </span>
-                    <input
-                      value={subject}
-                      onChange={(event) => setSubject(event.target.value)}
-                      className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-2.5 text-sm font-bold outline-none focus:border-[var(--nc-accent-border)]"
-                      placeholder={t.subject}
-                    />
-                  </label>
-
-                  <label className="block space-y-1.5">
-                    <span className="block text-xs font-bold text-[var(--nc-text-secondary)]">
-                      {t.body}
-                    </span>
-                    <textarea
-                      value={body}
-                      onChange={(event) => setBody(event.target.value)}
-                      placeholder={t.bodyPlaceholder}
-                      rows={8}
-                      className="min-h-[190px] w-full resize-none rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-3 text-sm leading-7 outline-none focus:border-[var(--nc-accent-border)]"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <footer className="shrink-0 border-t border-[var(--nc-border)] px-4 py-3">
-                <div className="mx-auto flex max-w-4xl justify-end">
-                  <button
-                    type="button"
-                    onClick={() => void handleSend()}
-                    disabled={
-                      isSending ||
-                      !EMAIL_PATTERN.test(to.trim()) ||
-                      !subject.trim() ||
-                      !body.trim()
-                    }
-                    className="nc-btn-primary inline-flex h-11 min-h-11 max-h-11 w-[120px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isSending ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <Send size={16} />
-                    )}
-                    {isSending
-                      ? t.sending
-                      : providerConfigured
-                        ? t.send
-                        : t.saveDraft}
-                  </button>
-                </div>
-              </footer>
-            </>
-          ) : selectedMessage ? (
-            <>
-              <header className="flex min-h-[72px] shrink-0 items-center justify-between gap-3 border-b border-[var(--nc-border)] px-4 py-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setMobileDetailOpen(false)}
-                    className="nc-btn nc-btn-ghost min-h-[44px] min-w-[44px] rounded-xl border border-[var(--nc-border)] px-3 lg:hidden"
-                    aria-label={t.backToMessages}
-                  >
-                    {isArabic ? (
-                      <ChevronRight size={18} />
-                    ) : (
-                      <ChevronLeft size={18} />
-                    )}
-                  </button>
-
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-[var(--nc-accent)]">
-                      {statusLabel(selectedMessage.status)}
-                    </p>
-                    <h2 className="mt-1 truncate text-lg font-black">
-                      {displaySubject(selectedMessage)}
-                    </h2>
-                    <p
-                      dir="ltr"
-                      className="mt-1 text-xs text-[var(--nc-text-secondary)]"
-                    >
-                      {formatDateTime(
-                        selectedMessage.sentAt ||
-                          selectedMessage.createdAt,
-                      )}
-                    </p>
+                      {isSending ? <Loader2 className="animate-spin" /> : <Send />}
+                      {isSending ? t.sending : providerConfigured ? t.send : t.saveDraft}
+                    </button>
                   </div>
+                </footer>
+              </>
+            ) : selectedMessage ? (
+              <>
+                <OperationsPanelHeader
+                  title={displaySubject(selectedMessage)}
+                  description={formatDateTime(selectedMessage.sentAt || selectedMessage.createdAt)}
+                  icon={MailOpen}
+                  titleClassName={operationsConversationTypography.detailTitle}
+                  descriptionClassName={operationsConversationTypography.metadata}
+                  meta={<span className={`rounded-full border px-2.5 py-1 font-bold ${operationsConversationTypography.statusBadge} ${statusClass(selectedMessage.status)}`}>{statusLabel(selectedMessage.status)}</span>}
+                  actions={
+                    <button type="button" onClick={() => setMobileDetailOpen(false)} className={`${operationsVisual.iconButton} lg:hidden`} aria-label={t.backToMessages}>
+                      {isArabic ? <ChevronRight /> : <ChevronLeft />}
+                    </button>
+                  }
+                />
+                <div className="grid shrink-0 gap-2 border-b border-[var(--nc-border)] p-3 sm:grid-cols-3">
+                  <InfoCell label={t.customer} value={leadName(selectedMessage)} />
+                  <InfoCell label={t.from} value={isLegacyGlobalEmailProviderText(selectedMessage.from) ? t.senderUnavailable : selectedMessage.from || t.senderUnavailable} dir="ltr" />
+                  <InfoCell label={t.to} value={displayRecipient(selectedMessage.to)} dir="ltr" />
                 </div>
-
-                <span
-                  className={`inline-flex min-w-[82px] shrink-0 justify-center rounded-full border px-3 py-1 text-xs font-bold ${statusClass(
-                    selectedMessage.status,
-                  )}`}
-                >
-                  {statusLabel(selectedMessage.status)}
-                </span>
-              </header>
-
-              <div className="grid shrink-0 gap-2 border-b border-[var(--nc-border)] px-3 py-3 sm:grid-cols-3">
-                <div className="orca-info-cell min-h-[56px]">
-                  <span>{t.customer}</span>
-                  <strong className="truncate">
-                    {leadName(selectedMessage)}
-                  </strong>
-                </div>
-                <div className="orca-info-cell min-h-[56px]">
-                  <span>{t.from}</span>
-                  <strong dir="ltr" className="truncate">
-                    {isLegacyGlobalEmailProviderText(selectedMessage.from)
-                      ? t.senderUnavailable
-                      : selectedMessage.from || t.senderUnavailable}
-                  </strong>
-                </div>
-                <div className="orca-info-cell min-h-[56px]">
-                  <span>{t.to}</span>
-                  <strong dir="ltr" className="truncate">
-                    {displayRecipient(selectedMessage.to)}
-                  </strong>
-                </div>
-              </div>
-
-              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <div className="mx-auto max-w-4xl space-y-3">
-                  <article className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-4 py-3">
+                <OperationsScrollRegion scrollRole="conversation" className="p-3">
+                  <article className={operationsVisual.contentCard}>
                     <div className="mb-2 flex items-center justify-between gap-3 text-xs">
-                      <strong className="text-[var(--nc-accent)]">
-                        {t.body}
-                      </strong>
-                      <Mail size={16} />
+                      <strong className="text-[var(--nc-accent)]">{t.body}</strong>
+                      <Mail size={16} aria-hidden="true" />
                     </div>
-                    <p className="whitespace-pre-wrap leading-7 text-[var(--nc-text-primary)]">
-                      {selectedBody || t.messageContentUnavailable}
-                    </p>
+                    <p className={`whitespace-pre-wrap ${operationsConversationTypography.messageBody}`}>{selectedBody || t.messageContentUnavailable}</p>
                   </article>
-
                   {selectedMessage.errorMessage ? (
-                    <article className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-rose-700 dark:text-rose-200">
-                      <div className="mb-2 flex items-center gap-2 text-xs font-bold">
-                        <AlertCircle size={16} />
-                        {t.deliveryError}
-                      </div>
-                      <p className="whitespace-pre-wrap leading-7">
-                        {isLegacyGlobalEmailProviderText(
-                          selectedMessage.errorMessage,
-                        )
-                          ? t.providerMissing
-                          : cleanDisplayText(
-                              selectedMessage.errorMessage,
-                              t.sendError,
-                            )}
+                    <article className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-700 dark:text-rose-200">
+                      <div className="mb-2 flex items-center gap-2 text-xs font-bold"><AlertCircle size={16} />{t.deliveryError}</div>
+                      <p className={`whitespace-pre-wrap ${operationsConversationTypography.messageBody}`}>
+                        {isLegacyGlobalEmailProviderText(selectedMessage.errorMessage) ? t.providerMissing : cleanDisplayText(selectedMessage.errorMessage, t.sendError)}
                       </p>
                     </article>
                   ) : null}
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex h-full min-h-[360px] items-center justify-center p-8 text-center">
-              <div>
-                <Mail
-                  size={28}
-                  className="mx-auto text-[var(--nc-text-dim)]"
-                />
-                <h2 className="mt-3 text-lg font-black">{t.title}</h2>
-                <p className="mt-2 text-sm text-[var(--nc-text-secondary)]">
-                  {t.selectMessage}
-                </p>
-              </div>
-            </div>
-          )}
-        </section>
+                </OperationsScrollRegion>
+              </>
+            ) : (
+              <div className="p-3"><OperationsEmptyState>{t.selectMessage}</OperationsEmptyState></div>
+            )}
+          </OperationsPanel>
+        </OperationsExecutiveGrid>
       </div>
     </section>
+  );
+
+}
+
+function InfoCell({ label, value, dir }: { label: string; value: React.ReactNode; dir?: "rtl" | "ltr" }) {
+  return (
+    <div className={`orca-info-cell min-h-[56px] ${operationsConversationTypography.field}`}>
+      <span>{label}</span>
+      <strong dir={dir} className="truncate">{value}</strong>
+    </div>
   );
 }
 
@@ -1175,7 +988,7 @@ function RecipientCombobox({
 
   return (
     <label className="block space-y-1.5">
-      <span className="block text-xs font-bold text-[var(--nc-text-secondary)]">
+      <span className={`block font-bold text-[var(--nc-text-secondary)] ${operationsConversationTypography.fieldLabel}`}>
         {label}
       </span>
 
@@ -1218,7 +1031,7 @@ function RecipientCombobox({
               setOpen(false);
             }
           }}
-          className="min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-10 py-2.5 text-sm font-bold outline-none focus:border-[var(--nc-accent-border)]"
+          className={`orca-operations-input px-10 ${operationsConversationTypography.composer}`}
         />
 
         <button
@@ -1232,10 +1045,11 @@ function RecipientCombobox({
         </button>
 
         {open ? (
-          <div
+          <OperationsScrollRegion
+            scrollRole="menu"
             id={listboxId}
             role="listbox"
-            className="absolute inset-x-0 top-[calc(100%+6px)] z-30 max-h-52 overflow-y-auto rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-1 shadow-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="absolute inset-x-0 top-[calc(100%+6px)] z-30 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] p-1 shadow-2xl"
           >
             {visibleOptions.length > 0 ? (
               visibleOptions.map((option) => (
@@ -1269,7 +1083,7 @@ function RecipientCombobox({
                 {emptyText}
               </div>
             )}
-          </div>
+          </OperationsScrollRegion>
         ) : null}
       </div>
     </label>

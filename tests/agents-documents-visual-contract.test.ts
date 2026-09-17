@@ -12,18 +12,24 @@ describe("agents and documents visual identity contract", () => {
   const documentsRoute = read("app/api/v1/documents/route.ts");
   const documentRoute = read("app/api/v1/documents/[id]/route.ts");
   const access = read("lib/documents/access.ts");
+  const operationsCss = read("app/operations/orca-page-contract-v1.css");
 
-  it("aligns agents with the shared operations workspace contract", () => {
-    expect(agents).toContain("orca-workspace-hero");
-    expect(agents).toContain("orca-workspace-metrics");
-    expect(agents).toContain("orca-workspace-metric");
-    expect(agents).toContain("orca-workspace-panel");
-    expect(agents).toContain("data-operational-list-card");
-    expect(agents).toContain("data-operational-detail-card");
-    expect(agents).toContain("nc-btn nc-btn-ghost");
-    expect(agents).toContain("nc-btn-primary");
-    expect(agents).not.toContain("PageHeader");
-    expect(agents).not.toContain("SmartCard");
+  it("aligns agents by consuming the canonical shared Operations primitives", () => {
+    for (const token of [
+      "OperationsPageHeader",
+      "OperationsKpiGrid",
+      "OperationsPanel",
+      "OperationsEmptyState",
+      "OperationsMasterList",
+      "OperationsMasterRow",
+      "operationsVisual.page",
+    ]) {
+      expect(agents).toContain(token);
+    }
+
+    expect(agents).not.toContain('<header className="orca-workspace-hero"');
+    expect(agents).not.toContain('<div className="orca-workspace-metrics"');
+    expect(agents).not.toContain('className="orca-workspace-panel');
     expect(agents).not.toContain("linear-gradient");
   });
 
@@ -42,25 +48,33 @@ describe("agents and documents visual identity contract", () => {
     expect(agents).toContain('dir="ltr"');
     expect(agentMaster).toBeGreaterThan(0);
     expect(agentDetail).toBeGreaterThan(agentMaster);
+    expect(agents).toContain("OperationsMasterList");
+    expect(agents).toContain("OperationsMasterRow");
   });
 
   it("keeps fixed agents workspace heights and hidden internal scrolling", () => {
-    expect(agents).toContain('lg:h-[520px]');
+    expect(agents).toContain('lg:h-[500px]');
     expect(agents).toContain("[scrollbar-width:none]");
     expect(agents).toContain("[&::-webkit-scrollbar]:hidden");
-    expect(agents).toContain('min-h-[44px]');
+    expect(agents).toContain("operationsVisual.iconButton");
   });
 
-  it("aligns documents with the shared tasks workspace contract", () => {
-    expect(documents).toContain("orca-workspace-hero");
-    expect(documents).toContain("orca-workspace-metrics");
-    expect(documents).toContain("orca-workspace-metric");
-    expect(documents).toContain("orca-workspace-panel");
+  it("aligns documents with the canonical shared Operations workspace contract", () => {
+    for (const token of [
+      "OperationsPageHeader",
+      "OperationsKpiGrid",
+      "OperationsMetricCard",
+      "OperationsExecutiveGrid",
+      "OperationsPanel",
+      "OperationsDialog",
+      "operationsVisual.page",
+    ]) {
+      expect(documents).toContain(token);
+    }
     expect(documents).toContain("data-operational-list-card");
     expect(documents).toContain("data-operational-detail-card");
-    expect(documents).toContain("nc-btn nc-btn-ghost");
-    expect(documents).toContain("nc-btn-primary");
-    expect(documents).not.toContain("PageHeader");
+    expect(documents).not.toContain('import PageHeader');
+    expect(documents).not.toContain('from "@/components/layout/PageHeader"');
     expect(documents).not.toContain("SmartCard");
     expect(documents).not.toContain("linear-gradient");
   });
@@ -81,9 +95,10 @@ describe("agents and documents visual identity contract", () => {
     expect(master).toBeGreaterThan(0);
     expect(detail).toBeGreaterThan(master);
     expect(documents).toContain('lg:h-[520px]');
-    expect(documents).toContain("[scrollbar-width:none]");
-    expect(documents).toContain("[&::-webkit-scrollbar]:hidden");
-    expect(documents).toContain('min-h-[44px]');
+    expect(documents).toContain("overflow-y-auto");
+    expect(operationsCss).toContain(".orca-v1-shell .orca-operations-page *");
+    expect(operationsCss).toContain("scrollbar-width: none");
+    expect(operationsCss).toContain("min-height: 44px");
   });
 
   it("uses the document access boundary for all document operations", () => {

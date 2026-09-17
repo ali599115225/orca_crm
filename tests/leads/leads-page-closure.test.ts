@@ -32,7 +32,7 @@ describe("Leads list page architecture", () => {
     expect(workspace).not.toContain("LeadDetails");
     expect(workspace).toContain("/operations/leads/${");
     expect(workspace).toContain("getLeadsAction");
-    expect(workspace).toContain("InteractiveSurface");
+    expect(workspace).toContain("OperationsMasterRow");
   });
 
   it("LeadsWorkspace never reads the legacy stage field", () => {
@@ -125,6 +125,9 @@ describe("Lead detail page architecture", () => {
     expect(panel).toContain("/api/v1/contacts?leadId=");
     expect(panel).toContain('fetch("/api/v1/contacts"');
     expect(panel).toContain("leadId, name, phone");
+    expect(panel).toContain("OperationsDialog");
+    expect(panel).toContain("OperationsTextField");
+    expect(panel).toContain("data-lead-contacts-panel");
   });
 
   it("engagement tabs link tours through offerId and never parse auditLog", () => {

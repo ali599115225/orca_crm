@@ -1,6 +1,41 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
+  FileCheck2,
+  ListChecks,
+  RefreshCw,
+  ShieldCheck,
+  Smartphone,
+} from "lucide-react";
+import {
+  OperationsEmptyState,
+  OperationsKpiGrid,
+  OperationsMetricCard,
+  OperationsPageHeader,
+  OperationsPanel,
+  OperationsPanelHeader,
+  OperationsTabs,
+} from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
+
+type Tab = "dashboard" | "activity" | "queue" | "devices";
+
+const STATUS_TONE: Record<string, string> = {
+  DRAFT: "border-slate-500/30 bg-slate-500/10 text-slate-300",
+  ISSUED: "border-blue-500/30 bg-blue-500/10 text-blue-300",
+  REPORTED: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300",
+  CLEARED: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+  REJECTED: "border-rose-500/30 bg-rose-500/10 text-rose-300",
+  ERROR: "border-red-500/30 bg-red-500/10 text-red-300",
+};
+
+function tone(status: string) {
+  return STATUS_TONE[status] || "border-slate-500/30 bg-slate-500/10 text-slate-300";
+}
 
 export default function CompliancePage() {
   const [dashboard, setDashboard] = useState<any>(null);
@@ -8,166 +43,235 @@ export default function CompliancePage() {
   const [queue, setQueue] = useState<any[]>([]);
   const [devices, setDevices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'activity' | 'queue' | 'devices'>('dashboard');
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchData();
+    void fetchData();
   }, []);
 
   async function fetchData() {
     setLoading(true);
+    setError("");
     try {
       const [dashRes, activityRes, queueRes, deviceRes] = await Promise.all([
-        fetch('/api/v1/zatca/dashboard'),
-        fetch('/api/v1/zatca/activity'),
-        fetch('/api/v1/zatca/queue'),
-        fetch('/api/v1/zatca/device'),
+        fetch("/api/v1/zatca/dashboard", { cache: "no-store" }),
+        fetch("/api/v1/zatca/activity", { cache: "no-store" }),
+        fetch("/api/v1/zatca/queue", { cache: "no-store" }),
+        fetch("/api/v1/zatca/device", { cache: "no-store" }),
       ]);
-      const dash = await dashRes.json();
-      const act = await activityRes.json();
-      const q = await queueRes.json();
-      const dev = await deviceRes.json();
+      const [dash, act, q, dev] = await Promise.all([
+        dashRes.json(),
+        activityRes.json(),
+        queueRes.json(),
+        deviceRes.json(),
+      ]);
 
       if (dash.success) setDashboard(dash.dashboard);
-      if (act.success) setActivity(act.activity);
-      if (q.success) setQueue(q.queue);
-      if (dev.success) setDevices(dev.devices);
-    } catch (e) {
-      console.error('Failed to load compliance data', e);
+      if (act.success) setActivity(Array.isArray(act.activity) ? act.activity : []);
+      if (q.success) setQueue(Array.isArray(q.queue) ? q.queue : []);
+      if (dev.success) setDevices(Array.isArray(dev.devices) ? dev.devices : []);
+
+      if (!dashRes.ok && !activityRes.ok && !queueRes.ok && !deviceRes.ok) {
+        throw new Error("تعذر تحميل بيانات الامتثال.");
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر تحميل بيانات الامتثال.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
-  const statusColors: Record<string, string> = {
-    DRAFT: 'bg-gray-600', ISSUED: 'bg-blue-500', REPORTED: 'bg-teal-500',
-    CLEARED: 'bg-emerald-500', REJECTED: 'bg-rose-500', ERROR: 'bg-red-600',
-  };
+  const invoiceStatuses = dashboard?.invoiceStatuses || {};
+  const queueStatuses = dashboard?.queueStatuses || {};
+  const failedQueue = Number(queueStatuses.FAILED || 0);
+  const cleared = Number(invoiceStatuses.CLEARED || 0);
+  const rejected = Number(invoiceStatuses.REJECTED || 0) + Number(invoiceStatuses.ERROR || 0);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center">
-        <p className="text-[var(--text-dim)] text-lg">Loading compliance data...</p>
-      </div>
-    );
-  }
+  const tabs = useMemo(
+    () => [
+      { id: "dashboard" as const, label: "الملخص", icon: ShieldCheck },
+      { id: "activity" as const, label: "النشاط", icon: Activity },
+      { id: "queue" as const, label: "قائمة المعالجة", icon: ListChecks },
+      { id: "devices" as const, label: "الأجهزة", icon: Smartphone },
+    ],
+    [],
+  );
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] p-6" style={{ '--nc-text-dim': '#8B8B8B', '--nc-border': '#2A2A2A' } as any}>
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-black text-white tracking-tight">ZATCA Compliance Dashboard</h1>
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-              ⚠️ بنية ZATCA موجودة — لم يتم اختبار الربط بعد
+    <main className={operationsVisual.page} dir="rtl" data-compliance-rebuild-v1>
+      <div className={operationsVisual.pageStack}>
+        <OperationsPageHeader
+          eyebrow="الفاتورة → التحقق → الإبلاغ → التخليص"
+          title="الامتثال والفوترة الإلكترونية"
+          description="مراقبة بنية ZATCA وحالات الفواتير وقائمة المعالجة والأجهزة من عقد تشغيلي موحد."
+          icon={ShieldCheck}
+          meta={
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-black text-amber-300">
+              <AlertTriangle size={13} aria-hidden="true" />
+              الربط الخارجي لم يُختبر بعد
             </span>
+          }
+          actions={
+            <button
+              type="button"
+              onClick={() => void fetchData()}
+              className={operationsVisual.iconButton}
+              aria-label="تحديث بيانات الامتثال"
+              title="تحديث"
+            >
+              <RefreshCw className={loading ? "animate-spin" : ""} aria-hidden="true" />
+            </button>
+          }
+        />
+
+        <OperationsKpiGrid>
+          <OperationsMetricCard title="إجمالي الفواتير" value={loading ? "…" : dashboard?.totalInvoices ?? 0} description="السجل المتاح" icon={FileCheck2} />
+          <OperationsMetricCard title="تم التخليص" value={loading ? "…" : cleared} description="فواتير بحالة CLEARED" icon={CheckCircle2} />
+          <OperationsMetricCard title="رفض / خطأ" value={loading ? "…" : rejected} description="تحتاج معالجة" icon={AlertTriangle} />
+          <OperationsMetricCard title="الأجهزة النشطة" value={loading ? "…" : dashboard?.activeDevices ?? 0} description="أجهزة ZATCA المسجلة" icon={Smartphone} />
+        </OperationsKpiGrid>
+
+        {error ? (
+          <div role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-bold text-rose-300">
+            {error}
           </div>
-          <button onClick={fetchData} className="px-4 py-2 bg-[#2A2A2A] hover:bg-[#3A3A3A] text-white text-sm rounded-lg transition-all">
-            Refresh
-          </button>
-        </div>
+        ) : null}
 
-        {dashboard && (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-8">
-              {Object.entries(statusColors).map(([status, color]) => (
-                <div key={status} className={`rounded-xl p-4 ${color}/10 border border-[var(--nc-border)]`}>
-                  <p className="text-xs font-medium text-[var(--nc-text-dim)] mb-1">{status}</p>
-                  <p className={`text-3xl font-black ${color.replace('bg-', 'text-')}`}>
-                    {(dashboard.invoiceStatuses as any)[status] || 0}
-                  </p>
-                </div>
+        <OperationsPanel className="overflow-hidden">
+          <div className="border-b border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-2 py-1.5">
+            <OperationsTabs>
+              {tabs.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === id}
+                  onClick={() => setActiveTab(id)}
+                  className={activeTab === id ? operationsVisual.activeTab : operationsVisual.tab}
+                >
+                  <Icon size={14} aria-hidden="true" />
+                  {label}
+                </button>
               ))}
-            </div>
+            </OperationsTabs>
+          </div>
 
-            <div className="flex gap-4 mb-8">
-              <div className="flex-1 rounded-xl p-4 bg-[#1A1A1A] border border-[var(--nc-border)]">
-                <p className="text-xs font-medium text-[var(--nc-text-dim)] mb-1">Active Devices</p>
-                <p className="text-3xl font-black text-white">{dashboard.activeDevices}</p>
-              </div>
-              <div className="flex-1 rounded-xl p-4 bg-[#1A1A1A] border border-[var(--nc-border)]">
-                <p className="text-xs font-medium text-[var(--nc-text-dim)] mb-1">Total Invoices</p>
-                <p className="text-3xl font-black text-white">{dashboard.totalInvoices}</p>
-              </div>
-            </div>
-
-            {dashboard.queueStatuses && (
-              <div className="rounded-xl p-4 bg-[#1A1A1A] border border-[var(--nc-border)] mb-8">
-                <h3 className="text-sm font-bold text-white mb-3">Queue Status</h3>
-                <div className="grid grid-cols-4 gap-3">
-                  {Object.entries(dashboard.queueStatuses).map(([status, count]: any) => (
-                    <div key={status} className="text-center">
-                      <p className={`text-xl font-black ${status === 'FAILED' ? 'text-rose-500' : status === 'COMPLETED' ? 'text-emerald-500' : 'text-gray-400'}`}>{count}</p>
-                      <p className="text-[10px] text-[var(--nc-text-dim)]">{status}</p>
-                    </div>
+          {loading ? (
+            <div className="p-3"><OperationsEmptyState>جارٍ تحميل بيانات الامتثال…</OperationsEmptyState></div>
+          ) : activeTab === "dashboard" ? (
+            <div className="grid gap-3 p-3 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,.85fr)]">
+              <section className="min-w-0">
+                <OperationsPanelHeader title="حالات الفواتير" description="التوزيع الحالي لحالات ZATCA" icon={FileCheck2} />
+                <div className="grid gap-2 pt-2 sm:grid-cols-2 xl:grid-cols-3">
+                  {Object.keys(STATUS_TONE).map((status) => (
+                    <article key={status} className={`${operationsVisual.contentCard} p-3`}>
+                      <span className="text-[10px] font-bold text-[var(--nc-text-dim)]">{status}</span>
+                      <strong className="mt-2 block text-2xl font-black">{Number(invoiceStatuses[status] || 0)}</strong>
+                    </article>
                   ))}
                 </div>
-              </div>
-            )}
-          </>
-        )}
+              </section>
 
-        <div className="flex gap-2 mb-6 border-b border-[var(--nc-border)] pb-2">
-          {(['dashboard', 'activity', 'queue', 'devices'] as const).map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === tab ? 'bg-[#8EB1D1] text-black' : 'text-[var(--nc-text-dim)] hover:text-white'}`}>
-              {tab === 'dashboard' ? 'Summary' : tab === 'activity' ? 'Activity' : tab === 'queue' ? 'Queue' : 'Devices'}
-            </button>
-          ))}
-        </div>
+              <section className="min-w-0">
+                <OperationsPanelHeader title="حالة قائمة المعالجة" description="ملخص محاولات الإرسال" icon={ListChecks} />
+                <div className="grid gap-2 pt-2">
+                  {Object.keys(queueStatuses).length === 0 ? (
+                    <OperationsEmptyState>لا توجد حالات Queue متاحة.</OperationsEmptyState>
+                  ) : (
+                    Object.entries(queueStatuses).map(([status, count]) => (
+                      <div key={status} className={`${operationsVisual.contentCard} flex items-center justify-between gap-3 px-3 py-2.5`}>
+                        <span className="text-[10px] font-bold text-[var(--nc-text-secondary)]">{status}</span>
+                        <strong className={status === "FAILED" ? "text-rose-300" : status === "COMPLETED" ? "text-emerald-300" : ""}>{Number(count)}</strong>
+                      </div>
+                    ))
+                  )}
+                  {failedQueue > 0 ? (
+                    <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[10px] font-bold text-rose-300">
+                      توجد {failedQueue} عناصر فاشلة تحتاج مراجعة.
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+            </div>
+          ) : activeTab === "activity" ? (
+            <ListTab
+              title="نشاط الفواتير"
+              icon={Activity}
+              empty="لا يوجد نشاط ZATCA مسجل."
+              rows={activity.map((item) => ({
+                key: String(item.id),
+                title: `${item.invoicePrefix || "INV"}-${new Date().getFullYear()}-${String(item.invoiceNumber || "").padStart(6, "0")}`,
+                subtitle: [item.lease?.tenantName, item.lease?.unitName].filter(Boolean).join(" · ") || "غير محدد",
+                status: item.zatcaStatus || "غير محدد",
+                error: item.zatcaError || "",
+              }))}
+            />
+          ) : activeTab === "queue" ? (
+            <ListTab
+              title="قائمة المعالجة"
+              icon={ListChecks}
+              empty="لا توجد عناصر في قائمة المعالجة."
+              rows={queue.map((item) => ({
+                key: String(item.id),
+                title: `${item.action || "ACTION"} · Invoice #${item.invoice?.invoiceNumber || "—"}`,
+                subtitle: `المحاولة ${item.retryCount ?? 0}/${item.maxRetries ?? 0}`,
+                status: item.status || "غير محدد",
+                error: item.lastError || "",
+              }))}
+            />
+          ) : (
+            <ListTab
+              title="الأجهزة"
+              icon={Smartphone}
+              empty="لا توجد أجهزة مسجلة."
+              rows={devices.map((device) => ({
+                key: String(device.id),
+                title: device.deviceName || "جهاز غير مسمى",
+                subtitle: device.deviceType || "غير محدد",
+                status: device.status || "غير محدد",
+                error: "",
+              }))}
+            />
+          )}
+        </OperationsPanel>
+      </div>
+    </main>
+  );
+}
 
-        {activeTab === 'activity' && (
-          <div className="space-y-2">
-            {activity.map((item: any) => (
-              <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-[#1A1A1A] border border-[var(--nc-border)]">
-                <div>
-                  <p className="text-sm font-bold text-white">{item.invoicePrefix}-{new Date().getFullYear()}-{String(item.invoiceNumber).padStart(6, '0')}</p>
-                  <p className="text-[11px] text-[var(--nc-text-dim)]">{item.lease?.tenantName} – {item.lease?.unitName}</p>
-                </div>
-                <div className="text-right">
-                  <span className={`px-2 py-0.5 text-[10px] font-black rounded ${statusColors[item.zatcaStatus] || 'bg-gray-600'} text-white`}>{item.zatcaStatus}</span>
-                  {item.zatcaError && <p className="text-[10px] text-rose-400 mt-1">{item.zatcaError.substring(0, 60)}</p>}
-                </div>
+function ListTab({
+  title,
+  icon: Icon,
+  rows,
+  empty,
+}: {
+  title: string;
+  icon: typeof Activity;
+  rows: Array<{ key: string; title: string; subtitle: string; status: string; error: string }>;
+  empty: string;
+}) {
+  return (
+    <section className="p-3">
+      <OperationsPanelHeader title={title} icon={Icon} meta={<span className={operationsVisual.counterBadge}>{rows.length}</span>} />
+      <div className="mt-2 grid gap-1.5">
+        {rows.length === 0 ? (
+          <OperationsEmptyState>{empty}</OperationsEmptyState>
+        ) : (
+          rows.map((row) => (
+            <article key={row.key} className={`${operationsVisual.contentCard} flex items-center justify-between gap-3 px-3 py-2.5`}>
+              <div className="min-w-0">
+                <strong className="block truncate text-xs font-black">{row.title}</strong>
+                <span className="mt-1 block truncate text-[10px] text-[var(--nc-text-secondary)]">{row.subtitle}</span>
+                {row.error ? <span className="mt-1 block truncate text-[9px] text-rose-300">{row.error}</span> : null}
               </div>
-            ))}
-            {activity.length === 0 && <p className="text-[var(--nc-text-dim)] text-sm">No ZATCA activity yet</p>}
-          </div>
-        )}
-
-        {activeTab === 'queue' && (
-          <div className="space-y-2">
-            {queue.map((item: any) => (
-              <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-[#1A1A1A] border border-[var(--nc-border)]">
-                <div>
-                  <p className="text-sm font-bold text-white">{item.action} – Invoice #{item.invoice?.invoiceNumber}</p>
-                  <p className="text-[11px] text-[var(--nc-text-dim)]">Retry: {item.retryCount}/{item.maxRetries}</p>
-                </div>
-                <div className="text-right">
-                  <span className="px-2 py-0.5 text-[10px] font-black rounded bg-gray-600 text-white">{item.status}</span>
-                  {item.lastError && <p className="text-[10px] text-rose-400 mt-1">{item.lastError.substring(0, 60)}</p>}
-                </div>
-              </div>
-            ))}
-            {queue.length === 0 && <p className="text-[var(--nc-text-dim)] text-sm">No queue items</p>}
-          </div>
-        )}
-
-        {activeTab === 'devices' && (
-          <div className="space-y-2">
-            {devices.map((dev: any) => (
-              <div key={dev.id} className="flex items-center justify-between p-3 rounded-xl bg-[#1A1A1A] border border-[var(--nc-border)]">
-                <div>
-                  <p className="text-sm font-bold text-white">{dev.deviceName}</p>
-                  <p className="text-[11px] text-[var(--nc-text-dim)]">{dev.deviceType}</p>
-                </div>
-                <div className="text-right">
-                  <span className={`px-2 py-0.5 text-[10px] font-black rounded ${dev.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-gray-600'} text-white`}>{dev.status}</span>
-                </div>
-              </div>
-            ))}
-            {devices.length === 0 && <p className="text-[var(--nc-text-dim)] text-sm">No devices registered</p>}
-          </div>
+              <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-black ${tone(row.status)}`}>
+                {row.status}
+              </span>
+            </article>
+          ))
         )}
       </div>
-    </div>
+    </section>
   );
 }

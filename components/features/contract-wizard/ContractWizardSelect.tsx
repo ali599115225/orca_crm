@@ -1,4 +1,6 @@
-﻿"use client";
+"use client";
+
+import OperationsScrollRegion from "@/components/operations/OperationsScrollRegion";
 
 import {
   useEffect,
@@ -27,6 +29,7 @@ interface ContractWizardSelectProps {
   disabled?: boolean;
   mono?: boolean;
   placement?: "auto" | "bottom" | "top";
+  minimumSearchLength?: number;
   portalZIndex?: number;
   isEmpty?: boolean;
   emptyMessage?: string;
@@ -52,6 +55,7 @@ export default function ContractWizardSelect({
   disabled,
   mono,
   placement = "auto",
+  minimumSearchLength = 0,
   portalZIndex = 1100,
   isEmpty = false,
   emptyMessage,
@@ -85,9 +89,10 @@ export default function ContractWizardSelect({
   );
 
   const normalizedQuery = normalizeSearch(query);
-  const requiresSearch = enabledOptions.length > 8;
+  const requiresSearch =
+    minimumSearchLength > 0 && enabledOptions.length > 8;
   const waitingForSearch =
-    requiresSearch && normalizedQuery.length < 2;
+    requiresSearch && normalizedQuery.length < minimumSearchLength;
   const hasNoOptions = isEmpty || enabledOptions.length === 0;
 
   const visibleOptions = useMemo(() => {
@@ -143,19 +148,21 @@ export default function ContractWizardSelect({
         spaceAbove > spaceBelow);
 
     const availableHeight = openUpward ? spaceAbove : spaceBelow;
-    const maxHeight = Math.max(
-      104,
-      Math.min(280, availableHeight - 4),
-    );
+    const maxHeight =
+      placement === "bottom"
+        ? Math.max(44, Math.min(280, spaceBelow - 4))
+        : Math.max(104, Math.min(280, availableHeight - 4));
     const renderedHeight = Math.min(estimatedHeight, maxHeight);
 
     setPosition({
       top: openUpward
         ? Math.max(gap, rect.top - renderedHeight - 4)
-        : Math.min(
-            rect.bottom + 4,
-            window.innerHeight - renderedHeight - gap,
-          ),
+        : placement === "bottom"
+          ? rect.bottom + 4
+          : Math.min(
+              rect.bottom + 4,
+              window.innerHeight - renderedHeight - gap,
+            ),
       left: Math.max(
         gap,
         Math.min(
@@ -321,8 +328,10 @@ export default function ContractWizardSelect({
       {open &&
         position &&
         createPortal(
-          <div
-            ref={listRef}
+          <div ref={listRef}>
+          <OperationsScrollRegion
+            scrollRole="menu"
+            data-operations-portal-scroll="true"
             id={listboxId}
             role="listbox"
             dir={position.direction}
@@ -334,7 +343,7 @@ export default function ContractWizardSelect({
               maxHeight: position.maxHeight,
               zIndex: portalZIndex,
             }}
-            className="overflow-y-auto overscroll-contain rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] py-1 shadow-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] py-1 shadow-2xl"
           >
             {hasNoOptions ? (
               <div className="px-4 py-5 text-center text-sm text-[var(--nc-text-secondary)]">
@@ -343,8 +352,8 @@ export default function ContractWizardSelect({
             ) : waitingForSearch ? (
               <div className="px-4 py-5 text-center text-sm text-[var(--nc-text-secondary)]">
                 {position.direction === "rtl"
-                  ? "اكتب حرفين على الأقل للبحث"
-                  : "Type at least two characters to search"}
+                  ? `اكتب ${minimumSearchLength} أحرف على الأقل للبحث`
+                  : `Type at least ${minimumSearchLength} characters to search`}
               </div>
             ) : visibleOptions.length === 0 ? (
               <div className="px-4 py-5 text-center text-sm text-[var(--nc-text-secondary)]">
@@ -389,6 +398,7 @@ export default function ContractWizardSelect({
                 );
               })
             )}
+          </OperationsScrollRegion>
           </div>,
           document.body,
         )}

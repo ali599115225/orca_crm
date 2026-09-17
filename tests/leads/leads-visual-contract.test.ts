@@ -19,19 +19,23 @@ const visualTargets = [
 ];
 
 describe("Leads visual contract", () => {
-  it("uses one shared visual token contract", () => {
+  it("anchors Leads to the canonical Operations contract", () => {
     const visual = read("features/leads/visual.ts");
-    expect(visual).toContain("export const leadVisual");
-    expect(visual).toContain("primaryButton");
-    expect(visual).toContain("secondaryButton");
-    expect(visual).toContain("modalOverlay");
-    expect(visual).toContain("iconTile");
-    expect(visual).toContain("metricCard");
-    expect(visual).toContain("metricIconTile");
-    expect(visual).toContain("interactiveRow");
+    const workspace = read("features/leads/components/LeadsWorkspace.tsx");
+    const detail = read("features/leads/components/LeadDetailClient.tsx");
 
-    for (const target of visualTargets) {
-      expect(read(target), target).toContain("leadVisual");
+    expect(visual).toContain(
+      'import { operationsVisual } from "@/features/operations/visual";',
+    );
+    expect(visual).toContain("page: operationsVisual.page");
+    expect(visual).toContain("workspaceHero: operationsVisual.hero");
+    expect(visual).toContain("metricCard: operationsVisual.metricCard");
+    expect(visual).toContain("modalOverlay: operationsVisual.dialogOverlay");
+
+    for (const source of [workspace, detail]) {
+      expect(source).toContain("OperationsPageHeader");
+      expect(source).toContain("OperationsMetricCard");
+      expect(source).toContain("operationsVisual");
     }
   });
 
@@ -45,14 +49,22 @@ describe("Leads visual contract", () => {
     }
   });
 
-  it("keeps gold limited to shared primary, active, and focus states", () => {
-    const visual = read("features/leads/visual.ts");
-    expect(visual).toContain("bg-[var(--nc-accent)]");
-    expect(visual).toContain("bg-[var(--nc-accent-soft)]");
-    expect(visual).toContain("focus-visible:ring-[var(--nc-accent-soft)]");
+  it("keeps gold interaction semantics centralized in the shared Operations contract", () => {
+    const operationsVisual = read("features/operations/visual.ts");
+    const css = read("app/operations/orca-page-contract-v1.css");
+
+    expect(operationsVisual).toContain(
+      'primaryButton: "orca-operations-primary-button"',
+    );
+    expect(operationsVisual).toContain(
+      'activeTab: "orca-operations-tab is-active"',
+    );
+    expect(css).toContain("background: var(--nc-accent);");
+    expect(css).toContain("border-color: var(--nc-accent-border);");
+    expect(css).toContain("background: var(--nc-accent-soft);");
   });
 
-  it("gives KPI and detail cards a consistent icon hierarchy", () => {
+  it("gives KPI and detail cards a consistent shared icon hierarchy", () => {
     const workspace = read("features/leads/components/LeadsWorkspace.tsx");
     const detail = read("features/leads/components/LeadDetailClient.tsx");
 
@@ -60,33 +72,29 @@ describe("Leads visual contract", () => {
     expect(workspace).toContain("UserPlus");
     expect(workspace).toContain("BadgeCheck");
     expect(workspace).toContain("TrendingUp");
-    expect(workspace).toContain("leadVisual.metricCard");
-    expect(workspace).toContain("leadVisual.metricIconTile");
-    expect(detail).toContain("leadVisual.iconTile");
+    expect(workspace).toContain("OperationsMetricCard");
+    expect(detail).toContain("OperationsMetricCard");
+    expect(detail).toContain("operationsVisual.softPanel");
   });
 
-  it("matches Dashboard gold hover behavior for KPI cards and lead rows", () => {
-    const visual = read("features/leads/visual.ts");
+  it("matches Dashboard hover behavior through shared master rows", () => {
     const workspace = read("features/leads/components/LeadsWorkspace.tsx");
+    const css = read("app/operations/orca-page-contract-v1.css");
 
-    expect(visual).toContain("hover:border-[var(--nc-accent-border)]");
-    expect(visual).toContain("hover:bg-[var(--nc-accent-soft)]");
-    expect(visual).toContain("group-hover:text-[var(--nc-accent)]");
-    expect(workspace).toContain("leadVisual.metricCard");
-    expect(workspace).toContain("leadVisual.interactiveRow");
+    expect(workspace).toContain("OperationsMasterRow");
+    expect(css).toContain(".orca-v1-shell .orca-operations-master-row:hover");
+    expect(css).toContain("border-color: var(--nc-accent-border);");
     expect(workspace).not.toContain("hover:!border-[var(--nc-op-blue-border)]");
   });
 
   it("keeps non-semantic icon tiles neutral instead of operational blue", () => {
     const visual = read("features/leads/visual.ts");
-    const iconTileBlock = visual.slice(
-      visual.indexOf("iconTile:"),
-      visual.indexOf("metricIconTile:"),
-    );
+    const css = read("app/operations/orca-page-contract-v1.css");
 
-    expect(iconTileBlock).toContain("nc-glass-border");
-    expect(iconTileBlock).toContain("nc-text-secondary");
-    expect(iconTileBlock).not.toContain("nc-op-blue");
+    expect(visual).toContain("iconTile: operationsVisual.iconTile");
+    expect(css).toContain(".orca-operations-icon-tile");
+    expect(css).toContain("background: var(--nc-surface-soft);");
+    expect(css).toContain("color: var(--nc-text-secondary);");
   });
 
   it("uses semantic status colors instead of one gold badge", () => {
@@ -106,7 +114,9 @@ describe("Leads visual contract", () => {
     const select = read("components/settings/SettingsSelect.tsx");
     expect(select).toContain("<Check");
     expect(select).toContain("bg-[var(--nc-surface-strong)]");
-    expect(select).not.toContain('option.value === value\n                      ? "bg-[var(--nc-accent-soft)]');
+    expect(select).not.toContain(
+      'option.value === value\n                      ? "bg-[var(--nc-accent-soft)]',
+    );
     expect(select).toContain("preferredMinimum");
   });
 });

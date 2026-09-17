@@ -1,6 +1,5 @@
 import { displayEntity, displayEnum, displayPerson } from '@/lib/display';
 import type { DisplayLocale } from '@/lib/display';
-import { formatDisplayDate } from '@/lib/display/dateTime';
 
 export type ContractsPaymentsLocale = DisplayLocale;
 
@@ -162,7 +161,16 @@ export function formatMoneyValue(value: number, locale: ContractsPaymentsLocale)
 
 export function formatDateValue(value: string, locale: ContractsPaymentsLocale): string {
   if (!value) return emptyValue(locale);
+  const raw = String(value).trim();
+  const isoDate = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoDate) return `${isoDate[3]}/${isoDate[2]}/${isoDate[1]}`;
+
   const date = new Date(value);
-  if (!Number.isNaN(date.getTime())) return formatDisplayDate(date);
+  if (!Number.isNaN(date.getTime())) {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = String(date.getFullYear());
+    return `${day}/${month}/${year}`;
+  }
   return safeDisplayValue(value, locale);
 }

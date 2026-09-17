@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { OperationsPanel } from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
 
 type Language = "AR" | "EN";
 
@@ -480,7 +482,7 @@ export default function WhatsAppIntegrationSettings({
         : t.disconnected;
 
   return (
-    <section className="orca-settings-card rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5">
+    <OperationsPanel padded>
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 space-y-3">
           <div className="flex items-center gap-3">
@@ -515,7 +517,7 @@ export default function WhatsAppIntegrationSettings({
                 <button
                   type="button"
                   onClick={refreshStatus}
-                  className="rounded-lg border border-[var(--nc-border)] px-2 py-1 text-[var(--nc-foreground)] hover:border-[var(--nc-accent-border)]"
+                  className={operationsVisual.secondaryButton}
                 >
                   {t.retryStatus}
                 </button>
@@ -541,7 +543,7 @@ export default function WhatsAppIntegrationSettings({
 
           {status?.connected && (
             <dl className="grid gap-3 text-xs sm:grid-cols-3">
-              <div className="rounded-xl border border-[var(--nc-border)] p-3">
+              <div className={operationsVisual.contentCard + " p-3"}>
                 <dt className="text-[var(--nc-foreground-muted)]">
                   {t.verifiedName}
                 </dt>
@@ -549,7 +551,7 @@ export default function WhatsAppIntegrationSettings({
                   {status.verifiedName || t.unavailable}
                 </dd>
               </div>
-              <div className="rounded-xl border border-[var(--nc-border)] p-3">
+              <div className={operationsVisual.contentCard + " p-3"}>
                 <dt className="text-[var(--nc-foreground-muted)]">{t.phone}</dt>
                 <dd
                   dir="ltr"
@@ -558,7 +560,7 @@ export default function WhatsAppIntegrationSettings({
                   {status.displayPhoneNumber || t.unavailable}
                 </dd>
               </div>
-              <div className="rounded-xl border border-[var(--nc-border)] p-3">
+              <div className={operationsVisual.contentCard + " p-3"}>
                 <dt className="text-[var(--nc-foreground-muted)]">
                   {t.quality}
                 </dt>
@@ -580,7 +582,7 @@ export default function WhatsAppIntegrationSettings({
             type="button"
             onClick={connect}
             disabled={Boolean(busy)}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--nc-accent)] px-4 text-sm font-semibold text-slate-950 transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+            className={operationsVisual.primaryButton}
           >
             {isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -601,7 +603,7 @@ export default function WhatsAppIntegrationSettings({
               type="button"
               onClick={disconnect}
               disabled={Boolean(busy)}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-red-500/40 px-4 text-sm font-semibold text-red-600 transition-opacity disabled:cursor-not-allowed disabled:opacity-60 dark:text-red-300"
+              className="orca-operations-secondary-button border-red-500/40 text-red-500 dark:text-red-300"
             >
               {busy === "disconnect" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -613,6 +615,6 @@ export default function WhatsAppIntegrationSettings({
           )}
         </div>
       </div>
-    </section>
+    </OperationsPanel>
   );
 }

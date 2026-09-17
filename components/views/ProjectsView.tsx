@@ -12,9 +12,26 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useApp } from '@/app/context/AppContext';
-import { getDetailedProjectsAction, getProjectUnitsAction, createProjectAction } from '@/app/actions/projects';
+import { getDetailedProjectsAction, getProjectUnitsAction, createProjectAction, toggleUnitStatusAction } from '@/app/actions/projects';
 import { displayGeo, displayEntity, displayEnum } from '@/lib/display';
 import type { DisplayLocale } from '@/lib/display';
+import {
+  OperationsBackAction,
+  OperationsDialog,
+  OperationsEmptyState,
+  OperationsFormField,
+  OperationsKpiGrid,
+  OperationsMasterList,
+  OperationsMasterRow,
+  OperationsMetricCard,
+  OperationsPageHeader,
+  OperationsPanel,
+  OperationsPanelHeader,
+  OperationsTabs,
+  OperationsTextField,
+} from '@/components/operations';
+import { operationsVisual } from '@/features/operations/visual';
+import SettingsSelect from '@/components/settings/SettingsSelect';
 
 type ProjectItem = {
   id: string | number;
@@ -34,6 +51,7 @@ type UnitItem = {
   id?: string | number;
   number?: string;
   unitNumber?: string;
+  no?: string;
   code?: string;
   name?: string;
   type?: string;
@@ -49,7 +67,7 @@ type UnitItem = {
 
 type TabKey = 'overview' | 'phases' | 'units' | 'bookings' | 'documents' | 'reports';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 5;
 
 const copy = {
   ar: {
@@ -238,8 +256,8 @@ function toNumber(value: unknown): number {
   return 0;
 }
 
-function formatNumber(value: unknown, isArabic: boolean): string {
-  return toNumber(value).toLocaleString(isArabic ? 'ar-SA' : 'en-US');
+function formatNumber(value: unknown, _isArabic: boolean): string {
+  return toNumber(value).toLocaleString('en-US');
 }
 
 function formatCurrency(value: unknown, isArabic: boolean, notSpecified: string, sar: string): string {
@@ -350,8 +368,8 @@ function unitStatusKey(
   return 'available';
 }
 
-function normalizeUnitStatus(status: string | undefined, labels: typeof copy.ar, locale: DisplayLocale): string {
-  return displayUnitStatus(status, locale, labels);
+function normalizeUnitStatus(status: string | undefined, labels: typeof copy.ar, _locale: DisplayLocale): string {
+  return labels[unitStatusKey(status)];
 }
 
 function isUnitBookable(status?: string): boolean {
@@ -379,7 +397,7 @@ function getUnitDisplayNumber(
   fallbackIndex: number,
   unitFallback: string,
 ): string {
-  const candidates = [unit.displayNumber, unit.unitNumber, unit.number, unit.code, unit.name];
+  const candidates = [unit.displayNumber, unit.unitNumber, unit.no, unit.number, unit.code, unit.name];
 
   for (const candidate of candidates) {
     if (candidate && !isTechnicalId(candidate) && !isDemoLeak(candidate)) {
@@ -448,7 +466,7 @@ function PaginationBar({
           type="button"
           disabled={page <= 1}
           onClick={onPrevious}
-          className="nc-btn-ghost min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+          className={`${operationsVisual.secondaryButton} min-h-11 px-3 py-2 text-[12px] disabled:cursor-not-allowed disabled:opacity-40`}
         >
           {labels.previous}
         </button>
@@ -457,11 +475,20 @@ function PaginationBar({
           type="button"
           disabled={page >= totalPages}
           onClick={onNext}
-          className="nc-btn-primary min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+          className={`${operationsVisual.secondaryButton} min-h-11 px-3 py-2 text-[12px] disabled:cursor-not-allowed disabled:opacity-40`}
         >
           {labels.next}
         </button>
       </div>
+    </div>
+  );
+}
+
+function ProjectDialogCell({ label, value }: { label: React.ReactNode; value: React.ReactNode }) {
+  return (
+    <div className={`${operationsVisual.softPanel} p-4`}>
+      <p className={operationsVisual.meta}>{label}</p>
+      <p className="mt-1 font-semibold text-[var(--nc-text-primary)]">{value}</p>
     </div>
   );
 }
@@ -485,9 +512,12 @@ export default function ProjectsView() {
   const [projectPage, setProjectPage] = useState(1);
   const [unitPage, setUnitPage] = useState(1);
   const [bookingUnit, setBookingUnit] = useState<UnitItem | null>(null);
+  const [isBookingUnit, setIsBookingUnit] = useState(false);
+  const [bookingError, setBookingError] = useState('');
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [createProjectStatus, setCreateProjectStatus] = useState('PLANNING');
 
   const loadProjects = useCallback(async () => {
     try {
@@ -508,6 +538,10 @@ export default function ProjectsView() {
     void loadProjects();
   }, [loadProjects]);
 
+  useEffect(() => {
+    setProjectPage(1);
+  }, [searchTerm]);
+
   async function submitCreateProject(formData: FormData) {
     setIsCreatingProject(true);
     setCreateError('');
@@ -518,6 +552,7 @@ export default function ProjectsView() {
         return;
       }
       setShowCreateProject(false);
+      setCreateProjectStatus('PLANNING');
       await loadProjects();
     } catch {
       setCreateError(labels.createProject);
@@ -617,302 +652,165 @@ export default function ProjectsView() {
   function openBookingModal(unit: UnitItem, index: number) {
     const absoluteIndex = (unitPage - 1) * PAGE_SIZE + index + 1;
 
+    setBookingError('');
     setBookingUnit({
       ...unit,
       displayNumber: getUnitDisplayNumber(unit, absoluteIndex, labels.unitFallback),
     });
   }
 
+  async function confirmBooking() {
+    if (!bookingUnit?.id || !selectedProjectId || isBookingUnit) return;
+
+    setIsBookingUnit(true);
+    setBookingError('');
+
+    try {
+      const result = await toggleUnitStatusAction(
+        String(bookingUnit.id),
+        String(bookingUnit.status || 'Available'),
+      );
+
+      if (!result?.success) {
+        setBookingError(result?.error || labels.notBookable);
+        return;
+      }
+
+      const refreshedUnits = await getProjectUnitsAction(String(selectedProjectId));
+      setUnits(extractArray(refreshedUnits));
+      setBookingUnit(null);
+    } catch {
+      setBookingError(labels.notBookable);
+    } finally {
+      setIsBookingUnit(false);
+    }
+  }
+
   if (selectedProject) {
     return (
-      <section dir={direction} className="space-y-4 overflow-x-hidden px-4 pb-8 pt-4 lg:px-6">
-        <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-2">
-              <button
-                type="button"
+      <section dir={direction} className={operationsVisual.page} data-project-detail-contract="dashboard-v2">
+        <div className={operationsVisual.pageStack}>
+          <OperationsPageHeader
+            eyebrow={labels.breadcrumb}
+            title={displayProjectName(selectedProject, displayLocale, labels)}
+            description={displayProjectLocation(selectedProject, displayLocale, labels)}
+            icon={FolderKanban}
+            meta={<StatusBadge>{normalizeProjectStatus(selectedProject.status, labels, displayLocale)}</StatusBadge>}
+            actions={
+              <OperationsBackAction
                 onClick={handleBackToList}
-                className="nc-btn-ghost inline-flex min-h-[36px] items-center rounded-xl px-3 py-1.5 text-xs font-semibold"
-              >
-                {labels.backToProjects}
-              </button>
-
-              <div>
-                <h1 className="text-xl font-bold text-[var(--nc-text-primary)]">
-                  {displayProjectName(selectedProject, displayLocale, labels)}
-                </h1>
-                <p className="mt-0.5 text-xs text-[var(--nc-text-secondary)]">
-                  {displayProjectLocation(selectedProject, displayLocale, labels)}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <StatusBadge>{normalizeProjectStatus(selectedProject.status, labels, displayLocale)}</StatusBadge>
-                <StatusBadge>
-                  {labels.progress} {formatNumber(selectedProject.progressPercent, isArabic)}%
-                </StatusBadge>
-              </div>
-            </div>
-
-            <div className="grid min-w-0 grid-cols-2 gap-2 lg:min-w-[300px]">
-              <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5">
-                <p className="text-xs text-[var(--nc-text-secondary)]">{labels.totalUnits}</p>
-                <p className="mt-1 text-lg font-bold text-[var(--nc-text-primary)]">
-                  {formatNumber(selectedProject.unitsTotal, isArabic)}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] px-3 py-2.5">
-                <p className="text-xs text-[var(--nc-text-secondary)]">{labels.soldUnits}</p>
-                <p className="mt-1 text-lg font-bold text-[var(--nc-text-primary)]">
-                  {formatNumber(selectedProject.unitsSold, isArabic)}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 shadow-sm">
-          <div className="flex flex-wrap gap-2">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.key;
-
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveTab(tab.key)}
-                  className={
-                    isActive
-                      ? 'nc-btn-primary min-h-[40px] rounded-xl px-4 py-2 text-sm font-semibold'
-                      : 'nc-btn-ghost min-h-[40px] rounded-xl px-4 py-2 text-sm font-semibold'
-                  }
-                >
-                  {labels[tab.labelKey]}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {activeTab === 'overview' && (
-          <div className="grid min-w-0 gap-3 lg:grid-cols-4">
-            <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4 lg:col-span-2">
-              <p className="text-xs font-semibold text-[var(--nc-text-secondary)]">
-                {labels.projectSummary}
-              </p>
-              <p className="mt-2 min-h-[48px] text-sm leading-7 text-[var(--nc-text-primary)]">
-                {safeDisplay(selectedProject.description, labels.noProjectDescription)}
-              </p>
-            </div>
-
-            <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4">
-              <p className="text-xs text-[var(--nc-text-secondary)]">{labels.expectedUnits}</p>
-              <p className="mt-1.5 text-xl font-bold text-[var(--nc-text-primary)]">
-                {formatNumber(selectedProject.unitsTotal, isArabic)}
-              </p>
-            </div>
-
-            <div className="rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4">
-              <p className="text-xs text-[var(--nc-text-secondary)]">{labels.progress}</p>
-              <p className="mt-1.5 text-xl font-bold text-[var(--nc-text-primary)]">
-                {formatNumber(selectedProject.progressPercent, isArabic)}%
-              </p>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'phases' && <EmptyState message={labels.noPhases} />}
-
-        {activeTab === 'units' && (
-          <div className="min-w-0 overflow-hidden rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-4">
-            {isLoadingUnits ? (
-              <EmptyState message={labels.loadingUnits} />
-            ) : units.length > 0 ? (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] text-sm">
-                    <thead>
-                      <tr className="border-b border-[var(--nc-border)] text-[var(--nc-text-secondary)]">
-                        <th className={`px-3 py-3 ${textAlign} font-semibold`}>
-                          {labels.unitNumber}
-                        </th>
-                        <th className={`px-3 py-3 ${textAlign} font-semibold`}>
-                          {labels.type}
-                        </th>
-                        <th className={`px-3 py-3 ${textAlign} font-semibold`}>
-                          {labels.area}
-                        </th>
-                        <th className={`px-3 py-3 ${textAlign} font-semibold`}>
-                          {labels.price}
-                        </th>
-                        <th className={`px-3 py-3 ${textAlign} font-semibold`}>
-                          {labels.status}
-                        </th>
-                        <th className={`px-3 py-3 ${textAlign} font-semibold`}>
-                          {labels.action}
-                        </th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {pagedUnits.map((unit, index) => {
-                        const absoluteIndex = (unitPage - 1) * PAGE_SIZE + index + 1;
-                        const bookable = isUnitBookable(unit.status);
-
-                        return (
-                          <tr key={unit.id || absoluteIndex} className="border-b border-[var(--nc-border)]">
-                            <td className="px-3 py-3 text-[var(--nc-text-primary)]">
-                              {getUnitDisplayNumber(unit, absoluteIndex, labels.unitFallback)}
-                            </td>
-
-                            <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                              {getUnitType(unit, labels, displayLocale)}
-                            </td>
-
-                            <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                              {getUnitArea(unit, labels)}
-                            </td>
-
-                            <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                              {formatCurrency(
-                                unit.price || unit.askingPrice || unit.listPrice,
-                                isArabic,
-                                labels.notSpecified,
-                                labels.sar,
-                              )}
-                            </td>
-
-                            <td className="px-3 py-3">
-                              <StatusBadge>{normalizeUnitStatus(unit.status, labels, displayLocale)}</StatusBadge>
-                            </td>
-
-                            <td className="px-3 py-3">
-                              <button
-                                type="button"
-                                disabled={!bookable}
-                                onClick={() => openBookingModal(unit, index)}
-                                className="nc-btn-primary min-h-[36px] rounded-xl px-3 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                {bookable ? labels.bookUnit : labels.notBookable}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                <PaginationBar
-                  page={unitPage}
-                  totalPages={unitTotalPages}
-                  labels={labels}
-                  isArabic={isArabic}
-                  onPrevious={() => setUnitPage((page) => Math.max(1, page - 1))}
-                  onNext={() => setUnitPage((page) => Math.min(unitTotalPages, page + 1))}
-                />
-              </>
-            ) : toNumber(selectedProject.unitsTotal) > 0 ? (
-              <EmptyState
-                message={`${labels.noUnitsLoaded} ${formatNumber(selectedProject.unitsTotal, isArabic)}`}
+                label={labels.backToProjects}
+                locale={displayLocale}
               />
-            ) : (
-              <EmptyState message={labels.noUnits} />
-            )}
-          </div>
-        )}
+            }
+          />
 
-        {activeTab === 'bookings' && <EmptyState message={labels.noBookings} />}
+          <OperationsKpiGrid aria-label={labels.pageTitle}>
+            <OperationsMetricCard title={labels.totalUnits} value={formatNumber(selectedProject.unitsTotal, isArabic)} description={labels.expectedUnits} icon={LayoutGrid} />
+            <OperationsMetricCard title={labels.soldUnits} value={formatNumber(selectedProject.unitsSold, isArabic)} description={labels.soldUnits} icon={CheckCircle2} />
+            <OperationsMetricCard title={labels.progress} value={`${formatNumber(selectedProject.progressPercent, isArabic)}%`} description={labels.projectSummary} icon={Building2} />
+            <OperationsMetricCard title={labels.status} value={normalizeProjectStatus(selectedProject.status, labels, displayLocale)} description={labels.location} icon={FolderKanban} />
+          </OperationsKpiGrid>
 
-        {activeTab === 'documents' && (
-          <div className="space-y-3">
-            {hasPermission('UPLOAD_DOC') && (
-              <button
-                type="button"
-                className="nc-btn-ghost min-h-[40px] rounded-xl px-4 py-2 text-sm font-semibold"
-              >
-                {labels.uploadDocument}
-              </button>
-            )}
+          <OperationsPanel>
+            <OperationsTabs aria-label={labels.pageTitle}>
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.key;
+                return (
+                  <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)} className={isActive ? operationsVisual.activeTab : operationsVisual.tab} aria-selected={isActive} role="tab">
+                    {labels[tab.labelKey]}
+                  </button>
+                );
+              })}
+            </OperationsTabs>
 
-            <EmptyState message={labels.noDocuments} />
-          </div>
-        )}
-
-        {activeTab === 'reports' && <EmptyState message={labels.noReports} />}
-
-        {bookingUnit && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-            <div className="w-full max-w-lg rounded-3xl border border-[var(--nc-border)] bg-[var(--nc-surface)] p-5 shadow-xl">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-bold text-[var(--nc-text-primary)]">
-                    {labels.bookingTitle}
-                  </h2>
-                  <p className="mt-1 text-sm text-[var(--nc-text-secondary)]">
-                    {displayProjectName(selectedProject, displayLocale, labels)} —{' '}
-                    {getUnitDisplayNumber(bookingUnit, 1, labels.unitFallback)}
-                  </p>
+            <div className="p-3">
+              {activeTab === 'overview' ? (
+                <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
+                  <div className={`${operationsVisual.softPanel} p-4`}>
+                    <p className={operationsVisual.meta}>{labels.projectSummary}</p>
+                    <p className="mt-2 min-h-[48px] text-sm leading-7 text-[var(--nc-text-primary)]">{safeDisplay(selectedProject.description, labels.noProjectDescription)}</p>
+                  </div>
+                  <div className="grid gap-2">
+                    <div className={`${operationsVisual.contentCard} p-3`}><p className={operationsVisual.meta}>{labels.expectedUnits}</p><strong className="mt-1 block text-lg">{formatNumber(selectedProject.unitsTotal, isArabic)}</strong></div>
+                    <div className={`${operationsVisual.contentCard} p-3`}><p className={operationsVisual.meta}>{labels.progress}</p><strong className="mt-1 block text-lg">{formatNumber(selectedProject.progressPercent, isArabic)}%</strong></div>
+                  </div>
                 </div>
+              ) : null}
 
-                <button
-                  type="button"
-                  onClick={() => setBookingUnit(null)}
-                  className="nc-btn-ghost min-h-[36px] rounded-xl px-3 py-1.5 text-sm font-semibold"
-                >
-                  {labels.close}
-                </button>
-              </div>
+              {activeTab === 'phases' ? <OperationsEmptyState>{labels.noPhases}</OperationsEmptyState> : null}
 
-              <div className="mt-5 grid gap-4">
-                <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-4">
-                  <p className="text-xs text-[var(--nc-text-secondary)]">{labels.selectedUnit}</p>
-                  <p className="mt-1 font-semibold text-[var(--nc-text-primary)]">
-                    {getUnitDisplayNumber(bookingUnit, 1, labels.unitFallback)}
-                  </p>
+              {activeTab === 'units' ? (
+                <div className="space-y-2">
+                  {isLoadingUnits ? (
+                    <OperationsEmptyState>{labels.loadingUnits}</OperationsEmptyState>
+                  ) : units.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-[minmax(90px,1fr)_minmax(110px,1fr)_minmax(90px,.8fr)_minmax(120px,1fr)_minmax(100px,.8fr)_auto] items-center gap-3 border-b border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-2 text-[12px] font-bold text-[var(--nc-text-secondary)]">
+                        <span>{labels.unitNumber}</span>
+                        <span>{labels.type}</span>
+                        <span>{labels.area}</span>
+                        <span>{labels.price}</span>
+                        <span>{labels.status}</span>
+                        <span>{labels.action}</span>
+                      </div>
+                      <OperationsMasterList>
+                        {pagedUnits.map((unit, index) => {
+                          const absoluteIndex = (unitPage - 1) * PAGE_SIZE + index + 1;
+                          const bookable = isUnitBookable(unit.status);
+                          return (
+                            <div key={String(unit.id || absoluteIndex)} className="grid min-h-[64px] grid-cols-[minmax(90px,1fr)_minmax(110px,1fr)_minmax(90px,.8fr)_minmax(120px,1fr)_minmax(100px,.8fr)_auto] items-center gap-3 rounded-xl border border-transparent px-3 py-2 hover:border-[var(--nc-border)] hover:bg-[var(--nc-surface-soft)]">
+                              <strong className="text-[14px] font-bold text-[var(--nc-text-primary)]">{getUnitDisplayNumber(unit, absoluteIndex, labels.unitFallback)}</strong>
+                              <span className="text-[11px] text-[var(--nc-text-secondary)]">{getUnitType(unit, labels, displayLocale)}</span>
+                              <span className="text-[11px] text-[var(--nc-text-secondary)]">{getUnitArea(unit, labels)}</span>
+                              <span className="text-[14px] text-[var(--nc-text-primary)]">{formatCurrency(unit.price || unit.askingPrice || unit.listPrice, isArabic, labels.notSpecified, labels.sar)}</span>
+                              <StatusBadge>{normalizeUnitStatus(unit.status, labels, displayLocale)}</StatusBadge>
+                              <button type="button" disabled={!bookable} onClick={() => openBookingModal(unit, index)} className={`${operationsVisual.primaryButton} text-[12px]`}>{bookable ? labels.bookUnit : labels.notBookable}</button>
+                            </div>
+                          );
+                        })}
+                      </OperationsMasterList>
+                      <PaginationBar page={unitPage} totalPages={unitTotalPages} labels={labels} isArabic={isArabic} onPrevious={() => setUnitPage((page) => Math.max(1, page - 1))} onNext={() => setUnitPage((page) => Math.min(unitTotalPages, page + 1))} />
+                    </>
+                  ) : toNumber(selectedProject.unitsTotal) > 0 ? (
+                    <OperationsEmptyState>{`${labels.noUnitsLoaded} ${formatNumber(selectedProject.unitsTotal, isArabic)}`}</OperationsEmptyState>
+                  ) : (
+                    <OperationsEmptyState>{labels.noUnits}</OperationsEmptyState>
+                  )}
                 </div>
+              ) : null}
 
-                <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-4">
-                  <p className="text-xs text-[var(--nc-text-secondary)]">{labels.unitStatus}</p>
-                  <p className="mt-1 font-semibold text-[var(--nc-text-primary)]">
-                    {normalizeUnitStatus(bookingUnit.status, labels, displayLocale)}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface-soft)] p-4">
-                  <p className="text-xs text-[var(--nc-text-secondary)]">{labels.unitPrice}</p>
-                  <p className="mt-1 font-semibold text-[var(--nc-text-primary)]">
-                    {formatCurrency(
-                      bookingUnit.price || bookingUnit.askingPrice || bookingUnit.listPrice,
-                      isArabic,
-                      labels.notSpecified,
-                      labels.sar,
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-5 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setBookingUnit(null)}
-                  className="nc-btn-ghost min-h-[40px] rounded-xl px-4 py-2 text-sm font-semibold"
-                >
-                  {labels.cancel}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setBookingUnit(null)}
-                  className="nc-btn-primary min-h-[40px] rounded-xl px-4 py-2 text-sm font-semibold"
-                >
-                  {labels.confirmSelection}
-                </button>
-              </div>
+              {activeTab === 'bookings' ? <OperationsEmptyState>{labels.noBookings}</OperationsEmptyState> : null}
+              {activeTab === 'documents' ? <OperationsEmptyState>{labels.noDocuments}</OperationsEmptyState> : null}
+              {activeTab === 'reports' ? <OperationsEmptyState>{labels.noReports}</OperationsEmptyState> : null}
             </div>
-          </div>
-        )}
+          </OperationsPanel>
+
+          <OperationsDialog
+            open={Boolean(bookingUnit)}
+            onClose={() => { if (!isBookingUnit) { setBookingError(''); setBookingUnit(null); } }}
+            title={labels.bookingTitle}
+            description={bookingUnit ? `${displayProjectName(selectedProject, displayLocale, labels)} — ${getUnitDisplayNumber(bookingUnit, 1, labels.unitFallback)}` : undefined}
+            closeLabel={labels.close}
+            closeDisabled={isBookingUnit}
+            dir={direction}
+            footer={bookingUnit ? (
+              <>
+                <button type="button" onClick={() => { setBookingError(''); setBookingUnit(null); }} disabled={isBookingUnit} className={operationsVisual.secondaryButton}>{labels.cancel}</button>
+                <button type="button" onClick={() => void confirmBooking()} disabled={isBookingUnit} className={operationsVisual.primaryButton}>{labels.confirmSelection}</button>
+              </>
+            ) : null}
+          >
+            {bookingUnit ? (
+              <div className="grid gap-3">
+                <ProjectDialogCell label={labels.selectedUnit} value={getUnitDisplayNumber(bookingUnit, 1, labels.unitFallback)} />
+                <ProjectDialogCell label={labels.unitStatus} value={normalizeUnitStatus(bookingUnit.status, labels, displayLocale)} />
+                <ProjectDialogCell label={labels.unitPrice} value={formatCurrency(bookingUnit.price || bookingUnit.askingPrice || bookingUnit.listPrice, isArabic, labels.notSpecified, labels.sar)} />
+                {bookingError ? <p className="text-sm font-semibold text-rose-400">{bookingError}</p> : null}
+              </div>
+            ) : null}
+          </OperationsDialog>
+        </div>
       </section>
     );
   }
@@ -920,138 +818,115 @@ export default function ProjectsView() {
   return (
     <section
       dir={direction}
-      className="nc-page nc-stack orca-container space-y-5 overflow-x-hidden px-4 pb-8 pt-4 text-[var(--nc-text-primary)] lg:px-6"
-    >
-      <header className="orca-workspace-hero">
-        <div>
-          <p className="text-xs font-bold text-[var(--nc-accent)]">{labels.breadcrumb}</p>
-          <h1 className="mt-1 text-2xl font-black tracking-[-0.02em] text-[var(--nc-text-primary)]">
-            {labels.pageTitle}
-          </h1>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--nc-text-secondary)]">
-            {labels.pageSubtitle}
-          </p>
-        </div>
+      className={operationsVisual.page}
+>
+      <div className={operationsVisual.pageStack}>
+      <OperationsPageHeader
+        eyebrow={labels.breadcrumb}
+        title={labels.pageTitle}
+        description={labels.pageSubtitle}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                void loadProjects();
+              }}
+              disabled={isLoadingProjects}
+              className={operationsVisual.iconButton}
+              title={labels.refresh}
+              aria-label={labels.refresh}
+            >
+              <RefreshCw
+                className={isLoadingProjects ? 'animate-spin' : ''}
+                aria-hidden="true"
+              />
+            </button>
+            {hasPermission('CREATE_PROJECT') ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateError('');
+                  setCreateProjectStatus('PLANNING');
+                  setShowCreateProject(true);
+                }}
+                className={operationsVisual.primaryButton}
+              >
+                <Plus aria-hidden="true" />
+                {labels.createProject}
+              </button>
+            ) : null}
+          </>
+        }
+      />
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              void loadProjects();
-            }}
-            disabled={isLoadingProjects}
-            className="nc-btn nc-btn-ghost inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[var(--nc-border)] px-4 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <RefreshCw size={15} className={isLoadingProjects ? 'animate-spin' : ''} aria-hidden="true" />
-            {labels.refresh}
-          </button>
-
-          {hasPermission('CREATE_PROJECT') && (
+      <OperationsDialog
+        open={showCreateProject}
+        onClose={() => {
+          if (!isCreatingProject) {
+            setCreateError('');
+            setCreateProjectStatus('PLANNING');
+            setShowCreateProject(false);
+          }
+        }}
+        title={labels.createProject}
+        closeLabel={labels.cancel}
+        closeDisabled={isCreatingProject}
+        footer={
+          <>
             <button
               type="button"
               onClick={() => {
                 setCreateError('');
-                setShowCreateProject(true);
+                setCreateProjectStatus('PLANNING');
+                setShowCreateProject(false);
               }}
-              className="nc-btn-primary inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-xs font-black"
+              disabled={isCreatingProject}
+              className={operationsVisual.ghostButton}
             >
-              <Plus size={16} aria-hidden="true" />
-              {labels.createProject}
+              {labels.cancel}
             </button>
-          )}
-        </div>
-      </header>
-
-      {showCreateProject && (
-        <form
-          className="orca-workspace-panel rounded-2xl border border-[var(--nc-border)] p-4"
-          action={(formData) => {
-            void submitCreateProject(formData);
-          }}
-        >
-          <div className="grid gap-3 md:grid-cols-3">
-            <label className="text-xs font-bold text-[var(--nc-text-secondary)]">
-              {labels.projectName}
-              <input
-                name="name"
-                required
-                className="mt-1 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-sm text-[var(--nc-text-primary)]"
-              />
-            </label>
-            <label className="text-xs font-bold text-[var(--nc-text-secondary)]">
-              {labels.location}
-              <input
-                name="city"
-                required
-                className="mt-1 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-sm text-[var(--nc-text-primary)]"
-              />
-            </label>
-            <label className="text-xs font-bold text-[var(--nc-text-secondary)]">
-              {labels.status}
-              <select
-                name="status"
-                required
-                defaultValue="PLANNING"
-                className="mt-1 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 py-2 text-sm text-[var(--nc-text-primary)]"
-              >
-                <option value="PLANNING">PLANNING</option>
-                <option value="UNDER_CONSTRUCTION">UNDER_CONSTRUCTION</option>
-                <option value="COMPLETED">COMPLETED</option>
-                <option value="SOLD_OUT">SOLD_OUT</option>
-              </select>
-            </label>
-          </div>
-          {createError ? (
-            <p className="mt-3 text-xs font-bold text-rose-400">{createError}</p>
-          ) : null}
-          <div className="mt-3 flex gap-2">
             <button
               type="submit"
+              form="project-create-form"
               disabled={isCreatingProject}
-              className="nc-btn-primary rounded-xl px-4 py-2 text-xs font-black disabled:opacity-50"
+              className={operationsVisual.primaryButton}
             >
               {labels.createProject}
             </button>
-            <button
-              type="button"
-              onClick={() => setShowCreateProject(false)}
-              className="nc-btn nc-btn-ghost rounded-xl px-4 py-2 text-xs font-bold"
-            >
-              {labels.refresh}
-            </button>
-          </div>
+          </>
+        }
+      >
+        <form id="project-create-form" action={(formData) => { void submitCreateProject(formData); }} noValidate className="grid gap-3">
+          <OperationsFormField label={labels.projectName} error={createError || undefined}><OperationsTextField name="name" autoFocus /></OperationsFormField>
+          <OperationsFormField label={labels.location}><OperationsTextField name="city" /></OperationsFormField>
+          <OperationsFormField label={labels.status}>
+            <SettingsSelect
+              name="status"
+              value={createProjectStatus}
+              onChange={setCreateProjectStatus}
+              aria-label={labels.status}
+              className="w-full"
+              options={[
+                { value: 'PLANNING', label: labels.planned },
+                { value: 'UNDER_CONSTRUCTION', label: labels.underConstruction },
+                { value: 'COMPLETED', label: labels.completed },
+                { value: 'SOLD_OUT', label: isArabic ? 'مباع بالكامل' : 'Sold Out' },
+              ]}
+            />
+          </OperationsFormField>
         </form>
-      )}
+      </OperationsDialog>
 
-      <div className="orca-workspace-metrics">
-        {listKpis.map((item) => {
-          const Icon = item.icon;
+      <OperationsKpiGrid aria-label={labels.pageTitle}>
+        {listKpis.map((item) => (
+          <OperationsMetricCard key={item.label} title={item.label} value={item.value} description={item.note} icon={item.icon} />
+        ))}
+      </OperationsKpiGrid>
 
-          return (
-            <div key={item.label} className="orca-workspace-metric min-h-[96px]">
-              <div className="flex items-start justify-between gap-3 text-start">
-                <div className="min-w-0">
-                  <p className="text-xs font-bold leading-5 text-[var(--nc-text-secondary)]">
-                    {item.label}
-                  </p>
-                  <strong className="mt-2 block text-2xl font-black tabular-nums tracking-tight text-[var(--nc-text-primary)]">
-                    {item.value}
-                  </strong>
-                </div>
-                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--nc-glass-border)] bg-[var(--nc-surface-soft)] text-[var(--nc-text-secondary)]">
-                  <Icon className="h-5 w-5" aria-hidden="true" />
-                </span>
-              </div>
-              <p className="mt-3 text-start text-xs font-medium leading-5 text-[var(--nc-text-secondary)]">
-                {item.note}
-              </p>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="orca-workspace-panel flex min-w-0 flex-col overflow-hidden" data-operational-list-card>
-        <div className="orca-workspace-toolbar shrink-0 border-b border-[var(--nc-border)] p-3">
+      <OperationsPanel className="flex min-w-0 flex-col overflow-hidden" data-operational-list-card>
+        <OperationsPanelHeader title={labels.pageTitle} description={`${filteredProjects.length} ${isArabic ? 'نتيجة' : 'results'}`} icon={FolderKanban} />
+        <div className="shrink-0 border-b border-[var(--nc-border)] p-2.5">
           <div className="relative w-full lg:max-w-md">
             <Search
               size={15}
@@ -1067,7 +942,7 @@ export default function ProjectsView() {
               }}
               placeholder={labels.searchPlaceholder}
               aria-label={labels.searchPlaceholder}
-              className={`min-h-[44px] w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-solid)] ${searchInputPad} text-sm font-semibold text-[var(--nc-text-primary)] outline-none placeholder:text-[var(--nc-text-dim)] focus-visible:border-[var(--nc-accent-border)]`}
+              className={`orca-operations-input ${searchInputPad}`}
             />
           </div>
         </div>
@@ -1081,71 +956,25 @@ export default function ProjectsView() {
           </div>
         ) : filteredProjects.length > 0 ? (
           <>
-            <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <table className="w-full min-w-[720px] text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--nc-border)] text-[var(--nc-text-secondary)]">
-                    <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.projectName}</th>
-                    <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.location}</th>
-                    <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.status}</th>
-                    <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.units}</th>
-                    <th className={`px-3 py-3 ${textAlign} font-semibold`}>{labels.progress}</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {pagedProjects.map((project) => (
-                    <tr
-                      key={project.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => {
-                        void handleSelectProject(project.id);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          void handleSelectProject(project.id);
-                        }
-                      }}
-                      className="orca-data-row cursor-pointer border-b border-[var(--nc-border)] transition-colors hover:bg-[var(--nc-accent-soft)] focus-visible:bg-[var(--nc-accent-soft)] focus-visible:outline-none"
-                    >
-                      <td className="px-3 py-3 font-semibold text-[var(--nc-text-primary)]">
-                        {displayProjectName(project, displayLocale, labels)}
-                      </td>
-
-                      <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                        {displayProjectLocation(project, displayLocale, labels)}
-                      </td>
-
-                      <td className="px-3 py-3">
-                        <StatusBadge>
-                          {normalizeProjectStatus(project.status, labels, displayLocale)}
-                        </StatusBadge>
-                      </td>
-
-                      <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                        {formatNumber(project.unitsSold, isArabic)} /{' '}
-                        {formatNumber(project.unitsTotal, isArabic)}
-                      </td>
-
-                      <td className="px-3 py-3 text-[var(--nc-text-secondary)]">
-                        {formatNumber(project.progressPercent, isArabic)}%
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-[minmax(160px,1.5fr)_minmax(120px,1fr)_minmax(110px,.8fr)_minmax(90px,.7fr)_90px] items-center gap-3 border-b border-[var(--nc-border)] bg-[var(--nc-surface-solid)] px-3 py-2 text-[12px] font-bold text-[var(--nc-text-secondary)]">
+              <span>{labels.projectName}</span>
+              <span>{labels.location}</span>
+              <span>{labels.status}</span>
+              <span>{labels.units}</span>
+              <span>{labels.progress}</span>
             </div>
-
-            <PaginationBar
-              page={projectPage}
-              totalPages={projectTotalPages}
-              labels={labels}
-              isArabic={isArabic}
-              onPrevious={() => setProjectPage((page) => Math.max(1, page - 1))}
-              onNext={() => setProjectPage((page) => Math.min(projectTotalPages, page + 1))}
-            />
+            <OperationsMasterList>
+              {pagedProjects.map((project) => (
+                <OperationsMasterRow key={String(project.id)} onClick={() => { void handleSelectProject(project.id); }} className="grid min-h-[64px] grid-cols-[minmax(160px,1.5fr)_minmax(120px,1fr)_minmax(110px,.8fr)_minmax(90px,.7fr)_90px] items-center gap-3 px-3 py-2.5">
+                  <strong className="truncate text-[14px] font-bold text-[var(--nc-text-primary)]">{displayProjectName(project, displayLocale, labels)}</strong>
+                  <span className="truncate text-[11px] text-[var(--nc-text-secondary)]">{displayProjectLocation(project, displayLocale, labels)}</span>
+                  <StatusBadge>{normalizeProjectStatus(project.status, labels, displayLocale)}</StatusBadge>
+                  <span className="text-[14px] text-[var(--nc-text-primary)]">{formatNumber(project.unitsSold, isArabic)} / {formatNumber(project.unitsTotal, isArabic)}</span>
+                  <span className="text-[14px] font-bold text-[var(--nc-text-primary)]">{formatNumber(project.progressPercent, isArabic)}%</span>
+                </OperationsMasterRow>
+              ))}
+            </OperationsMasterList>
+            <PaginationBar page={projectPage} totalPages={projectTotalPages} labels={labels} isArabic={isArabic} onPrevious={() => setProjectPage((page) => Math.max(1, page - 1))} onNext={() => setProjectPage((page) => Math.min(projectTotalPages, page + 1))} />
           </>
         ) : (
           <div className="flex min-h-[180px] max-h-[220px] flex-col items-center justify-center px-4 py-6 text-center">
@@ -1154,6 +983,7 @@ export default function ProjectsView() {
             </p>
           </div>
         )}
+      </OperationsPanel>
       </div>
     </section>
   );

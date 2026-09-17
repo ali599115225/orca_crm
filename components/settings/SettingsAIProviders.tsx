@@ -1,9 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useMemo, useState } from "react";
 import { useApp } from "@/app/context/AppContext";
 import { SmartCard } from "@/components/ui/SmartCard";
+import {
+  OperationsDialog,
+  OperationsFormField,
+  OperationsPanel,
+  OperationsPanelHeader,
+  OperationsTextField,
+} from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
 import SettingsButton from "@/components/settings/SettingsButton";
 import SettingsSelect from "@/components/settings/SettingsSelect";
 import { testAIProviderConnectionAction } from "@/app/actions/ai-providers"; // We will create this
@@ -166,12 +173,23 @@ export default function SettingsAIProviders() {
   const [assignments, setAssignments] = useState<Record<string, AgentAssignment>>(() =>
     Object.fromEntries(AGENTS.map((agent) => [agent.id, { ...DEFAULT_ASSIGNMENT }])),
   );
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const lastFocusedRef = useRef<HTMLElement | null>(null);
 
   const handleTestConnection = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProvider) return;
+    if (!selectedProvider || !activeDefinition) return;
+
+    const missingField = activeDefinition.fields.find(
+      (field) => !String(formData[field.key] || "").trim(),
+    );
+    if (missingField) {
+      setStatus("error");
+      setErrorMessage(
+        isArabic
+          ? `أدخل ${missingField.labelAr}.`
+          : `Enter ${missingField.labelEn}.`,
+      );
+      return;
+    }
 
     setStatus("testing");
     setErrorMessage("");
@@ -202,17 +220,14 @@ export default function SettingsAIProviders() {
   };
 
   function openProvider(id: ProviderType) {
-    if (document.activeElement && document.activeElement !== document.body) {
-      lastFocusedRef.current = document.activeElement as HTMLElement;
-    }
     setSelectedProvider(id);
     setStatus("idle");
+    setErrorMessage("");
     setFormData({});
   }
 
   function closeDrawer() {
     setSelectedProvider(null);
-    lastFocusedRef.current?.focus();
   }
 
   function updateAssignment(agentId: string, field: keyof AgentAssignment, value: string) {
@@ -229,51 +244,18 @@ export default function SettingsAIProviders() {
     [formData],
   );
 
-  function handleOverlayClick() {
-    if (isDirty) return;
-    closeDrawer();
-  }
-
-  useEffect(() => {
-    if (!activeDefinition) return;
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") closeDrawer();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDefinition]);
-
-  useEffect(() => {
-    if (activeDefinition) titleRef.current?.focus();
-  }, [activeDefinition]);
-
-  useEffect(() => {
-    if (!activeDefinition) return;
-    const scrollContainer = document.querySelector('[class*="overflow-y-auto"]') as HTMLElement | null;
-    const previousContainerOverflow = scrollContainer?.style.overflow;
-    const previousBodyOverflow = document.body.style.overflow;
-    if (scrollContainer) scrollContainer.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
-    return () => {
-      if (scrollContainer) scrollContainer.style.overflow = previousContainerOverflow || "";
-      document.body.style.overflow = previousBodyOverflow;
-    };
-  }, [activeDefinition]);
 
   return (
     <div className="orca-settings-section orca-settings-ai-section">
-      <div className="rounded-2xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-5 py-4">
-        <h2 className="text-lg font-black text-[var(--nc-foreground)]">
-          {L("إعدادات الذكاء الاصطناعي", "AI Settings")}
-        </h2>
-        <p className="mt-1 text-sm font-medium leading-6 text-[var(--nc-foreground-secondary)]">
-          {L(
+      <OperationsPanel className="overflow-hidden">
+        <OperationsPanelHeader
+          title={L("إعدادات الذكاء الاصطناعي", "AI Settings")}
+          description={L(
             "إدارة مزودي الذكاء الاصطناعي وتعيين الوكلاء والنماذج البديلة.",
             "Manage AI providers and assign agents and fallback models.",
           )}
-        </p>
-      </div>
+        />
+      </OperationsPanel>
 
       <div className="orca-settings-provider-grid">
         {PROVIDERS.map((p) => (
@@ -390,90 +372,99 @@ export default function SettingsAIProviders() {
         </div>
       </SmartCard>
 
-      {activeDefinition &&
-        createPortal(
-          <div className="fixed inset-0 z-[100] flex">
-            <div
-              onClick={handleOverlayClick}
-              className="absolute inset-0 bg-black/60"
-            />
-
-            <div className="absolute inset-y-0 left-0 z-[110] flex w-screen flex-col bg-[var(--nc-surface-solid)] shadow-2xl sm:w-[640px]">
-              <div className="flex shrink-0 items-center justify-between border-b border-[var(--nc-border)] p-5">
-                <h2 ref={titleRef} tabIndex={-1} className="text-lg font-black text-[var(--nc-foreground)] outline-none">
-                  {activeDefinition.name}
-                </h2>
-                <SettingsButton variant="icon" onClick={closeDrawer} aria-label={L("إغلاق", "Close")}>
-                  ×
-                </SettingsButton>
-              </div>
-
-              <form onSubmit={handleTestConnection} className="flex min-h-0 flex-1 flex-col">
-                <div className="min-w-0 flex-1 overflow-y-auto p-6">
-                  <SmartCard className="p-5">
-                    <h3 className="mb-2 text-base font-bold text-[var(--nc-foreground)]">
-                      {L("إعدادات الربط", "Connection Settings")}
-                    </h3>
-                    <p className="mb-6 text-sm text-[var(--nc-foreground-muted)]">
-                      {L(
-                        "يتم تشفير هذه البيانات وتخزينها بشكل آمن. يمكنك اختبار الاتصال لضمان صلاحية المفاتيح قبل الحفظ.",
-                        "These credentials are encrypted and stored securely. Test the connection to ensure validity before saving.",
-                      )}
-                    </p>
-
-                    <div className="space-y-4">
-                      {activeDefinition.fields.map((field) => (
-                        <div key={field.key}>
-                          <label className="mb-1 block text-xs font-semibold text-[var(--nc-foreground-muted)]">
-                            {isArabic ? field.labelAr : field.labelEn}
-                          </label>
-                          <input
-                            type={field.type}
-                            value={formData[field.key] || ""}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                [field.key]: e.target.value,
-                              })
-                            }
-                            required
-                            className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface-strong)] px-4 text-sm text-[var(--nc-foreground)] transition-colors focus:border-[var(--nc-accent-border)] focus:outline-none"
-                          />
-                        </div>
-                      ))}
-
-                      {status === "success" && (
-                        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                          {L(
-                            "نجاح الاتصال! المفاتيح صالحة ويمكنك حفظها.",
-                            "Connection successful! Keys are valid and can be saved.",
-                          )}
-                        </div>
-                      )}
-                      {status === "error" && (
-                        <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs font-bold text-rose-600 dark:text-rose-400">
-                          {errorMessage}
-                        </div>
-                      )}
-                    </div>
-                  </SmartCard>
-                </div>
-
-                <div className="flex shrink-0 flex-wrap gap-2 border-t border-[var(--nc-border)] p-4">
-                  <SettingsButton variant="secondary" type="submit" disabled={status === "testing"}>
-                    {status === "testing"
-                      ? L("جاري الاختبار...", "Testing...")
-                      : L("اختبار الاتصال", "Test Connection")}
-                  </SettingsButton>
-                  <SettingsButton variant="primary" disabled={status !== "success"}>
-                    {L("حفظ وتشفير", "Save & Encrypt")}
-                  </SettingsButton>
-                </div>
-              </form>
-            </div>
-          </div>,
-          document.body,
+      <OperationsDialog
+        open={Boolean(activeDefinition)}
+        onClose={closeDrawer}
+        title={activeDefinition?.name || L("مزود الذكاء الاصطناعي", "AI provider")}
+        description={L(
+          "يتم تشفير بيانات الاعتماد. اختبر الاتصال قبل اعتماد إعدادات المزود.",
+          "Credentials are encrypted. Test the connection before adopting the provider settings.",
         )}
+        closeLabel={L("إغلاق", "Close")}
+        closeDisabled={status === "testing" || isDirty}
+        closeOnBackdrop={!isDirty}
+        dir={isArabic ? "rtl" : "ltr"}
+        className="max-w-2xl"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={closeDrawer}
+              disabled={status === "testing"}
+              className={operationsVisual.secondaryButton}
+            >
+              {L("إلغاء", "Cancel")}
+            </button>
+            <button
+              type="submit"
+              form="settings-ai-provider-form"
+              disabled={status === "testing"}
+              className={operationsVisual.secondaryButton}
+            >
+              {status === "testing"
+                ? L("جاري الاختبار...", "Testing...")
+                : L("اختبار الاتصال", "Test Connection")}
+            </button>
+            <button
+              type="button"
+              disabled={status !== "success"}
+              className={operationsVisual.primaryButton}
+            >
+              {L("حفظ وتشفير", "Save & Encrypt")}
+            </button>
+          </>
+        }
+      >
+        {activeDefinition ? (
+          <form
+            id="settings-ai-provider-form"
+            onSubmit={handleTestConnection}
+            noValidate
+            className="grid gap-4"
+          >
+            {activeDefinition.fields.map((field) => (
+              <OperationsFormField
+                key={field.key}
+                label={isArabic ? field.labelAr : field.labelEn}
+              >
+                <OperationsTextField
+                  type={field.type}
+                  value={formData[field.key] || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      [field.key]: e.target.value,
+                    })
+                  }
+                  autoComplete={field.type === "password" ? "new-password" : "off"}
+                />
+              </OperationsFormField>
+            ))}
+
+            {status === "success" ? (
+              <div
+                role="status"
+                className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs font-bold text-emerald-600 dark:text-emerald-400"
+              >
+                {L(
+                  "نجاح الاتصال! المفاتيح صالحة ويمكنك حفظها.",
+                  "Connection successful! Keys are valid and can be saved.",
+                )}
+              </div>
+            ) : null}
+
+            {status === "error" ? (
+              <div
+                role="alert"
+                className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs font-bold text-rose-600 dark:text-rose-400"
+              >
+                {errorMessage}
+              </div>
+            ) : null}
+          </form>
+        ) : null}
+      </OperationsDialog>
+
     </div>
   );
 }

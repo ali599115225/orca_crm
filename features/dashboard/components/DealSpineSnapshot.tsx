@@ -22,7 +22,7 @@ interface DealSpineSnapshotProps {
 }
 
 const stageLinks: Record<DashboardPipelineStageKey, string> = {
-  opportunity: "/operations/opportunities",
+  opportunity: "/operations/leads",
   tour: "/operations/tours",
   offer: "/operations/offers",
   contract: "/operations/sales",
@@ -54,10 +54,12 @@ export default function DealSpineSnapshot({
     pipeline.status === "ready"
       ? pipeline.data.stages.filter((stage) => stage.count > 0).length
       : 0;
+
   const closedCount =
     pipeline.status === "ready"
       ? pipeline.data.stages.find((stage) => stage.key === "closed")?.count || 0
       : 0;
+
   const closeRate =
     pipeline.status === "ready" && pipeline.data.total > 0
       ? Math.round((closedCount / pipeline.data.total) * 100)
@@ -65,113 +67,86 @@ export default function DealSpineSnapshot({
 
   return (
     <section
-      className={`${dashboardVisual.dashPanel} p-4`}
+      className={`${dashboardVisual.dashPanel} orca-dashboard-v1-pipeline`}
       data-dashboard-card="pipeline"
       data-dashboard-connected-pipeline
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-3">
+      <div className="orca-dashboard-v1-panel-head">
+        <div className="orca-dashboard-v1-panel-title-group">
           <span className={dashboardVisual.iconTile}>
-            <Activity className="h-5 w-5" aria-hidden="true" />
+            <Activity aria-hidden="true" />
           </span>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
+
+          <div className="orca-dashboard-v1-panel-copy">
+            <div className="orca-dashboard-v1-title-line">
               <h2 className={dashboardVisual.sectionTitle}>
                 {copy.pipelineTitle}
               </h2>
               <span className={dashboardVisual.statusBadge}>{copy.live}</span>
             </div>
-            <p className="mt-1 text-xs text-[var(--nc-text-secondary)]">
-              {copy.pipelineDescription}
-            </p>
+            <p>{copy.pipelineDescription}</p>
           </div>
         </div>
 
         {pipeline.status === "ready" && (
-          <div className="shrink-0 text-end">
-            <span className="block text-[11px] font-bold text-[var(--nc-text-dim)]">
-              {copy.pipelineTotal}
-            </span>
-            <strong className="mt-1 block text-xl font-black text-[var(--nc-text-primary)]">
-              {pipeline.data.total}
-            </strong>
+          <div className="orca-dashboard-v1-pipeline-total">
+            <span>{copy.pipelineTotal}</span>
+            <strong>{pipeline.data.total}</strong>
           </div>
         )}
       </div>
 
       {pipeline.status === "error" ? (
-        <div className="mt-3">
-          <DashboardSectionState
-            kind="error"
-            message={copy.dataUnavailable}
-            retryLabel={copy.retry}
-            onRetry={onRetry}
-          />
-        </div>
+        <DashboardSectionState
+          kind="error"
+          message={copy.dataUnavailable}
+          retryLabel={copy.retry}
+          onRetry={onRetry}
+        />
       ) : (
         <>
-          <div className={`${dashboardVisual.hScroll} mt-3`}>
-            <div className="relative mx-auto min-w-[620px] px-4 pb-1 pt-1">
-              <div
-                className="absolute left-[10%] right-[10%] top-[66px] h-px bg-[var(--nc-border)]"
-                aria-hidden="true"
-              />
-              <div className="relative grid grid-cols-5">
-                {pipeline.data.stages.map((stage) => {
-                  const Icon = stageIcons[stage.key];
-                  const percent =
-                    pipeline.data.total > 0
-                      ? Math.round((stage.count / pipeline.data.total) * 100)
-                      : 0;
+          <div className={dashboardVisual.hScroll}>
+            <div className="orca-dashboard-v1-stage-track">
+              <span className="orca-dashboard-v1-stage-line" aria-hidden="true" />
 
-                  return (
-                    <Link
-                      key={stage.key}
-                      href={stageLinks[stage.key]}
-                      className="group relative z-10 flex flex-col items-center px-2 py-2 text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nc-accent)]"
-                    >
-                      <span className="text-xs font-bold text-[var(--nc-text-secondary)] transition group-hover:text-[var(--nc-accent)]">
-                        {labels[stage.key]}
-                      </span>
-                      <span className="mt-3 grid h-12 w-12 place-items-center rounded-full border border-[var(--nc-accent-border)] bg-[var(--nc-surface-solid)] text-[var(--nc-accent)] shadow-sm transition group-hover:border-[var(--nc-accent)] group-hover:bg-[var(--nc-accent-soft)]">
-                        <Icon className="h-5 w-5" aria-hidden="true" />
-                      </span>
-                      <strong className="mt-2 text-2xl font-black text-[var(--nc-text-primary)]">
-                        {stage.count}
-                      </strong>
-                      <span className="mt-1 text-[11px] font-bold text-[var(--nc-text-dim)]">
-                        {percent}%
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
+              {pipeline.data.stages.map((stage) => {
+                const Icon = stageIcons[stage.key];
+                const percent =
+                  pipeline.data.total > 0
+                    ? Math.round((stage.count / pipeline.data.total) * 100)
+                    : 0;
+
+                return (
+                  <Link
+                    key={stage.key}
+                    href={stageLinks[stage.key]}
+                    className="orca-dashboard-v1-stage"
+                  >
+                    <span className="orca-dashboard-v1-stage-label">
+                      {labels[stage.key]}
+                    </span>
+                    <span className="orca-dashboard-v1-stage-icon">
+                      <Icon aria-hidden="true" />
+                    </span>
+                    <strong>{stage.count}</strong>
+                    <small>{percent}%</small>
+                  </Link>
+                );
+              })}
             </div>
           </div>
 
           <div
-            className="mt-1 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-[var(--nc-border)] pt-3 text-xs"
+            className="orca-dashboard-v1-pipeline-summary"
             data-dashboard-pipeline-summary
           >
-            <span className="inline-flex items-center gap-2">
-              <span className="font-bold text-[var(--nc-text-dim)]">
-                {copy.activeStages}
-              </span>
-              <strong className="text-[var(--nc-text-primary)]">
-                {activeStages}/5
-              </strong>
+            <span>
+              {copy.activeStages}
+              <strong>{activeStages}/5</strong>
             </span>
-            <span
-              className="h-1 w-1 rounded-full bg-[var(--nc-border-strong)]"
-              aria-hidden="true"
-            />
-            <span className="inline-flex items-center gap-2">
-              <span className="font-bold text-[var(--nc-text-dim)]">
-                {copy.closeRate}
-              </span>
-              <strong className="text-[var(--nc-text-primary)]">
-                {closeRate}%
-              </strong>
+            <span>
+              {copy.closeRate}
+              <strong>{closeRate}%</strong>
             </span>
           </div>
         </>

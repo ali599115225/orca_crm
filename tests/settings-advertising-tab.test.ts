@@ -25,6 +25,10 @@ const callback = fs.readFileSync(
   "app/api/integrations/tiktok/oauth/callback/route.ts",
   "utf8",
 );
+const operationsCss = fs.readFileSync(
+  "app/operations/orca-page-contract-v1.css",
+  "utf8",
+);
 
 describe("settings advertising tab", () => {
   it("adds a dedicated advertising settings section", () => {
@@ -55,6 +59,10 @@ describe("settings advertising tab", () => {
 
   it("uses 44px shared controls", () => {
     expect(button).toContain("h-11");
-    expect(navigation).toContain("h-11");
+    expect(navigation).toContain("OperationsTabs");
+    expect(navigation).toContain("operationsVisual.activeTab");
+    expect(navigation).toContain("operationsVisual.tab");
+    expect(operationsCss).toContain(".orca-v1-shell .orca-operations-tab");
+    expect(operationsCss).toContain("min-height: 44px;");
   });
 });

@@ -1,0 +1,1543 @@
+/*
+  ORCA OPERATIONS PAGE CONTRACT V1
+  --------------------------------
+  Canonical reference: Dashboard.
+  This stylesheet is intentionally loaded once by /operations/layout.tsx.
+  It normalizes shared page primitives across every user-visible Operations page.
+*/
+
+.orca-v1-shell .orca-operations-page,
+.orca-v1-shell .orca-operations-page * {
+  box-sizing: border-box;
+}
+
+.orca-v1-shell .orca-operations-page-stack {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+/* ───────────────────────────────────────────────
+   TITLE / HERO — Dashboard command-card contract
+   ─────────────────────────────────────────────── */
+
+.orca-v1-shell .orca-workspace-hero {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 13px !important;
+  overflow: hidden;
+  border: 1px solid var(--nc-border) !important;
+  border-radius: 16px !important;
+  background: var(--nc-surface-strong) !important;
+  box-shadow: none !important;
+}
+
+.orca-v1-shell .orca-workspace-hero > :first-child,
+.orca-v1-shell .orca-operations-hero-copy {
+  min-width: 0;
+}
+
+.orca-v1-shell .orca-operations-eyebrow,
+.orca-v1-shell .orca-workspace-hero > :first-child > p:first-child {
+  margin: 0;
+  color: var(--nc-accent-text);
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  line-height: 1.2;
+}
+
+.orca-v1-shell .orca-operations-title,
+.orca-v1-shell .orca-workspace-hero h1 {
+  margin: 2px 0 0 !important;
+  color: var(--nc-text-primary) !important;
+  font-size: clamp(20px, 1.45vw, 27px) !important;
+  font-weight: 900 !important;
+  line-height: 1.05 !important;
+  letter-spacing: normal !important;
+}
+
+.orca-v1-shell .orca-operations-description,
+.orca-v1-shell .orca-workspace-hero > :first-child > p:last-child:not(:first-child) {
+  max-width: 650px;
+  margin: 3px 0 0 !important;
+  overflow: hidden;
+  color: var(--nc-text-secondary) !important;
+  font-size: 11px !important;
+  line-height: 1.3 !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orca-v1-shell .orca-operations-hero-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.orca-v1-shell .orca-operations-hero-meta {
+  color: var(--nc-text-dim);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.orca-v1-shell .orca-operations-action-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ───────────────────────────────────────────────
+   BUTTON HIERARCHY
+   ─────────────────────────────────────────────── */
+
+.orca-v1-shell .orca-operations-primary-button,
+.orca-v1-shell .orca-operations-secondary-button,
+.orca-v1-shell .orca-operations-ghost-button,
+.orca-v1-shell .orca-operations-icon-button,
+.orca-v1-shell .orca-operations-secondary-link {
+  min-height: 44px;
+  border-radius: 11px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.orca-v1-shell .orca-operations-primary-button,
+.orca-v1-shell .orca-operations-secondary-button,
+.orca-v1-shell .orca-operations-ghost-button,
+.orca-v1-shell .orca-operations-secondary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+}
+
+.orca-v1-shell .orca-operations-primary-button {
+  border: 1px solid var(--nc-accent-border);
+  background: var(--nc-accent);
+  color: var(--orca-ui-on-primary, white);
+}
+
+.orca-v1-shell .orca-operations-primary-button:disabled {
+  cursor: not-allowed;
+  border-color: var(--nc-border);
+  background: var(--nc-surface-soft);
+  color: var(--nc-text-dim);
+  opacity: 0.72;
+}
+
+.orca-v1-shell .orca-operations-secondary-button:disabled,
+.orca-v1-shell .orca-operations-ghost-button:disabled,
+.orca-v1-shell .orca-operations-icon-button:disabled {
+  cursor: not-allowed;
+  color: var(--nc-text-dim);
+  opacity: 0.62;
+}
+
+.orca-v1-shell .orca-operations-secondary-button {
+  border: 1px solid var(--nc-border);
+  background: var(--nc-surface-solid);
+  color: var(--nc-text-primary);
+}
+
+.orca-v1-shell .orca-operations-ghost-button,
+.orca-v1-shell .orca-operations-secondary-link {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--nc-text-secondary);
+}
+
+.orca-v1-shell .orca-operations-icon-button {
+  width: 44px;
+  min-width: 44px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--nc-text-secondary);
+}
+
+.orca-v1-shell .orca-operations-primary-button svg,
+.orca-v1-shell .orca-operations-secondary-button svg,
+.orca-v1-shell .orca-operations-icon-button svg,
+.orca-v1-shell .orca-operations-secondary-link svg {
+  width: 15px;
+  height: 15px;
+}
+
+.orca-v1-shell .orca-operations-secondary-button:not(:disabled):hover,
+.orca-v1-shell .orca-operations-ghost-button:not(:disabled):hover,
+.orca-v1-shell .orca-operations-icon-button:not(:disabled):hover,
+.orca-v1-shell .orca-operations-secondary-link:hover {
+  border-color: var(--nc-accent-border);
+  background: var(--nc-surface-soft);
+  color: var(--nc-text-primary);
+}
+
+/* Existing operations buttons inherit the same primary hierarchy centrally. */
+.orca-v1-shell .nc-btn-primary {
+  border-color: var(--nc-accent-border) !important;
+  background: var(--nc-accent) !important;
+  color: var(--orca-ui-on-primary, white) !important;
+}
+
+.orca-v1-shell .nc-btn-primary:disabled {
+  cursor: not-allowed;
+  border-color: var(--nc-border) !important;
+  background: var(--nc-surface-soft) !important;
+  color: var(--nc-text-dim) !important;
+  opacity: 0.72;
+}
+
+/* ───────────────────────────────────────────────
+   KPI / METRICS
+   ─────────────────────────────────────────────── */
+
+.orca-v1-shell .orca-workspace-metrics {
+  min-width: 0;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 7px !important;
+}
+
+.orca-v1-shell .orca-workspace-metric {
+  min-width: 0;
+  min-height: 64px;
+  padding: 8px 10px !important;
+  border: 1px solid var(--nc-border) !important;
+  border-radius: 14px !important;
+  background: var(--nc-surface-strong) !important;
+  color: var(--nc-text-primary);
+  box-shadow: none !important;
+}
+
+.orca-v1-shell .orca-workspace-metric:hover,
+.orca-v1-shell .orca-workspace-metric:focus-visible {
+  border-color: var(--nc-accent-border) !important;
+  background: var(--nc-surface-soft) !important;
+  outline: none;
+}
+
+.orca-v1-shell .orca-operations-metric-link {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.orca-v1-shell .orca-operations-metric-icon,
+.orca-v1-shell .orca-operations-icon-tile {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--nc-border);
+  background: var(--nc-surface-soft);
+  color: var(--nc-text-secondary);
+}
+
+.orca-v1-shell .orca-operations-metric-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.orca-v1-shell .orca-operations-icon-tile {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 10px;
+}
+
+.orca-v1-shell .orca-operations-metric-icon svg,
+.orca-v1-shell .orca-operations-icon-tile svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* ───────────────────────────────────────────────
+   PANELS / TOOLBARS / DATA
+   ─────────────────────────────────────────────── */
+
+.orca-v1-shell .orca-workspace-panel {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--nc-border) !important;
+  border-radius: 16px !important;
+  background: var(--nc-surface-strong) !important;
+  box-shadow: none !important;
+}
+
+.orca-v1-shell .orca-operations-panel-padded {
+  padding: 10px;
+}
+
+.orca-v1-shell .orca-workspace-toolbar {
+  background: var(--nc-surface-solid);
+}
+
+.orca-v1-shell .orca-workspace-pagination {
+  background: var(--nc-surface-strong);
+}
+
+.orca-v1-shell .orca-workspace-note {
+  border: 1px solid var(--nc-border);
+  border-radius: 10px;
+  background: var(--nc-surface-soft);
+}
+
+.orca-v1-shell .orca-operations-content-card {
+  border: 1px solid var(--nc-border);
+  border-radius: 10px;
+  background: var(--nc-surface-solid);
+}
+
+.orca-v1-shell .orca-operations-interactive-card {
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+
+.orca-v1-shell .orca-operations-interactive-card:hover,
+.orca-v1-shell .orca-operations-interactive-card:focus-visible,
+.orca-v1-shell .orca-data-row.is-interactive:hover,
+.orca-v1-shell .orca-data-row.is-interactive:focus-visible {
+  border-color: var(--nc-accent-border);
+  background: var(--nc-surface-soft);
+  outline: none;
+}
+
+.orca-v1-shell .orca-operations-section-title {
+  margin: 0;
+  color: var(--nc-text-primary);
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.orca-v1-shell .orca-operations-body {
+  color: var(--nc-text-secondary);
+  font-size: 11px;
+}
+
+.orca-v1-shell .orca-operations-meta {
+  color: var(--nc-text-dim);
+  font-size: 9px;
+}
+
+.orca-v1-shell .orca-operations-status-badge,
+.orca-v1-shell .orca-operations-counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.orca-v1-shell .orca-operations-status-badge {
+  min-height: 23px;
+  border: 1px solid var(--nc-accent-border);
+  background: var(--nc-accent-soft);
+  color: var(--nc-accent-text);
+  padding: 0 7px;
+}
+
+.orca-v1-shell .orca-operations-counter {
+  min-width: 23px;
+  min-height: 19px;
+  background: var(--nc-surface-strong);
+  color: var(--nc-text-secondary);
+  padding: 0 5px;
+}
+
+/* ───────────────────────────────────────────────
+   TABS
+   ─────────────────────────────────────────────── */
+
+.orca-v1-shell .orca-workspace-tabs {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+  scrollbar-width: none;
+}
+
+.orca-v1-shell .orca-workspace-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.orca-v1-shell .orca-operations-tab {
+  min-height: 44px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--nc-text-secondary);
+  padding: 0 12px;
+  font-size: 11px;
+  font-weight: 800;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.orca-v1-shell .orca-operations-tab:hover,
+.orca-v1-shell .orca-operations-tab:focus-visible {
+  border-color: var(--nc-border);
+  background: var(--nc-surface-soft);
+  color: var(--nc-text-primary);
+  outline: none;
+}
+
+.orca-v1-shell .orca-operations-tab.is-active {
+  border-color: var(--nc-accent-border);
+  background: var(--nc-accent-soft);
+  color: var(--nc-accent-text);
+}
+
+/* V3 Contracts & Payments: all six workspace tabs share one explicit hover/focus
+   contract. Active state remains gold; inactive hover gets the same bounded
+   interaction treatment without changing layout or height. */
+.orca-v1-shell .orca-contracts-payments-tabs .orca-operations-tab:not(.is-active):hover,
+.orca-v1-shell .orca-contracts-payments-tabs .orca-operations-tab:not(.is-active):focus-visible {
+  border-color: var(--nc-accent-border);
+  background: var(--nc-surface-soft);
+  color: var(--nc-accent-text);
+}
+
+/* Contract detail summary cards must form balanced rows instead of leaving a
+   half-empty last line on desktop. */
+.orca-v1-shell .orca-contract-summary-grid,
+.orca-v1-shell .orca-lease-summary-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.orca-v1-shell .orca-contract-summary-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.orca-v1-shell .orca-lease-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 1199px) {
+  .orca-v1-shell .orca-contract-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .orca-v1-shell .orca-contract-summary-grid,
+  .orca-v1-shell .orca-lease-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ───────────────────────────────────────────────
+   EMPTY STATE
+   ─────────────────────────────────────────────── */
+
+.orca-v1-shell .orca-operations-empty-state {
+  min-height: 156px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--nc-border);
+  border-radius: 12px;
+  background: var(--nc-surface-soft);
+  color: var(--nc-text-secondary);
+  padding: 20px 16px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ───────────────────────────────────────────────
+   DIALOG / MODAL
+   ─────────────────────────────────────────────── */
+
+.orca-operations-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 160;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(2, 8, 23, 0.74);
+  backdrop-filter: blur(4px);
+}
+
+.orca-operations-dialog {
+  width: min(100%, 560px);
+  max-height: min(88vh, 760px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--nc-border);
+  border-radius: 16px;
+  background: var(--nc-surface-solid);
+  color: var(--nc-text-primary);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+}
+
+.orca-operations-dialog-header {
+  min-height: 68px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--nc-border);
+}
+
+.orca-operations-dialog-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 16px;
+  scrollbar-width: none;
+}
+
+.orca-operations-dialog-body::-webkit-scrollbar {
+  display: none;
+}
+
+.orca-operations-dialog-footer {
+  min-height: 64px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--nc-border);
+}
+
+/* ───────────────────────────────────────────────
+   PROGRESS
+   ─────────────────────────────────────────────── */
+
+.orca-v1-shell .orca-operations-progress-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--nc-border);
+}
+
+.orca-v1-shell .orca-operations-progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--nc-accent);
+  transition: width 180ms ease;
+}
+
+/* ───────────────────────────────────────────────
+   RESPONSIVE
+   ─────────────────────────────────────────────── */
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .orca-v1-shell .orca-workspace-hero {
+    align-items: flex-start;
+  }
+
+  .orca-v1-shell .orca-operations-hero-actions {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .orca-v1-shell .orca-workspace-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .orca-v1-shell .orca-workspace-hero {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px !important;
+  }
+
+  .orca-v1-shell .orca-operations-title,
+  .orca-v1-shell .orca-workspace-hero h1 {
+    font-size: 21px !important;
+  }
+
+  .orca-v1-shell .orca-operations-description,
+  .orca-v1-shell .orca-workspace-hero > :first-child > p:last-child:not(:first-child) {
+    white-space: normal;
+  }
+
+  .orca-v1-shell .orca-operations-hero-actions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .orca-v1-shell .orca-operations-action-row {
+    flex-wrap: wrap;
+  }
+
+  .orca-v1-shell .orca-operations-primary-button,
+  .orca-v1-shell .orca-operations-secondary-button {
+    flex: 1 1 auto;
+  }
+
+  .orca-v1-shell .orca-workspace-metrics {
+    grid-template-columns: 1fr !important;
+  }
+
+  .orca-operations-dialog-footer {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+}
+/* ───────────────────────────────────────────────
+   STRUCTURAL RECONCILIATION V1
+   Global Operations behavior, not page patches.
+   ─────────────────────────────────────────────── */
+
+/* Header refresh/retry controls are icon-only across Operations heroes. */
+.orca-v1-shell .orca-workspace-hero button:has(svg.lucide-refresh-cw) {
+  inline-size: 44px !important;
+  min-inline-size: 44px !important;
+  block-size: 44px !important;
+  min-block-size: 44px !important;
+  padding-inline: 0 !important;
+  gap: 0 !important;
+  font-size: 0 !important;
+}
+
+.orca-v1-shell .orca-workspace-hero button:has(svg.lucide-refresh-cw) svg {
+  width: 15px !important;
+  height: 15px !important;
+}
+
+/* Existing orca-dialog consumers inherit the same Operations dialog contract. */
+.orca-dialog-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 160 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: auto !important;
+  padding: 12px !important;
+  background: rgba(2, 8, 23, 0.74) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.orca-dialog {
+  width: min(100%, 560px) !important;
+  max-height: min(88vh, 760px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  border: 1px solid var(--nc-border) !important;
+  border-radius: 16px !important;
+  background: var(--nc-surface-solid) !important;
+  color: var(--nc-text-primary) !important;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3) !important;
+}
+
+.orca-dialog.max-w-lg {
+  width: min(100%, 32rem) !important;
+}
+
+.orca-dialog.max-w-2xl {
+  width: min(100%, 42rem) !important;
+}
+
+.orca-dialog.max-w-3xl {
+  width: min(100%, 48rem) !important;
+}
+
+.orca-dialog-header {
+  min-height: 68px !important;
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  padding: 14px 16px !important;
+  border-bottom: 1px solid var(--nc-border) !important;
+}
+
+.orca-dialog-body {
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  padding: 16px !important;
+  scrollbar-width: none !important;
+}
+
+.orca-dialog-body::-webkit-scrollbar {
+  display: none !important;
+}
+
+.orca-dialog-footer {
+  min-height: 64px !important;
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  padding: 10px 16px !important;
+  border-top: 1px solid var(--nc-border) !important;
+}
+
+.orca-dialog-close {
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  border: 1px solid transparent !important;
+  border-radius: 11px !important;
+  background: transparent !important;
+  color: var(--nc-text-secondary) !important;
+}
+
+/* Shared OperationsDialog width variants. */
+.orca-operations-dialog.max-w-lg {
+  width: min(100%, 32rem);
+  max-width: 32rem;
+}
+
+.orca-operations-dialog.max-w-2xl {
+  width: min(100%, 42rem);
+  max-width: 42rem;
+}
+
+.orca-operations-dialog.max-w-3xl {
+  width: min(100%, 48rem);
+  max-width: 48rem;
+}
+
+/* Normalize direct metric compositions to the same density. */
+.orca-v1-shell .orca-workspace-metric > .flex:first-child {
+  align-items: center !important;
+}
+
+.orca-v1-shell .orca-workspace-metric > p:last-child {
+  margin-top: 6px !important;
+  color: var(--nc-text-dim) !important;
+  font-size: 10px !important;
+  line-height: 1.35 !important;
+}
+
+@media (max-width: 767px) {
+  .orca-dialog-overlay,
+  .orca-operations-dialog-overlay {
+    align-items: flex-end !important;
+    padding: 8px !important;
+  }
+
+  .orca-dialog,
+  .orca-operations-dialog {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: 90dvh !important;
+  }
+
+  .orca-dialog-footer,
+  .orca-operations-dialog-footer {
+    align-items: stretch !important;
+    flex-direction: column-reverse !important;
+  }
+}
+
+/* ───────────────────────────────────────────────
+   METRIC COUNT VARIANTS
+   ─────────────────────────────────────────────── */
+
+.orca-v1-shell .orca-workspace-metrics.orca-workspace-metrics-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .orca-v1-shell .orca-workspace-metrics.orca-workspace-metrics-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .orca-v1-shell .orca-workspace-metrics.orca-workspace-metrics-3 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ───────────────────────────────────────────────
+   GLOBAL OPERATIONS FRAME ALIGNMENT
+   Dashboard is the canonical outer-frame reference.
+   All non-dashboard Operations page roots must sit flush with the shell header.
+   This removes legacy page-container inset/max-width geometry without changing
+   the internal spacing of cards, panels, dialogs, or page content.
+   ─────────────────────────────────────────────── */
+
+.orca-v1-shell .orca-v1-content-scroll > .orca-container {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding-top: 0 !important;
+  padding-inline: 0 !important;
+}
+
+/* Route-state/client wrappers may place the canonical page one level down. */
+.orca-v1-shell
+  .orca-v1-content-scroll
+  > :where(div, main, section)
+  > .orca-container:first-child {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding-top: 0 !important;
+  padding-inline: 0 !important;
+}
+
+/* The title/hero owns the same physical frame as the shell header. */
+.orca-v1-shell .orca-v1-content-scroll .orca-container > .orca-workspace-hero:first-child,
+.orca-v1-shell .orca-v1-content-scroll .orca-container > .orca-operations-page-header:first-child {
+  width: 100% !important;
+  max-width: none !important;
+  margin-inline: 0 !important;
+}
+
+/* ───────────────────────────────────────────────
+   OPERATIONS FULL-PAGE CONTRACT V2
+   Dashboard composition is the canonical page anatomy.
+   ─────────────────────────────────────────────── */
+
+.orca-v1-shell .orca-operations-page,
+.orca-v1-shell .orca-operations-page * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.orca-v1-shell .orca-operations-page *::-webkit-scrollbar,
+.orca-operations-dialog *::-webkit-scrollbar,
+.orca-dialog *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.orca-v1-shell .orca-operations-page {
+  width: 100%;
+  min-width: 0;
+  padding: 0 3px 10px;
+}
+
+.orca-v1-shell .orca-operations-executive-grid {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 2.05fr) minmax(270px, 0.95fr);
+  gap: 8px;
+  direction: ltr;
+  align-items: start;
+}
+
+.orca-v1-shell .orca-operations-executive-grid > * {
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Detail-heavy workspaces (lease/contract/customer detail) keep the master pane
+   compact and give the operational detail pane the larger share of the row. */
+.orca-v1-shell .orca-operations-executive-grid.is-detail-wide {
+  grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.55fr);
+}
+
+/* V3 adaptive Master/Detail contract: when nothing is selected, the master
+   workspace owns the full width instead of reserving a large empty detail pane. */
+.orca-v1-shell .orca-operations-executive-grid.is-single-pane {
+  grid-template-columns: minmax(0, 1fr);
+  direction: inherit;
+}
+
+/* V3 explicit Arabic operational composition: compact master table on the
+   right, wide detail workspace on the left. Child placement is structural,
+   so content direction is not reversed just to move columns. */
+@media (min-width: 1440px) {
+  .orca-v1-shell .orca-operations-executive-grid.is-master-right-detail-wide {
+    grid-template-columns: minmax(0, 1.4fr) minmax(600px, 1.1fr);
+  }
+
+  .orca-v1-shell .orca-operations-executive-grid.is-master-right-detail-wide > :first-child {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .orca-v1-shell .orca-operations-executive-grid.is-master-right-detail-wide > :nth-child(2) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+}
+
+@media (min-width: 1200px) and (max-width: 1439px) {
+  .orca-v1-shell .orca-operations-executive-grid.is-master-right-detail-wide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .orca-v1-shell .orca-operations-executive-grid.is-master-right-detail-wide > :first-child,
+  .orca-v1-shell .orca-operations-executive-grid.is-master-right-detail-wide > :nth-child(2) {
+    grid-column: 1;
+  }
+}
+
+/* V3 tab-body contract: the page shell owns vertical scrolling. Detail tabs
+   grow with content; wide tables may scroll horizontally without trapping the
+   vertical mouse wheel. */
+.orca-v1-shell .orca-operations-tab-panel {
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  overflow: visible;
+  overscroll-behavior-y: auto;
+}
+
+.orca-v1-shell .orca-operations-tab-panel.is-horizontal-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.orca-v1-shell .orca-operations-tab-panel.is-horizontal-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.orca-v1-shell .orca-operations-panel-header {
+  min-height: 56px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 9px;
+  padding: 10px;
+  border-bottom: 1px solid var(--nc-border);
+}
+
+.orca-v1-shell .orca-operations-metric-card {
+  display: grid !important;
+  grid-template-columns: 36px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.orca-v1-shell .orca-operations-master-list {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+}
+
+.orca-v1-shell .orca-operations-master-row {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--nc-text-primary);
+  text-align: inherit;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+
+.orca-v1-shell .orca-operations-master-row:hover,
+.orca-v1-shell .orca-operations-master-row:focus-visible,
+.orca-v1-shell .orca-operations-master-row[aria-pressed="true"] {
+  border-color: var(--nc-accent-border);
+  background: var(--nc-surface-soft);
+  outline: none;
+}
+
+.orca-v1-shell .orca-operations-form-field {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.orca-v1-shell .orca-operations-form-label {
+  color: var(--nc-text-dim);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.orca-v1-shell .orca-operations-form-hint,
+.orca-v1-shell .orca-operations-form-error {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.orca-v1-shell .orca-operations-form-hint {
+  color: var(--nc-text-dim);
+}
+
+.orca-v1-shell .orca-operations-form-error {
+  color: rgb(253 164 175);
+}
+
+.orca-v1-shell .orca-operations-input,
+.orca-v1-shell .orca-operations-textarea,
+.orca-operations-dialog .orca-operations-input,
+.orca-operations-dialog .orca-operations-textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--nc-border);
+  border-radius: 12px;
+  background: var(--nc-surface-solid);
+  color: var(--nc-text-primary);
+  font-size: 12px;
+  font-weight: 650;
+  outline: none;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.orca-v1-shell .orca-operations-input,
+.orca-operations-dialog .orca-operations-input {
+  min-height: 44px;
+  padding: 0 12px;
+}
+
+.orca-v1-shell .orca-operations-textarea,
+.orca-operations-dialog .orca-operations-textarea {
+  min-height: 96px;
+  resize: none;
+  padding: 10px 12px;
+  line-height: 1.6;
+}
+
+.orca-v1-shell .orca-operations-input:focus,
+.orca-v1-shell .orca-operations-textarea:focus,
+.orca-operations-dialog .orca-operations-input:focus,
+.orca-operations-dialog .orca-operations-textarea:focus {
+  border-color: var(--nc-accent-border);
+  box-shadow: 0 0 0 2px var(--nc-accent-soft);
+}
+
+/* Native number steppers are not part of the ORCA form contract. */
+.orca-v1-shell input[type="number"],
+.orca-operations-dialog input[type="number"],
+.orca-dialog input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.orca-v1-shell input[type="number"]::-webkit-inner-spin-button,
+.orca-v1-shell input[type="number"]::-webkit-outer-spin-button,
+.orca-operations-dialog input[type="number"]::-webkit-inner-spin-button,
+.orca-operations-dialog input[type="number"]::-webkit-outer-spin-button,
+.orca-dialog input[type="number"]::-webkit-inner-spin-button,
+.orca-dialog input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .orca-v1-shell .orca-operations-page {
+    padding: 0 2px 6px;
+  }
+
+  .orca-v1-shell .orca-operations-executive-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .orca-v1-shell .orca-operations-page {
+    padding: 0 1px 6px;
+  }
+
+  .orca-v1-shell .orca-operations-executive-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ───────────────────────────────────────────────
+   V3 OPERATIONAL TABLES — one contract for the
+   Contracts & Payments data workspaces.
+   ─────────────────────────────────────────────── */
+.orca-v1-shell .orca-operations-table-toolbar {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--nc-border);
+  border-bottom: 1px solid var(--nc-border);
+  background: var(--nc-surface-solid);
+}
+
+.orca-v1-shell .orca-operations-table-toolbar > * {
+  min-width: 0;
+}
+
+.orca-v1-shell .orca-operations-row-actions {
+  min-width: max-content;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.orca-v1-shell .orca-operations-row-action-slot {
+  display: inline-flex;
+}
+
+.orca-v1-shell .orca-operations-row-action {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid var(--nc-border);
+  border-radius: 10px;
+  background: var(--nc-surface-solid);
+  color: var(--nc-text-secondary);
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.orca-v1-shell .orca-operations-row-action:not(:disabled):hover,
+.orca-v1-shell .orca-operations-row-action:not(:disabled):focus-visible {
+  border-color: var(--nc-accent-border);
+  background: var(--nc-surface-soft);
+  color: var(--nc-accent-text);
+  outline: none;
+}
+
+.orca-v1-shell .orca-operations-row-action.is-unavailable {
+  cursor: not-allowed;
+  border-color: color-mix(in srgb, var(--nc-border) 70%, transparent);
+  background: transparent;
+  color: var(--nc-text-dim);
+  opacity: 0.62;
+}
+
+.orca-v1-shell .orca-operations-row-action.is-unavailable svg {
+  color: var(--nc-text-dim);
+}
+
+.orca-v1-shell .orca-contracts-data-table {
+  min-width: 900px;
+}
+
+.orca-v1-shell .orca-contracts-data-table th,
+.orca-v1-shell .orca-contracts-data-table td {
+  vertical-align: middle;
+}
+
+.orca-v1-shell .orca-contracts-data-table .orca-actions-column {
+  min-width: 330px;
+  text-align: center;
+}
+
+.orca-v1-shell .orca-contracts-data-table .orca-single-action-column {
+  min-width: 150px;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  .orca-v1-shell .orca-operations-table-toolbar {
+    align-items: stretch;
+  }
+
+  .orca-v1-shell .orca-operations-table-toolbar > * {
+    width: 100%;
+  }
+}
+
+
+/* ───────────────────────────────────────────────
+   V3 TABLE PAGINATION + NUMERIC COLUMN CONTRACT
+   - top-level Contracts & Payments workspaces: 8 rows/page
+   - monetary values reserve enough room for up to 15 digits
+     plus grouping separators and SAR suffix.
+   - text columns truncate before numeric columns collapse.
+   ─────────────────────────────────────────────── */
+.orca-v1-shell .orca-contracts-table-scroll {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.orca-v1-shell .orca-contracts-table-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.orca-v1-shell .orca-contracts-data-table {
+  width: 100%;
+  min-width: max-content;
+}
+
+.orca-v1-shell .orca-contracts-data-table th,
+.orca-v1-shell .orca-contracts-data-table td {
+  vertical-align: middle;
+}
+
+.orca-v1-shell .orca-number-column {
+  min-width: 24ch;
+  width: 24ch;
+  max-width: 24ch;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.orca-v1-shell .orca-reference-column {
+  min-width: 20ch;
+  width: 20ch;
+  max-width: 24ch;
+  white-space: nowrap;
+}
+
+.orca-v1-shell .orca-date-column {
+  min-width: 13ch;
+  width: 13ch;
+  max-width: 13ch;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.orca-v1-shell .orca-status-column {
+  min-width: 112px;
+  width: 112px;
+  max-width: 128px;
+  white-space: nowrap;
+}
+
+.orca-v1-shell .orca-text-column {
+  min-width: 170px;
+  max-width: 260px;
+}
+
+.orca-v1-shell .orca-operations-pagination {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--nc-border);
+  padding: 8px 12px;
+  color: var(--nc-text-dim);
+  font-size: 11px;
+}
+
+.orca-v1-shell .orca-operations-pagination-range {
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.orca-v1-shell .orca-operations-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.orca-v1-shell .orca-operations-pagination-page {
+  min-width: 11ch;
+  border: 1px solid var(--nc-border);
+  border-radius: 8px;
+  background: var(--nc-surface-soft);
+  padding: 6px 10px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .orca-v1-shell .orca-operations-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .orca-v1-shell .orca-operations-pagination-controls {
+    justify-content: space-between;
+  }
+}
+
+
+/* ───────────────────────────────────────────────
+   V3 CONTRACTS TABLE TYPOGRAPHY CONTRACT
+   One readable hierarchy across all six Contracts & Payments workspaces.
+   Header = 12px / Primary row value = 14px / Secondary = 11px /
+   Status + row actions = 12px.
+   ─────────────────────────────────────────────── */
+.orca-v1-shell .orca-contracts-data-table th,
+.orca-v1-shell .orca-contracts-grid-header {
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.orca-v1-shell .orca-contracts-data-table td,
+.orca-v1-shell .orca-contracts-grid-row {
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.orca-v1-shell .orca-contracts-data-table td > strong,
+.orca-v1-shell .orca-contracts-data-table td > div:first-child,
+.orca-v1-shell .orca-contracts-grid-row .orca-table-primary {
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+}
+
+.orca-v1-shell .orca-table-secondary {
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+}
+
+.orca-v1-shell .orca-table-badge,
+.orca-v1-shell .orca-operations-row-action {
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+}
+
+.orca-v1-shell .orca-contracts-data-table tbody .orca-number-column,
+.orca-v1-shell .orca-contracts-grid-row .orca-number-column,
+.orca-v1-shell .orca-contracts-data-table tbody .orca-reference-column,
+.orca-v1-shell .orca-contracts-grid-row .orca-reference-column,
+.orca-v1-shell .orca-contracts-data-table tbody .orca-date-column {
+  font-size: 14px !important;
+}
+
+.orca-v1-shell .orca-contracts-data-table tbody tr {
+  min-height: 56px;
+}
+
+
+/* ───────────────────────────────────────────────
+   ORCA PLATFORM TABLE TYPOGRAPHY CONTRACT
+   Scope: every user-visible table/grid table under /operations/*.
+   Column header = 12px / Primary row value = 14px /
+   Secondary/supporting value = 11px / Badge + row action = 12px.
+   This is the platform contract, not a Contracts & Payments exception.
+   ─────────────────────────────────────────────── */
+.orca-v1-shell table thead th,
+.orca-v1-shell .orca-platform-grid-header {
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.orca-v1-shell table tbody td,
+.orca-v1-shell .orca-platform-grid-row {
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.orca-v1-shell table tbody td > strong,
+.orca-v1-shell table tbody td > b,
+.orca-v1-shell .orca-platform-grid-row .orca-table-primary {
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+}
+
+.orca-v1-shell table .orca-table-secondary,
+.orca-v1-shell .orca-platform-grid-row .orca-table-secondary {
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+}
+
+.orca-v1-shell table .orca-table-badge,
+.orca-v1-shell table .orca-operations-row-action,
+.orca-v1-shell .orca-platform-grid-row .orca-table-badge,
+.orca-v1-shell .orca-platform-grid-row .orca-operations-row-action {
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+}
+
+.orca-v1-shell table .orca-table-row-actions button {
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+}
+
+/* Common legacy small supporting text inside tables is normalized upward. */
+.orca-v1-shell table tbody td .text-\[9px\],
+.orca-v1-shell table tbody td .text-\[10px\] {
+  font-size: 11px !important;
+}
+
+/* Status pills are operational values, not supporting metadata. */
+.orca-v1-shell table tbody td .rounded-full.text-\[9px\],
+.orca-v1-shell table tbody td .rounded-full.text-\[10px\],
+.orca-v1-shell table tbody td .rounded-md.text-\[10px\] {
+  font-size: 12px !important;
+}
+
+/* Existing Contracts & Payments grid contract aliases the platform contract. */
+.orca-v1-shell .orca-contracts-grid-header {
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+  font-weight: 800 !important;
+}
+
+.orca-v1-shell .orca-contracts-grid-row {
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+
+/* ───────────────────────────────────────────────
+   ORCA PLATFORM NAVIGATION + SCROLL OWNERSHIP CONTRACT
+   - Page shell owns vertical scrolling by default.
+   - Ordinary operational panels must grow with content.
+   - Internal vertical scrolling is allowed only for declared bounded roles
+     (log / conversation / menu / dialog).
+   - Internal bounded scroll must chain vertically to the page at boundaries.
+   ─────────────────────────────────────────────── */
+.orca-v1-shell .orca-operations-flow-region {
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  overflow: visible;
+  overscroll-behavior-y: auto;
+}
+
+.orca-v1-shell .orca-operations-scroll-region,
+.orca-operations-scroll-region[data-operations-portal-scroll="true"] {
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.orca-v1-shell .orca-operations-scroll-region::-webkit-scrollbar,
+.orca-operations-scroll-region[data-operations-portal-scroll="true"]::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.orca-v1-shell .orca-operations-scroll-region.is-log {
+  max-block-size: min(46vh, 420px);
+}
+
+.orca-v1-shell .orca-operations-scroll-region.is-conversation {
+  max-block-size: min(60vh, 560px);
+}
+
+.orca-v1-shell .orca-operations-scroll-region.is-menu,
+.orca-operations-scroll-region.is-menu[data-operations-portal-scroll="true"] {
+  max-block-size: min(42vh, 320px);
+}
+
+.orca-v1-shell .orca-operations-scroll-region.is-dialog {
+  max-block-size: min(72vh, 720px);
+}
+
+/* Shared Back Action always belongs to the page/detail header action area. */
+.orca-v1-shell [data-operations-back-action] {
+  flex: 0 0 auto;
+}
+
+/* ORCA CONVERSATION TYPOGRAPHY CONTRACT — LOCKED
+   Email / WhatsApp / Helpdesk only. Do not reuse these roles for platform tables. */
+.orca-v1-shell .orca-conversation-list-title {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.orca-v1-shell .orca-conversation-list-secondary {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.orca-v1-shell .orca-conversation-metadata {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.orca-v1-shell .orca-conversation-detail-title {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.orca-v1-shell .orca-conversation-message-body {
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.orca-v1-shell .orca-conversation-field > span,
+.orca-v1-shell .orca-conversation-field-label,
+.orca-v1-shell .orca-conversation-form-field .orca-operations-form-label {
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.orca-v1-shell .orca-conversation-field > strong,
+.orca-v1-shell .orca-conversation-field-value {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.orca-v1-shell .orca-conversation-status-badge {
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.orca-v1-shell .orca-conversation-composer {
+  font-size: 14px;
+  line-height: 1.55;
+}

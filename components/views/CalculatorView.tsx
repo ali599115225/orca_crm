@@ -1,10 +1,27 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import PageHeader from "@/components/ui/PageHeader";
-import LayoutContainer from "@/components/ui/LayoutContainer";
-import { SmartCard } from "@/components/ui/SmartCard";
+import { useMemo, useState } from "react";
+import {
+  Banknote,
+  Calculator,
+  CalendarCheck2,
+  ChartLine,
+  CircleDollarSign,
+  Info,
+  Percent,
+} from "lucide-react";
 import { useApp } from "@/app/context/AppContext";
+import {
+  OperationsExecutiveGrid,
+  OperationsFormField,
+  OperationsKpiGrid,
+  OperationsMetricCard,
+  OperationsNumberField,
+  OperationsPageHeader,
+  OperationsPanel,
+  OperationsPanelHeader,
+} from "@/components/operations";
+import { operationsVisual } from "@/features/operations/visual";
 
 const COPY = {
   AR: {
@@ -67,34 +84,44 @@ export default function CalculatorView() {
   const isArabic = lang === "AR";
   const t = COPY[lang] || COPY.AR;
 
-  const [propertyPrice, setPropertyPrice] = useState(1_000_000);
-  const [downPayment, setDownPayment] = useState(100_000);
-  const [annualRate, setAnnualRate] = useState(4.5);
-  const [years, setYears] = useState(20);
-  const [salary, setSalary] = useState(15_000);
-  const [commitments, setCommitments] = useState(0);
-  const [dsrLimit, setDsrLimit] = useState(55);
+  const [propertyPrice, setPropertyPrice] = useState("1000000");
+  const [downPayment, setDownPayment] = useState("100000");
+  const [annualRate, setAnnualRate] = useState("4.5");
+  const [years, setYears] = useState("20");
+  const [salary, setSalary] = useState("15000");
+  const [commitments, setCommitments] = useState("0");
+  const [dsrLimit, setDsrLimit] = useState("55");
+
+  const numeric = (value: string) => Number(value || 0);
 
   const result = useMemo(() => {
-    const principal = clamp(propertyPrice - downPayment);
-    const months = Math.max(1, Math.round(clamp(years, 1) * 12));
-    const monthlyRate = clamp(annualRate) / 100 / 12;
+    const propertyPriceValue = numeric(propertyPrice);
+    const downPaymentValue = numeric(downPayment);
+    const annualRateValue = numeric(annualRate);
+    const yearsValue = numeric(years);
+    const salaryValue = numeric(salary);
+    const commitmentsValue = numeric(commitments);
+    const dsrLimitValue = numeric(dsrLimit);
 
+    const principal = clamp(propertyPriceValue - downPaymentValue);
+    const months = Math.max(1, Math.round(clamp(yearsValue, 1) * 12));
+    const monthlyRate = clamp(annualRateValue) / 100 / 12;
     const monthlyPayment =
       monthlyRate === 0
         ? principal / months
         : principal *
           ((monthlyRate * Math.pow(1 + monthlyRate, months)) /
             (Math.pow(1 + monthlyRate, months) - 1));
-
     const totalInstallments = monthlyPayment * months;
     const totalFinanceCost = Math.max(0, totalInstallments - principal);
-    const totalPaid = downPayment + totalInstallments;
+    const totalPaid = downPaymentValue + totalInstallments;
     const dsr =
-      salary > 0 ? ((monthlyPayment + commitments) / salary) * 100 : 0;
+      salaryValue > 0
+        ? ((monthlyPayment + commitmentsValue) / salaryValue) * 100
+        : 0;
     const availablePayment = Math.max(
       0,
-      salary * (clamp(dsrLimit) / 100) - commitments,
+      salaryValue * (clamp(dsrLimitValue) / 100) - commitmentsValue,
     );
 
     return {
@@ -104,156 +131,101 @@ export default function CalculatorView() {
       totalPaid,
       dsr,
       availablePayment,
-      compliant: salary > 0 && dsr <= dsrLimit,
+      compliant: salaryValue > 0 && dsr <= dsrLimitValue,
     };
-  }, [
-    propertyPrice,
-    downPayment,
-    annualRate,
-    years,
-    salary,
-    commitments,
-    dsrLimit,
-  ]);
+  }, [propertyPrice, downPayment, annualRate, years, salary, commitments, dsrLimit]);
 
   const number = (value: number, digits = 0) =>
     new Intl.NumberFormat(isArabic ? "ar-SA" : "en-US", {
       maximumFractionDigits: digits,
       minimumFractionDigits: digits,
     }).format(value);
-
   const money = (value: number) => `${number(value)} ${t.sar}`;
 
-  const field = (
-    label: string,
-    value: number,
-    setter: (value: number) => void,
-    step = 1,
-    min = 0,
-  ) => (
-    <label className="space-y-2">
-      <span className="block text-xs font-bold text-[var(--nc-text-secondary)]">
-        {label}
-      </span>
-      <input
-        type="number"
-        min={min}
-        step={step}
-        value={value}
-        onChange={(event) => setter(Number(event.target.value))}
-        className="h-11 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-surface)] px-3 text-sm font-bold text-[var(--nc-text-primary)] outline-none transition focus:border-[var(--nc-accent)]"
-      />
-    </label>
-  );
-
   return (
-    <div className="nc-page nc-stack orca-container orca-calculator-final pb-10" dir={isArabic ? "rtl" : "ltr"}>
-      <PageHeader
-        title={t.title}
-        description={t.description}
-        eyebrow={
-          isArabic
-            ? "القيمة → التمويل → القسط → الاستقطاع"
-            : "Value → finance → payment → deduction"
-        }
-        workspace
-      >
-        <span className="inline-flex items-center gap-2 rounded-full border border-[var(--nc-accent-border)] bg-[var(--nc-accent-soft)] px-3 py-1 text-xs font-bold text-[var(--nc-accent)]">
-          <i className="ph-bold ph-calculator" aria-hidden="true" />
-          {t.badge}
-        </span>
-      </PageHeader>
+    <main className={operationsVisual.page} dir={isArabic ? "rtl" : "ltr"} data-calculator-rebuild-v1>
+      <div className={operationsVisual.pageStack}>
+        <OperationsPageHeader
+          eyebrow={isArabic ? "القيمة → التمويل → القسط → الاستقطاع" : "Value → finance → payment → deduction"}
+          title={t.title}
+          description={t.description}
+          icon={Calculator}
+          meta={<span className={operationsVisual.statusBadge}>{t.badge}</span>}
+        />
 
-      <LayoutContainer
-        workspace
-        kpis={
-          <>
-            {[
-              [t.financedAmount, money(result.principal), "ph-bank"],
-              [t.monthlyPayment, money(result.monthlyPayment), "ph-calendar-check"],
-              [t.totalFinanceCost, money(result.totalFinanceCost), "ph-chart-line-up"],
-              [t.dsr, `${number(result.dsr, 1)}${t.percent}`, "ph-percent"],
-            ].map(([label, value, icon]) => (
-              <SmartCard key={label} elevation="elevated" className="orca-workspace-metric p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--nc-text-dim)]">
-                      {label}
-                    </p>
-                    <p className="mt-2 text-xl font-black text-[var(--nc-text-primary)]">
-                      {value}
-                    </p>
-                  </div>
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--nc-accent-soft)] text-[var(--nc-accent)]">
-                    <i className={`ph-bold ${icon}`} aria-hidden="true" />
-                  </span>
-                </div>
-              </SmartCard>
-            ))}
-          </>
-        }
-        actions={
-          <SmartCard className="orca-workspace-panel p-5">
-            <h2 className="mb-5 text-sm font-black text-[var(--nc-text-primary)]">
-              {t.inputs}
-            </h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {field(t.propertyPrice, propertyPrice, setPropertyPrice, 1000)}
-              {field(t.downPayment, downPayment, setDownPayment, 1000)}
-              {field(t.annualRate, annualRate, setAnnualRate, 0.01)}
-              {field(t.years, years, setYears, 1, 1)}
-              {field(t.salary, salary, setSalary, 100)}
-              {field(t.commitments, commitments, setCommitments, 100)}
-              {field(t.dsrLimit, dsrLimit, setDsrLimit, 1)}
+        <OperationsKpiGrid>
+          <OperationsMetricCard title={t.financedAmount} value={money(result.principal)} description={t.propertyPrice} icon={Banknote} />
+          <OperationsMetricCard title={t.monthlyPayment} value={money(result.monthlyPayment)} description={t.years} icon={CalendarCheck2} />
+          <OperationsMetricCard title={t.totalFinanceCost} value={money(result.totalFinanceCost)} description={t.totalPaid} icon={ChartLine} />
+          <OperationsMetricCard title={t.dsr} value={`${number(result.dsr, 1)}${t.percent}`} description={t.dsrLimit} icon={Percent} />
+        </OperationsKpiGrid>
+
+        <OperationsExecutiveGrid>
+          <OperationsPanel className="overflow-hidden" dir={isArabic ? "rtl" : "ltr"}>
+            <OperationsPanelHeader title={t.inputs} description={t.description} icon={CircleDollarSign} />
+            <div className="grid gap-4 p-4 sm:grid-cols-2">
+              <NumberField label={t.propertyPrice} value={propertyPrice} setValue={setPropertyPrice} />
+              <NumberField label={t.downPayment} value={downPayment} setValue={setDownPayment} />
+              <NumberField label={t.annualRate} value={annualRate} setValue={setAnnualRate} decimal />
+              <NumberField label={t.years} value={years} setValue={setYears} />
+              <NumberField label={t.salary} value={salary} setValue={setSalary} />
+              <NumberField label={t.commitments} value={commitments} setValue={setCommitments} />
+              <NumberField label={t.dsrLimit} value={dsrLimit} setValue={setDsrLimit} />
             </div>
-          </SmartCard>
-        }
-        insights={
-          <div className="space-y-4">
-            <SmartCard className="orca-workspace-panel p-5">
-              <div className="space-y-4">
-                {[
-                  [t.totalPaid, money(result.totalPaid)],
-                  [t.availablePayment, money(result.availablePayment)],
-                  [t.dsr, `${number(result.dsr, 1)}${t.percent}`],
-                ].map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="flex items-center justify-between gap-4 border-b border-[var(--nc-border)] pb-3 last:border-0 last:pb-0"
-                  >
-                    <span className="text-xs font-bold text-[var(--nc-text-secondary)]">
-                      {label}
-                    </span>
-                    <span className="text-sm font-black text-[var(--nc-text-primary)]">
-                      {value}
-                    </span>
-                  </div>
-                ))}
-              </div>
+          </OperationsPanel>
 
-              <div
-                className={`mt-5 rounded-xl border px-4 py-3 text-sm font-bold ${
-                  result.compliant
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
-                    : "border-amber-500/30 bg-amber-500/10 text-amber-600"
-                }`}
-              >
-                {result.compliant ? t.compliant : t.nonCompliant}
+          <div className="grid min-w-0 gap-2">
+            <OperationsPanel className="overflow-hidden" dir={isArabic ? "rtl" : "ltr"}>
+              <OperationsPanelHeader title={isArabic ? "ملخص النتيجة" : "Result summary"} icon={Calculator} />
+              <div className="grid gap-2 p-3">
+                <Summary label={t.totalPaid} value={money(result.totalPaid)} />
+                <Summary label={t.availablePayment} value={money(result.availablePayment)} />
+                <Summary label={t.dsr} value={`${number(result.dsr, 1)}${t.percent}`} />
+                <div className={`rounded-xl border px-3 py-2.5 text-xs font-black ${result.compliant ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-amber-500/30 bg-amber-500/10 text-amber-300"}`}>
+                  {result.compliant ? t.compliant : t.nonCompliant}
+                </div>
               </div>
-            </SmartCard>
+            </OperationsPanel>
 
-            <SmartCard className="orca-workspace-panel p-5">
-              <h3 className="flex items-center gap-2 text-sm font-black text-[var(--nc-text-primary)]">
-                <i className="ph-bold ph-info" aria-hidden="true" />
-                {t.noteTitle}
-              </h3>
-              <p className="mt-3 text-xs leading-6 text-[var(--nc-text-secondary)]">
-                {t.note}
-              </p>
-            </SmartCard>
+            <OperationsPanel className="overflow-hidden" dir={isArabic ? "rtl" : "ltr"}>
+              <OperationsPanelHeader title={t.noteTitle} icon={Info} />
+              <p className="p-3 text-xs leading-6 text-[var(--nc-text-secondary)]">{t.note}</p>
+            </OperationsPanel>
           </div>
-        }
+        </OperationsExecutiveGrid>
+      </div>
+    </main>
+  );
+}
+
+function NumberField({
+  label,
+  value,
+  setValue,
+  decimal = false,
+}: {
+  label: string;
+  value: string;
+  setValue: (value: string) => void;
+  decimal?: boolean;
+}) {
+  return (
+    <OperationsFormField label={label}>
+      <OperationsNumberField
+        value={value}
+        onValueChange={setValue}
+        mode={decimal ? "decimal" : "integer"}
+        className="orca-operations-input"
       />
+    </OperationsFormField>
+  );
+}
+
+function Summary({ label, value }: { label: string; value: string }) {
+  return (
+    <div className={`${operationsVisual.contentCard} flex items-center justify-between gap-4 px-3 py-2.5`}>
+      <span className="text-[10px] font-bold text-[var(--nc-text-secondary)]">{label}</span>
+      <strong className="text-xs font-black text-[var(--nc-text-primary)]">{value}</strong>
     </div>
   );
 }

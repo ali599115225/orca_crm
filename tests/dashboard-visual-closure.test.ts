@@ -105,7 +105,8 @@ describe("Dashboard V3 visual and structural closure", () => {
     expect(wizard).toContain('t("contractWizard.step.review")');
     expect(wizard).toContain('t("contractWizard.reviewTitle")');
     expect(wizard).toContain("currentStep === 2");
-    expect(wizard).toContain('type="submit"');
+    expect(wizard).toContain('onClick={() => void handleIssueContract()}');
+    expect(wizard).not.toContain('type="submit"');
     expect(wizard).toContain('t("contractWizard.back")');
     expect(wizard).toContain('t("contractWizard.next")');
   });

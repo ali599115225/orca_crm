@@ -14,6 +14,7 @@ const read = (relative: string) =>
 const page = read("app/operations/revenue-integrity/page.tsx");
 const view = read("components/revenue-integrity/RevenueIntegrityView.tsx");
 const visual = read("components/revenue-integrity/visual.ts");
+const operationsDialog = read("components/operations/OperationsDialog.tsx");
 const viewWithVisual = `${view}\n${visual}`;
 const actions = read("app/actions/revenue-integrity.ts");
 const auth = read("lib/revenue-integrity/authorization.ts");
@@ -71,9 +72,11 @@ describe("Revenue Integrity final closure", () => {
     expect(viewWithVisual).toContain("bg-[var(--nc-surface-solid)]");
     expect(viewWithVisual).toContain("hover:border-[var(--nc-accent-border)]");
     expect(viewWithVisual).toContain("hover:bg-[var(--nc-accent-soft)]");
-    // Primary buttons must use the token the Dashboard contract defines in
-    // globals.css; --nc-on-primary does not exist there.
-    expect(viewWithVisual).toContain("text-[var(--orca-ui-on-primary)]");
+    // Primary-button contrast is now centralized in the shared Operations CSS
+    // instead of repeated as a page-local Tailwind token.
+    const operationsCss = read("app/operations/orca-page-contract-v1.css");
+    expect(visual).toContain('primaryButton: operationsVisual.primaryButton');
+    expect(operationsCss).toContain("color: var(--orca-ui-on-primary, white);");
     expect(viewWithVisual).not.toContain("--nc-on-primary");
     expect(viewWithVisual).not.toContain("--nc-foreground");
     expect(viewWithVisual).not.toContain("rounded-3xl");
@@ -92,20 +95,23 @@ describe("Revenue Integrity final closure", () => {
     expect(view).not.toMatch(/PageSize\s*=\s*(5|8|10)\b/);
   });
 
-  it("uses the Tasks workspace hierarchy with fixed internal scrolling", () => {
+  it("uses the shared Operations hierarchy with page-owned vertical scrolling", () => {
     expect(view).not.toContain("min-h-40");
     expect(view).not.toMatch(/minHeight/);
     expect(view).not.toContain("placeholder-row");
-    expect(view).toContain("revenueVisual.workspaceHero");
-    expect(view).toContain("revenueVisual.workspaceMetrics");
-    expect(view).toContain("revenueVisual.workspaceTabs");
-    expect(view).toContain(
-      "grid items-stretch gap-3 xl:grid-cols-[minmax(0,1.7fr)_minmax(300px,0.8fr)]",
-    );
-    expect(view).toContain("grid items-stretch gap-3 xl:grid-cols-2");
-    expect(view).not.toContain("self-start h-fit");
-    expect(visual).toContain("lg:h-[560px]");
-    expect(view).toContain("[scrollbar-width:none]");
+    expect(view).toContain("OperationsPageHeader");
+    expect(view).toContain("OperationsKpiGrid");
+    expect(view).toContain("OperationsMetricCard");
+    expect(view).toContain("OperationsTabs");
+    expect(view).toContain("revenueVisual.tabWorkspaceGrid");
+    for (const tab of ["radar", "actions", "audit", "predictive"]) {
+      expect(view).toContain(`data-revenue-tab-layout="${tab}"`);
+    }
+    expect(visual).toContain("xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]");
+    expect(visual).not.toContain("lg:h-[430px]");
+    expect(visual).toContain("items-start");
+    expect(view).toContain('data-operations-scroll-owner="page"');
+    expect(view).not.toContain("overscroll-contain");
   });
 
   it("blocks follow-up execution without a lead and offers linking", () => {
@@ -130,10 +136,13 @@ describe("Revenue Integrity final closure", () => {
     ).not.toContain("LEAD_ID_REQUIRED");
   });
 
-  it("implements the reason dialog keyboard contract", () => {
-    expect(view).toContain('event.key === "Escape"');
+  it("implements the reason dialog keyboard contract through the shared dialog", () => {
+    expect(view).toContain("OperationsDialog");
     expect(view).toContain("dialogReturnFocusRef");
-    expect(view).toContain('aria-modal="true"');
+    expect(operationsDialog).toContain('event.key === "Escape"');
+    expect(operationsDialog).toContain('aria-modal="true"');
+    expect(operationsDialog).toContain("createPortal(");
+    expect(operationsDialog).toContain("document.body");
   });
 
   it("does not stretch empty cards or expose manual identifiers", () => {
@@ -156,7 +165,7 @@ describe("Revenue Integrity final closure", () => {
     expect(view).not.toContain("resize-both");
     expect(view).not.toMatch(/style=\{\{\s*resize/);
     expect(view).toContain("h-40");
-    expect(view).toContain("h-28");
+    expect(view).not.toContain("h-28");
   });
 
   it("keeps Arabic and English interface content separate", () => {
@@ -250,9 +259,11 @@ describe("Revenue Integrity four-tab compact visual contract", () => {
     expect(viewSource.match(/revenueVisual\.tabWorkspaceGrid/g)?.length).toBeGreaterThanOrEqual(4);
   });
 
-  it("keeps panels compact with internal scrolling", () => {
-    expect(visualSource).toContain("lg:h-[430px]");
+  it("keeps panels compact without trapping the page wheel", () => {
+    expect(visualSource).not.toContain("lg:h-[430px]");
+    expect(visualSource).toContain("items-start");
     expect(visualSource).toContain("xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]");
-    expect(visualSource).toContain("[scrollbar-width:none]");
+    expect(viewSource).toContain('data-operations-scroll-owner="page"');
+    expect(viewSource).not.toContain("overscroll-contain");
   });
 });

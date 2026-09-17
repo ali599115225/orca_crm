@@ -6,7 +6,7 @@ import {
 } from "@/lib/api-auth-guard";
 import { getSession } from "@/lib/session";
 import PropertiesWorkspace from "@/components/real-estate/properties/PropertiesWorkspace";
-import RentFlexPropertyAvailabilityPanel from "@/components/rent-flex/RentFlexPropertyAvailabilityPanel";
+
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,7 @@ export default async function PropertiesPage() {
     );
     return (
       <>
-        <RentFlexPropertyAvailabilityPanel canWrite={canWrite} />
+
         <PropertiesWorkspace canWrite={canWrite} />
       </>
     );
