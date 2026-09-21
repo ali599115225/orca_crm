@@ -1,0 +1,23 @@
+// ORCA RF12-P4 — additive accounting activation identity.
+// This schema file defines the direct-schedule invoice mapping only.
+// RF12-P4 does not create or apply a migration.
+
+model RentFlexDirectInvoiceLink {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String   @map("tenant_id") @db.Uuid
+  rentFlexSelectionId String   @map("rent_flex_selection_id") @db.Uuid
+  rentalLeaseId       String   @map("rental_lease_id") @db.Uuid
+  invoiceId           String   @map("invoice_id") @db.Uuid
+  installmentNumber   Int      @map("installment_number")
+  dueDate             DateTime @map("due_date") @db.Date
+  subtotal            Decimal  @db.Decimal(12, 2)
+  scheduleDigest      String   @map("schedule_digest") @db.VarChar(64)
+  createdBy           String   @map("created_by") @db.Uuid
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, rentFlexSelectionId, installmentNumber], map: "uq_rf12_direct_invoice_link_selection_period")
+  @@unique([tenantId, invoiceId], map: "uq_rf12_direct_invoice_link_invoice")
+  @@index([tenantId, rentalLeaseId], map: "idx_rf12_direct_invoice_link_lease")
+  @@index([tenantId, rentFlexSelectionId], map: "idx_rf12_direct_invoice_link_selection")
+  @@map("rent_flex_direct_invoice_links")
+}

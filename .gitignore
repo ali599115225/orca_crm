@@ -1,0 +1,50 @@
+# .gitignore
+
+# تجاهل الحزم المثبتة
+node_modules/
+
+# تجاهل مجلد بناء Next.js والذاكرة المؤقتة للـ Turbopack
+.next/
+out/
+
+# تجاهل ملفات البيئة السرية وقواعد البيانات المحلية
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+
+# تجاهل ملفات بناء TypeScript
+tsconfig.tsbuildinfo
+
+# حماية ملفات المشروع الحساسة
+recovery-codes.txt
+analysis_summary.md
+DESIGN_ARCHIVE.md
+env.txt
+scratch/
+_archive/
+.vercel/
+.env*
+!.env.example
+
+# منتجات الاختبار والأدلة المولدة — تُحفظ كـ CI artifacts ولا تُضاف نسخ جديدة للمستودع
+.unlighthouse/
+unlighthouse-report/
+playwright-report/
+test-results/
+artifacts/
+lighthouse-report*.html
+lighthouse-report*.json
+lighthouse-report/
+
+# مخرجات التشغيل والتشخيص المحلية
+logs/
+*.log
+/report.json
+/summary.json
+/orca_az-ez_pro.report.html
+/orca_az-ez_pro.report.json
+.vercel
+.neon

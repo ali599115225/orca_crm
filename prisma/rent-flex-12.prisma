@@ -1,0 +1,95 @@
+// ORCA RF12-P1 — additive Rent Flex 12 persistence domain.
+// This schema file defines models only. No migration is created or applied by RF12-P1.
+
+model RentFlexUnitConfig {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String   @map("tenant_id") @db.Uuid
+  unitId              String   @map("unit_id") @db.Uuid
+  externalRnplEnabled Boolean  @default(false) @map("external_rnpl_enabled")
+  status              String   @default("ACTIVE")
+  createdBy           String   @map("created_by") @db.Uuid
+  updatedBy           String   @map("updated_by") @db.Uuid
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, unitId], map: "uq_rent_flex_unit_configs_tenant_unit")
+  @@index([tenantId, status], map: "idx_rent_flex_unit_configs_tenant_status")
+  @@map("rent_flex_unit_configs")
+}
+
+model RentFlexSelection {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                String    @map("tenant_id") @db.Uuid
+  unitId                  String    @map("unit_id") @db.Uuid
+  leadId                  String?   @map("lead_id") @db.Uuid
+  rentalLeaseId           String?   @map("rental_lease_id") @db.Uuid
+  financeCaseId           String?   @map("finance_case_id") @db.Uuid
+  selectedProviderOfferId String?   @map("selected_provider_offer_id") @db.Uuid
+  mode                    String
+  annualRentAmount        Decimal   @map("annual_rent_amount") @db.Decimal(12, 2)
+  currency                String    @default("SAR")
+  firstDueDate            DateTime  @map("first_due_date") @db.Date
+  companyScheduleJson     Json?     @map("company_schedule_json")
+  scheduleDigest          String?   @map("schedule_digest") @db.VarChar(64)
+  status                  String    @default("DRAFT")
+  createdBy               String    @map("created_by") @db.Uuid
+  updatedBy               String    @map("updated_by") @db.Uuid
+  selectedAt              DateTime? @map("selected_at") @db.Timestamptz
+  lockedAt                DateTime? @map("locked_at") @db.Timestamptz
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_rent_flex_selections_tenant_id")
+  @@unique([tenantId, rentalLeaseId], map: "uq_rent_flex_selections_tenant_lease")
+  @@unique([tenantId, financeCaseId], map: "uq_rent_flex_selections_tenant_finance_case")
+  @@unique([tenantId, selectedProviderOfferId], map: "uq_rent_flex_selections_tenant_selected_offer")
+  @@index([tenantId, unitId, status], map: "idx_rent_flex_selections_tenant_unit_status")
+  @@index([tenantId, leadId], map: "idx_rent_flex_selections_tenant_lead")
+  @@map("rent_flex_selections")
+}
+
+model RentFlexOfferTerms {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId               String   @map("tenant_id") @db.Uuid
+  financeProviderOfferId String   @map("finance_provider_offer_id") @db.Uuid
+  ownerSettlementAmount  Decimal  @map("owner_settlement_amount") @db.Decimal(12, 2)
+  totalTenantPayable     Decimal  @map("total_tenant_payable") @db.Decimal(12, 2)
+  tenantCostDelta        Decimal  @map("tenant_cost_delta") @db.Decimal(12, 2)
+  firstDueDate           DateTime @map("first_due_date") @db.Date
+  repaymentScheduleJson  Json     @map("repayment_schedule_json")
+  quoteDigest            String   @map("quote_digest") @db.VarChar(64)
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_rent_flex_offer_terms_tenant_id")
+  @@unique([tenantId, financeProviderOfferId], map: "uq_rent_flex_offer_terms_tenant_offer")
+  @@index([tenantId, quoteDigest], map: "idx_rent_flex_offer_terms_tenant_digest")
+  @@map("rent_flex_offer_terms")
+}
+
+model RentFlexSettlement {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId               String    @map("tenant_id") @db.Uuid
+  rentFlexSelectionId    String    @map("rent_flex_selection_id") @db.Uuid
+  financeCaseId          String?   @map("finance_case_id") @db.Uuid
+  financeProviderOfferId String?   @map("finance_provider_offer_id") @db.Uuid
+  rentalLeaseId          String?   @map("rental_lease_id") @db.Uuid
+  expectedAmount         Decimal   @map("expected_amount") @db.Decimal(12, 2)
+  receivedAmount         Decimal?  @map("received_amount") @db.Decimal(12, 2)
+  currency               String    @default("SAR")
+  status                 String    @default("EXPECTED")
+  providerReference      String?   @map("provider_reference")
+  // Timestamp at which the full expected settlement was received; partial receipts keep this null.
+  receivedAt             DateTime? @map("received_at") @db.Timestamptz
+  evidenceJson           Json?     @map("evidence_json")
+  createdBy              String    @map("created_by") @db.Uuid
+  updatedBy              String    @map("updated_by") @db.Uuid
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_rent_flex_settlements_tenant_id")
+  @@unique([tenantId, rentFlexSelectionId], map: "uq_rent_flex_settlements_tenant_selection")
+  @@index([tenantId, status], map: "idx_rent_flex_settlements_tenant_status")
+  @@index([tenantId, rentalLeaseId], map: "idx_rent_flex_settlements_tenant_lease")
+  @@map("rent_flex_settlements")
+}
