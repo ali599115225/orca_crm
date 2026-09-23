@@ -1,8 +1,5 @@
-import type {
-  EnabledBranchService,
-  OrganizationScopeAssignment,
-} from "@/lib/organization/contracts";
-
+import type { CanonicalStaffPlacementEvidence } from "@/lib/authz/org-placement";
+import type { AccessContext } from "@/lib/authz/authorization";
 export const UNIT_COMMITMENT_TYPES = ["HOLD", "RESERVATION"] as const;
 export type UnitCommitmentType = (typeof UNIT_COMMITMENT_TYPES)[number];
 
@@ -86,8 +83,7 @@ export type UnitCommandContext = Readonly<{
   actorId: string;
   tenantId: string;
   scope: UnitResourceScope;
-  assignments: readonly OrganizationScopeAssignment[];
-  enabledBranchServices?: readonly EnabledBranchService[];
+  authorizationContext: AccessContext;
   idempotencyKey?: string | null;
   expectedVersion?: number | null;
   reason?: string | null;
@@ -97,7 +93,6 @@ export type UnitCommandContext = Readonly<{
 
 export type ApprovalEvidence = Readonly<{
   approvedByActorId: string;
-  approverAssignments: readonly OrganizationScopeAssignment[];
   approvedAt: Date;
   approvalReference: string;
   reason: string;
@@ -309,6 +304,7 @@ export type CreateUnitHoldCommand = Readonly<{
   customer: CustomerReference;
   requestedDurationHours?: number | null;
   approvalEvidence?: ApprovalEvidence | null;
+  approverAuthorizationContext?: AccessContext | null;
 }>;
 
 export type ExtendUnitHoldCommand = Readonly<{
@@ -316,6 +312,7 @@ export type ExtendUnitHoldCommand = Readonly<{
   holdId: string;
   requestedDurationHours: number;
   approvalEvidence?: ApprovalEvidence | null;
+  approverAuthorizationContext?: AccessContext | null;
 }>;
 
 export type HoldLifecycleCommand = Readonly<{
@@ -328,6 +325,7 @@ export type ConvertHoldToReservationCommand = Readonly<{
   holdId: string;
   requestedDurationHours?: number | null;
   approvalEvidence?: ApprovalEvidence | null;
+  approverAuthorizationContext?: AccessContext | null;
   evidenceReference?: string | null;
 }>;
 
@@ -338,6 +336,7 @@ export type CreateReservationCommand = Readonly<{
   requestedDurationHours?: number | null;
   requiresApproval?: boolean;
   approvalEvidence?: ApprovalEvidence | null;
+  approverAuthorizationContext?: AccessContext | null;
   evidenceReference?: string | null;
 }>;
 
@@ -359,6 +358,7 @@ export type ExtendReservationCommand = Readonly<{
   reservationId: string;
   requestedDurationHours: number;
   approvalEvidence?: ApprovalEvidence | null;
+  approverAuthorizationContext?: AccessContext | null;
 }>;
 
 export type ReservationLifecycleCommand = Readonly<{
@@ -392,6 +392,7 @@ export type CreateTourAppointmentCommand = Readonly<{
   branchId: string;
   unitId?: string | null;
   staffUserId: string;
+  staffPlacementEvidence: CanonicalStaffPlacementEvidence;
   operationalResourceId?: string | null;
   customer: CustomerReference;
   startAtUtc: Date;

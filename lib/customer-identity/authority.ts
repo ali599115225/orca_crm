@@ -3,11 +3,12 @@ import {
   type CommandContext,
   type ResourceScope,
 } from "@/lib/customer-identity/contracts";
-import { evaluateOrganizationAuthority } from "@/lib/organization/authority";
-import type {
-  OrganizationPermissionKey,
-  OrganizationScopeAssignment,
-} from "@/lib/organization/contracts";
+import {
+  requirePermission,
+  type AccessContext,
+  type ResourceAccessScope,
+} from "@/lib/authz/authorization";
+import type { PermissionKey } from "@/lib/authz/permission-registry";
 
 export type CustomerIdentityAction =
   | "READ"
@@ -22,33 +23,148 @@ export type CustomerIdentityAction =
   | "CONSENT_WRITE"
   | "RETENTION_WRITE";
 
-const ACTION_PERMISSION: Readonly<
-  Record<CustomerIdentityAction, OrganizationPermissionKey>
-> = {
-  READ: "sales.records.read",
-  WRITE: "sales.records.write",
-  VERIFY: "sales.records.write",
-  CONVERT: "sales.records.write",
-  OPPORTUNITY_STAGE: "sales.records.write",
-  OPPORTUNITY_REASSIGN: "sales.records.write",
-  MERGE_PREVIEW: "sales.records.read",
-  MERGE_EXECUTE: "sales.records.write",
-  MERGE_REVERSE: "sales.records.write",
-  CONSENT_WRITE: "sales.records.write",
-  RETENTION_WRITE: "sales.records.write",
-};
+function canonicalPermission(
+  action: CustomerIdentityAction,
+  resource: ResourceScope,
+): PermissionKey {
+  if (resource.resourceType === "LEAD") {
+    if (action === "READ" || action === "MERGE_PREVIEW") {
+      return "leads.read";
+    }
 
-export function validateCommandContext(context: CommandContext): void {
+    if (
+      action === "WRITE" &&
+      (resource.resourceId === "NEW" || !resource.resourceId)
+    ) {
+      return "leads.create";
+    }
+
+    return "leads.update";
+  }
+
+  if (resource.resourceType === "OPPORTUNITY") {
+    if (action === "READ" || action === "MERGE_PREVIEW") {
+      return "opportunities.read";
+    }
+
+    return "opportunities.manage";
+  }
+
+  if (action === "READ" || action === "MERGE_PREVIEW") {
+    return "contacts.read";
+  }
+
+  return "contacts.manage";
+}
+
+function canonicalResource(
+  tenantId: string,
+  resource: ResourceScope,
+): ResourceAccessScope {
+  return {
+    tenantId,
+    branchId: resource.branchId ?? null,
+    departmentId: resource.departmentId ?? null,
+    teamId: resource.teamId ?? null,
+    resourceType: resource.resourceType ?? null,
+    resourceId: resource.resourceId ?? null,
+  };
+}
+
+function assertCanonicalAuthority(
+  context: CommandContext,
+  accessContext: AccessContext,
+  actorId: string,
+  action: CustomerIdentityAction,
+  resource: ResourceScope,
+  requireCompanyScope: boolean,
+): void {
+  if (accessContext.tenantId !== context.tenantId) {
+    throw new CustomerIdentityError(
+      "TENANT_SCOPE_MISMATCH",
+      "Customer identity authorization tenant mismatch",
+    );
+  }
+
+  if (accessContext.userId !== actorId) {
+    throw new CustomerIdentityError(
+      "AUTHORITY_DENIED",
+      "Customer identity authorization actor mismatch",
+    );
+  }
+
+  const permission = canonicalPermission(action, resource);
+
+  try {
+    requirePermission(
+      accessContext,
+      permission,
+      canonicalResource(context.tenantId, resource),
+    );
+  } catch {
+    const hasPermission =
+      accessContext.permissionKeys.has(permission);
+
+    throw new CustomerIdentityError(
+      hasPermission
+        ? "RESOURCE_SCOPE_DENIED"
+        : "AUTHORITY_DENIED",
+      hasPermission
+        ? "Customer identity resource scope denied"
+        : "Customer identity permission denied",
+      {
+        action,
+        permission,
+      },
+    );
+  }
+
+  if (requireCompanyScope) {
+    try {
+      requirePermission(accessContext, permission, {
+        tenantId: context.tenantId,
+      });
+    } catch {
+      throw new CustomerIdentityError(
+        "RESOURCE_SCOPE_DENIED",
+        "Company-wide scope is required for this cross-branch operation",
+        {
+          action,
+          permission,
+        },
+      );
+    }
+  }
+}
+
+export function validateCommandContext(
+  context: CommandContext,
+): void {
   if (!context.actorId.trim()) {
-    throw new CustomerIdentityError("MISSING_ACTOR", "Actor is required");
+    throw new CustomerIdentityError(
+      "MISSING_ACTOR",
+      "Actor is required",
+    );
   }
+
   if (!context.tenantId.trim()) {
-    throw new CustomerIdentityError("MISSING_TENANT", "Tenant is required");
+    throw new CustomerIdentityError(
+      "MISSING_TENANT",
+      "Tenant is required",
+    );
   }
+
   if (!context.auditCorrelationId.trim()) {
     throw new CustomerIdentityError(
       "VALIDATION_ERROR",
       "Audit correlation ID is required",
+    );
+  }
+
+  if (!context.authorizationContext) {
+    throw new CustomerIdentityError(
+      "AUTHORITY_DENIED",
+      "Canonical authorization context is required",
     );
   }
 }
@@ -58,64 +174,40 @@ export function assertCustomerAuthority(
   action: CustomerIdentityAction,
   resource: ResourceScope,
   options: Readonly<{
-    assignments?: readonly OrganizationScopeAssignment[];
+    authorizationContext?: AccessContext;
     actorId?: string;
-    initiatedByActorId?: string | null;
     requireCompanyScope?: boolean;
   }> = {},
-): OrganizationScopeAssignment {
+): void {
   validateCommandContext(context);
 
   const actorId = options.actorId ?? context.actorId;
-  const assignments = options.assignments ?? context.assignments;
-  const decision = evaluateOrganizationAuthority({
-    actorUserId: actorId,
-    actorTenantId: context.tenantId,
-    permission: ACTION_PERMISSION[action],
-    resource: {
-      tenantId: context.tenantId,
-      branchId: resource.branchId,
-      departmentId: resource.departmentId,
-      teamId: resource.teamId,
-      resourceType: resource.resourceType,
-      resourceId: resource.resourceId,
-      serviceLine: "SALES",
-    },
-    assignments,
-    enabledBranchServices: context.enabledBranchServices,
-    initiatedByUserId: options.initiatedByActorId,
-    now: context.timestamp,
-  });
 
-  if (!decision.allowed || !decision.assignmentId) {
-    throw new CustomerIdentityError(
-      decision.code === "TENANT_SCOPE_MISMATCH"
-        ? "TENANT_SCOPE_MISMATCH"
-        : decision.code === "RESOURCE_SCOPE_DENIED"
-          ? "RESOURCE_SCOPE_DENIED"
-          : "AUTHORITY_DENIED",
-      `Customer identity authority denied: ${decision.code}`,
-      { action, authorityCode: decision.code },
+  const accessContext =
+    options.authorizationContext ??
+    (
+      actorId === context.actorId
+        ? context.authorizationContext
+        : undefined
     );
-  }
 
-  const assignment = assignments.find(
-    (candidate) => candidate.id === decision.assignmentId,
-  );
-  if (!assignment) {
+  if (!accessContext) {
     throw new CustomerIdentityError(
       "AUTHORITY_DENIED",
-      "Authority decision referenced a missing assignment",
+      "Canonical authorization context is required for actor",
+      {
+        action,
+        actorId,
+      },
     );
   }
 
-  if (options.requireCompanyScope && assignment.scopeType !== "COMPANY") {
-    throw new CustomerIdentityError(
-      "RESOURCE_SCOPE_DENIED",
-      "Company-wide scope is required for this cross-branch operation",
-      { assignmentId: assignment.id, scopeType: assignment.scopeType },
-    );
-  }
-
-  return assignment;
+  assertCanonicalAuthority(
+    context,
+    accessContext,
+    actorId,
+    action,
+    resource,
+    options.requireCompanyScope === true,
+  );
 }

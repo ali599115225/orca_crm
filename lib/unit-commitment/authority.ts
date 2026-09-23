@@ -1,9 +1,9 @@
-import { evaluateOrganizationAuthority } from "@/lib/organization/authority";
-import type {
-  OrganizationPermissionKey,
-  OrganizationScopeAssignment,
-  OrganizationSecurityRole,
-} from "@/lib/organization/contracts";
+import {
+  authorize,
+  type AccessContext,
+  type ResourceAccessScope,
+} from "@/lib/authz/authorization";
+import type { PermissionKey } from "@/lib/authz/permission-registry";
 import {
   UnitCommitmentError,
   type Exec006PermissionKey,
@@ -11,161 +11,77 @@ import {
   type UnitResourceScope,
 } from "@/lib/unit-commitment/contracts";
 
-const READ_PERMISSIONS = new Set<Exec006PermissionKey>([
-  "UNIT_AVAILABILITY_READ",
-  "COMMITMENT_AUDIT_READ",
-]);
+export type UnitAuthorityEvidence = Readonly<{
+  id: string;
+}>;
 
-const BASE_PERMISSION: Readonly<
-  Record<Exec006PermissionKey, OrganizationPermissionKey>
+const CANONICAL_PERMISSION: Readonly<
+  Record<Exec006PermissionKey, PermissionKey>
 > = {
-  UNIT_AVAILABILITY_READ: "property.records.read",
-  UNIT_HOLD_CREATE: "sales.records.write",
-  UNIT_HOLD_EXTEND: "sales.records.write",
-  UNIT_HOLD_RELEASE: "sales.records.write",
-  UNIT_HOLD_OVERRIDE: "sales.records.write",
-  RESERVATION_CREATE: "sales.records.write",
-  RESERVATION_APPROVE: "sales.records.write",
-  RESERVATION_EXTEND: "sales.records.write",
-  RESERVATION_RELEASE: "sales.records.write",
-  RESERVATION_CANCEL: "sales.records.write",
-  RESERVATION_CONVERT: "sales.records.write",
-  TOUR_CREATE: "sales.records.write",
-  TOUR_CONFIRM: "sales.records.write",
-  TOUR_RESCHEDULE: "sales.records.write",
-  TOUR_COMPLETE: "sales.records.write",
-  TOUR_CANCEL: "sales.records.write",
-  COMMITMENT_AUDIT_READ: "property.records.read",
+  UNIT_AVAILABILITY_READ: "unit-commitments.availability-read",
+  UNIT_HOLD_CREATE: "unit-commitments.hold-create",
+  UNIT_HOLD_EXTEND: "unit-commitments.hold-extend",
+  UNIT_HOLD_RELEASE: "unit-commitments.hold-release",
+  UNIT_HOLD_OVERRIDE: "unit-commitments.hold-override",
+  RESERVATION_CREATE: "unit-commitments.reservation-create",
+  RESERVATION_APPROVE: "unit-commitments.reservation-approve",
+  RESERVATION_EXTEND: "unit-commitments.reservation-extend",
+  RESERVATION_RELEASE: "unit-commitments.reservation-release",
+  RESERVATION_CANCEL: "unit-commitments.reservation-cancel",
+  RESERVATION_CONVERT: "unit-commitments.reservation-convert",
+  TOUR_CREATE: "tours.schedule",
+  TOUR_CONFIRM: "tours.update-status",
+  TOUR_RESCHEDULE: "tours.update-status",
+  TOUR_COMPLETE: "tours.update-status",
+  TOUR_CANCEL: "tours.update-status",
+  COMMITMENT_AUDIT_READ: "unit-commitments.audit-read",
 };
 
-const ROLE_PERMISSION_MATRIX: Readonly<
-  Record<Exec006PermissionKey, readonly OrganizationSecurityRole[]>
-> = {
-  UNIT_AVAILABILITY_READ: [
-    "PLATFORM_OWNER",
-    "GENERAL_MANAGER",
-    "OPERATIONS_MANAGER",
-    "BRANCH_MANAGER",
-    "SALES_LEASING_MANAGER",
-    "BROKER_AGENT",
-    "PROPERTY_MANAGER",
-    "CUSTOMER_SERVICE_REPRESENTATIVE",
-    "COMPLIANCE_AUDIT",
-  ],
-  UNIT_HOLD_CREATE: [
-    "GENERAL_MANAGER",
-    "OPERATIONS_MANAGER",
-    "BRANCH_MANAGER",
-    "SALES_LEASING_MANAGER",
-    "BROKER_AGENT",
-  ],
-  UNIT_HOLD_EXTEND: [
-    "GENERAL_MANAGER",
-    "OPERATIONS_MANAGER",
-    "BRANCH_MANAGER",
-    "SALES_LEASING_MANAGER",
-    "BROKER_AGENT",
-  ],
-  UNIT_HOLD_RELEASE: [
-    "GENERAL_MANAGER",
-    "OPERATIONS_MANAGER",
-    "BRANCH_MANAGER",
-    "SALES_LEASING_MANAGER",
-    "BROKER_AGENT",
-  ],
-  UNIT_HOLD_OVERRIDE: ["GENERAL_MANAGER", "OPERATIONS_MANAGER"],
-  RESERVATION_CREATE: [
-    "GENERAL_MANAGER",
-    "OPERATIONS_MANAGER",
-    "BRANCH_MANAGER",
-    "SALES_LEASING_MANAGER",
-    "BROKER_AGENT",
-  ],
-  RESERVATION_APPROVE: [
-    "GENERAL_MANAGER",
-    "OPERATIONS_MANAGER",
-    "BRANCH_MANAGER",
-    "SALES_LEASING_MANAGER",
-  ],
-  RESERVATION_EXTEND: [
-    "GENERAL_MANAGER",
-    "OPERATIONS_MANAGER",
-    "BRANCH_MANAGER",
-    "SALES_LEASING_MANAGER",
-  ],
-  RESERVATION_RELEASE: [
-    "GENERAL_MANAGER",
-    "OPERATIONS_MANAGER",
-    "BRANCH_MANAGER",
-    "SALES_LEASING_MANAGER",
-  ],
-  RESERVATION_CANCEL: [
-    "GENERAL_MANAGER",
-    "OPERATIONS_MANAGER",
-    "BRANCH_MANAGER",
-    "SALES_LEASING_MANAGER",
-  ],
-  RESERVATION_CONVERT: [
-    "GENERAL_MANAGER",
-    "OPERATIONS_MANAGER",
-    "BRANCH_MANAGER",
-    "SALES_LEASING_MANAGER",
-  ],
-  TOUR_CREATE: [
-    "GENERAL_MANAGER",
-    "OPERATIONS_MANAGER",
-    "BRANCH_MANAGER",
-    "SALES_LEASING_MANAGER",
-    "BROKER_AGENT",
-  ],
-  TOUR_CONFIRM: [
-    "GENERAL_MANAGER",
-    "OPERATIONS_MANAGER",
-    "BRANCH_MANAGER",
-    "SALES_LEASING_MANAGER",
-    "BROKER_AGENT",
-  ],
-  TOUR_RESCHEDULE: [
-    "GENERAL_MANAGER",
-    "OPERATIONS_MANAGER",
-    "BRANCH_MANAGER",
-    "SALES_LEASING_MANAGER",
-    "BROKER_AGENT",
-  ],
-  TOUR_COMPLETE: [
-    "GENERAL_MANAGER",
-    "OPERATIONS_MANAGER",
-    "BRANCH_MANAGER",
-    "SALES_LEASING_MANAGER",
-    "BROKER_AGENT",
-  ],
-  TOUR_CANCEL: [
-    "GENERAL_MANAGER",
-    "OPERATIONS_MANAGER",
-    "BRANCH_MANAGER",
-    "SALES_LEASING_MANAGER",
-    "BROKER_AGENT",
-  ],
-  COMMITMENT_AUDIT_READ: [
-    "PLATFORM_OWNER",
-    "GENERAL_MANAGER",
-    "OPERATIONS_MANAGER",
-    "BRANCH_MANAGER",
-    "COMPLIANCE_AUDIT",
-  ],
-};
+function canonicalResource(
+  tenantId: string,
+  resource: UnitResourceScope,
+): ResourceAccessScope {
+  return {
+    tenantId,
+    branchId: resource.branchId ?? null,
+    departmentId: resource.departmentId ?? null,
+    teamId: resource.teamId ?? null,
+    resourceType: resource.resourceType ?? null,
+    resourceId: resource.resourceId ?? null,
+  };
+}
 
-export function validateUnitCommandContext(context: UnitCommandContext): void {
+export function validateUnitCommandContext(
+  context: UnitCommandContext,
+): void {
   if (!context.actorId.trim()) {
-    throw new UnitCommitmentError("MISSING_ACTOR", "Actor is required");
+    throw new UnitCommitmentError(
+      "MISSING_ACTOR",
+      "Actor is required",
+    );
   }
+
   if (!context.tenantId.trim()) {
-    throw new UnitCommitmentError("MISSING_TENANT", "Tenant is required");
+    throw new UnitCommitmentError(
+      "MISSING_TENANT",
+      "Tenant is required",
+    );
   }
+
   if (!context.auditCorrelationId.trim()) {
     throw new UnitCommitmentError(
       "VALIDATION_ERROR",
       "Audit correlation ID is required",
+    );
+  }
+
+  if (
+    context.authorizationContext.tenantId !== context.tenantId ||
+    context.authorizationContext.userId !== context.actorId
+  ) {
+    throw new UnitCommitmentError(
+      "AUTHORITY_DENIED",
+      "Canonical authorization context does not match command actor",
     );
   }
 }
@@ -175,75 +91,97 @@ export function assertUnitCommitmentAuthority(
   permission: Exec006PermissionKey,
   resource: UnitResourceScope,
   options: Readonly<{
-    assignments?: readonly OrganizationScopeAssignment[];
+    authorizationContext?: AccessContext;
     actorId?: string;
     requireCompanyScope?: boolean;
   }> = {},
-): OrganizationScopeAssignment {
+): UnitAuthorityEvidence {
   validateUnitCommandContext(context);
-  const actorId = options.actorId ?? context.actorId;
-  const assignments = options.assignments ?? context.assignments;
-  const decision = evaluateOrganizationAuthority({
-    actorUserId: actorId,
-    actorTenantId: context.tenantId,
-    permission: BASE_PERMISSION[permission],
-    resource: {
-      tenantId: context.tenantId,
-      branchId: resource.branchId,
-      departmentId: resource.departmentId,
-      teamId: resource.teamId,
-      resourceType: resource.resourceType,
-      resourceId: resource.resourceId,
-      serviceLine: READ_PERMISSIONS.has(permission)
-        ? "PROPERTY_MANAGEMENT"
-        : "SALES",
-    },
-    assignments,
-    enabledBranchServices: context.enabledBranchServices,
-    now: context.timestamp,
-  });
 
-  if (!decision.allowed || !decision.assignmentId) {
+  const actorId = options.actorId ?? context.actorId;
+
+  const accessContext =
+    options.authorizationContext ??
+    (
+      actorId === context.actorId
+        ? context.authorizationContext
+        : undefined
+    );
+
+  if (!accessContext) {
+    throw new UnitCommitmentError(
+      "AUTHORITY_DENIED",
+      "Independent actor requires explicit canonical authorization context",
+    );
+  }
+
+  if (
+    accessContext.tenantId !== context.tenantId ||
+    accessContext.userId !== actorId
+  ) {
+    throw new UnitCommitmentError(
+      "AUTHORITY_DENIED",
+      "Canonical authorization context identity mismatch",
+    );
+  }
+
+  const canonicalPermission =
+    CANONICAL_PERMISSION[permission];
+
+  const decision = authorize(
+    accessContext,
+    canonicalPermission,
+    canonicalResource(
+      context.tenantId,
+      resource,
+    ),
+  );
+
+  if (
+    !decision.allowed ||
+    !decision.matchedRoleAssignmentId
+  ) {
     const code =
-      decision.code === "TENANT_SCOPE_MISMATCH"
+      decision.reasonCode === "CROSS_TENANT"
         ? "TENANT_SCOPE_MISMATCH"
-        : decision.code === "RESOURCE_SCOPE_DENIED"
+        : (
+            decision.reasonCode === "SCOPE_MISMATCH" ||
+            decision.reasonCode === "SCOPE_NOT_ALLOWED"
+          )
           ? "RESOURCE_SCOPE_DENIED"
           : "AUTHORITY_DENIED";
+
     throw new UnitCommitmentError(
       code,
-      `EXEC-006 authority denied: ${decision.code}`,
-      { permission, authorityCode: decision.code },
+      "Canonical Unit Commitment authority denied",
+      {
+        permission,
+        canonicalPermission,
+        authorityCode: decision.reasonCode,
+      },
     );
   }
 
-  const assignment = assignments.find(
-    (candidate) => candidate.id === decision.assignmentId,
-  );
-  if (!assignment || assignment.userId !== actorId) {
-    throw new UnitCommitmentError(
-      "AUTHORITY_DENIED",
-      "Authority decision referenced a missing or mismatched assignment",
+  if (options.requireCompanyScope) {
+    const companyDecision = authorize(
+      accessContext,
+      canonicalPermission,
+      {
+        tenantId: context.tenantId,
+      },
     );
+
+    if (!companyDecision.allowed) {
+      throw new UnitCommitmentError(
+        "RESOURCE_SCOPE_DENIED",
+        "Company scope is required for this override",
+      );
+    }
   }
 
-  if (!ROLE_PERMISSION_MATRIX[permission].includes(assignment.securityRole)) {
-    throw new UnitCommitmentError(
-      "AUTHORITY_DENIED",
-      `Security role has no ${permission} authority`,
-      { permission, securityRole: assignment.securityRole },
-    );
-  }
-
-  if (options.requireCompanyScope && assignment.scopeType !== "COMPANY") {
-    throw new UnitCommitmentError(
-      "RESOURCE_SCOPE_DENIED",
-      "Company scope is required for this override",
-      { assignmentId: assignment.id, scopeType: assignment.scopeType },
-    );
-  }
-
-  return assignment;
+  return {
+    id: decision.matchedRoleAssignmentId,
+  };
 }
 
 export function assertIndependentApproval(
@@ -256,6 +194,7 @@ export function assertIndependentApproval(
       "Persisted initiator evidence is required",
     );
   }
+
   if (initiatedByActorId === context.actorId) {
     throw new UnitCommitmentError(
       "SELF_APPROVAL_DENIED",
@@ -274,6 +213,7 @@ export function canDiscloseBlockingCustomer(
       "COMMITMENT_AUDIT_READ",
       resource,
     );
+
     return true;
   } catch {
     return false;

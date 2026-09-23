@@ -1488,8 +1488,7 @@ export class CustomerIdentityService {
         resourceForParty(preview.survivorBefore),
         {
           actorId: command.approvedByActorId,
-          assignments: command.approverAssignments,
-          initiatedByActorId: context.actorId,
+          authorizationContext: command.approverAuthorizationContext,
           requireCompanyScope: crossBranch,
         },
       );

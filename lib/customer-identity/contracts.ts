@@ -1,8 +1,4 @@
-import type {
-  EnabledBranchService,
-  OrganizationScopeAssignment,
-} from "@/lib/organization/contracts";
-
+import type { AccessContext } from "@/lib/authz/authorization";
 export const PARTY_TYPES = ["PERSON", "ORGANIZATION"] as const;
 export type PartyType = (typeof PARTY_TYPES)[number];
 
@@ -113,8 +109,7 @@ export type CommandContext = Readonly<{
   actorId: string;
   tenantId: string;
   scope: ResourceScope;
-  assignments: readonly OrganizationScopeAssignment[];
-  enabledBranchServices?: readonly EnabledBranchService[];
+  authorizationContext: AccessContext;
   idempotencyKey?: string | null;
   expectedVersion?: number | null;
   reason?: string | null;
@@ -492,8 +487,8 @@ export type MergePartiesCommand = Readonly<{
   mergedPartyId: string;
   fieldChoices: readonly MergeFieldChoice[];
   approvedByActorId: string;
-  approverAssignments: readonly OrganizationScopeAssignment[];
-}>;
+approverAuthorizationContext: AccessContext;
+  }>;
 
 export class CustomerIdentityError extends Error {
   constructor(

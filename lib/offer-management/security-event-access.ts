@@ -227,30 +227,57 @@ async function readForPurpose(
     };
 
     const assignmentRows = await tx.$queryRaw<Array<{
-      id: string; scope_type: "COMPANY" | "BRANCH"; branch_id: string | null;
-      starts_at: Date | null; created_at: Date;
+      id: string;
+      scope_type: "TENANT" | "BRANCH";
+      scope_org_unit_id: string | null;
+      valid_from: Date;
+      created_at: Date;
     }>>(Prisma.sql`
-      SELECT a.id, a.scope_type, a.branch_id, a.starts_at, a.created_at
-      FROM public.user_scope_assignments a
-      WHERE a.tenant_id = ${session.tenantId}::uuid
-        AND a.user_id = ${session.userId}::uuid
-        AND a.security_role = 'COMPLIANCE_AUDIT'
-        AND a.scope_type IN ('COMPANY','BRANCH')
-        AND a.is_active = TRUE
-        AND (a.starts_at IS NULL OR a.starts_at <= transaction_timestamp())
-        AND (a.ends_at IS NULL OR a.ends_at > transaction_timestamp())
+      SELECT DISTINCT
+        ra.id,
+        ra.scope_type,
+        ra.scope_org_unit_id,
+        ra.valid_from,
+        ra.created_at
+      FROM public.role_assignments ra
+      JOIN public.access_roles ar
+        ON ar.id = ra.access_role_id
+       AND ar.tenant_id = ra.tenant_id
+       AND ar.is_active = TRUE
+      JOIN public.access_role_permissions arp
+        ON arp.access_role_id = ar.id
+       AND arp.tenant_id = ra.tenant_id
+      JOIN public.access_permissions ap
+        ON ap.id = arp.permission_id
+       AND ap.is_active = TRUE
+      WHERE ra.tenant_id = ${session.tenantId}::uuid
+        AND ra.user_id = ${session.userId}::uuid
+        AND ra.status = 'ACTIVE'
+        AND ra.scope_type IN ('TENANT','BRANCH')
+        AND ap.key = ${PERMISSION}
+        AND ra.valid_from <= transaction_timestamp()
+        AND (
+          ra.valid_until IS NULL
+          OR ra.valid_until > transaction_timestamp()
+        )
     `);
+
     const assignment = selectSecurityEventAuthorityAssignment(
       metadata,
       assignmentRows.map((candidate) => ({
         id: candidate.id,
-        scopeType: candidate.scope_type,
-        branchId: candidate.branch_id,
-        startsAt: candidate.starts_at,
+        scopeType:
+          candidate.scope_type === "TENANT"
+            ? "COMPANY"
+            : "BRANCH",
+        branchId:
+          candidate.scope_type === "BRANCH"
+            ? candidate.scope_org_unit_id
+            : null,
+        startsAt: candidate.valid_from,
         createdAt: candidate.created_at,
       })),
     );
-
     const issuedAt = new Date();
     const expiresAt = new Date(issuedAt.getTime() + 30_000);
     const envelope = buildDbAuthorizationEnvelope({

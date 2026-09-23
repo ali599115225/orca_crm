@@ -1,11 +1,15 @@
+import {
+  isCanonicalStaffPlacementEvidence,
+  type CanonicalStaffPlacementEvidence,
+} from "@/lib/authz/org-placement";
 import { createHash } from "node:crypto";
 
-import type { OrganizationScopeAssignment } from "@/lib/organization/contracts";
 import {
   assertIndependentApproval,
   assertUnitCommitmentAuthority,
   canDiscloseBlockingCustomer,
   validateUnitCommandContext,
+type UnitAuthorityEvidence,
 } from "@/lib/unit-commitment/authority";
 import {
   DEFAULT_UNIT_COMMITMENT_POLICY,
@@ -215,42 +219,29 @@ function assertValidWindow(startAt: Date, endAt: Date): void {
   }
 }
 
-function assignmentIsActive(
-  assignment: OrganizationScopeAssignment,
-  now: Date,
-): boolean {
-  if (!assignment.active) return false;
-  if (assignment.startsAt && assignment.startsAt > now) return false;
-  if (assignment.endsAt && assignment.endsAt <= now) return false;
-  return true;
-}
-
 function validateScheduledStaff(
   context: UnitCommandContext,
   staffUserId: string,
   branchId: string,
+  evidence: CanonicalStaffPlacementEvidence,
 ): void {
-  const now = contextNow(context);
-  const assignment = context.assignments.find(
-    (candidate) =>
-      candidate.userId === staffUserId &&
-      candidate.tenantId === context.tenantId &&
-      assignmentIsActive(candidate, now) &&
-      (candidate.scopeType === "COMPANY" ||
-        (candidate.scopeType === "BRANCH" &&
-          candidate.branchId === branchId) ||
-        (candidate.scopeType === "DEPARTMENT" &&
-          (!candidate.branchId || candidate.branchId === branchId)) ||
-        (candidate.scopeType === "TEAM" &&
-          (!candidate.branchId || candidate.branchId === branchId)) ||
-        (candidate.scopeType === "ASSIGNED_RESOURCE" &&
-          (!candidate.branchId || candidate.branchId === branchId))),
-  );
-  if (!assignment) {
+  if (
+    !isCanonicalStaffPlacementEvidence(
+      evidence,
+      {
+        tenantId: context.tenantId,
+        userId: staffUserId,
+        branchId,
+      },
+    )
+  ) {
     throw new UnitCommitmentError(
       "RESOURCE_SCOPE_DENIED",
-      "Scheduled staff lacks an active persisted assignment for this branch",
-      { staffUserId, branchId },
+      "Scheduled staff lacks canonical active placement for this branch",
+      {
+        staffUserId,
+        branchId,
+      },
     );
   }
 }
@@ -340,6 +331,7 @@ export class UnitCommitmentService {
             command.requestedDurationHours ??
               this.policy.defaultHoldDurationHours,
             command.approvalEvidence ?? null,
+            command.approverAuthorizationContext ?? null,
           );
           this.assertAvailableForExclusiveCommitment(
             state,
@@ -439,6 +431,7 @@ export class UnitCommitmentService {
             "HOLD",
             command.requestedDurationHours,
             command.approvalEvidence ?? null,
+            command.approverAuthorizationContext ?? null,
           );
           const nextExpiry = new Date(
             timestamp.getTime() + durationHours * 60 * 60 * 1000,
@@ -619,6 +612,7 @@ export class UnitCommitmentService {
             command.requestedDurationHours ??
               this.policy.defaultReservationDurationHours,
             command.approvalEvidence ?? null,
+            command.approverAuthorizationContext ?? null,
           );
           const key = requireIdempotencyKey(
             command.context,
@@ -716,6 +710,7 @@ export class UnitCommitmentService {
             command.requestedDurationHours ??
               this.policy.defaultReservationDurationHours,
             command.approvalEvidence ?? null,
+            command.approverAuthorizationContext ?? null,
           );
           this.assertAvailableForExclusiveCommitment(
             state,
@@ -729,6 +724,7 @@ export class UnitCommitmentService {
               unit,
               "RESERVATION_APPROVE",
               command.approvalEvidence ?? null,
+              command.approverAuthorizationContext ?? null,
             );
           }
           const timestamp = contextNow(command.context);
@@ -836,9 +832,9 @@ export class UnitCommitmentService {
               { blockingCommitmentId: conflict.id },
             );
           }
-          const approvalEvidence: ApprovalEvidence = {
+const approvalEvidence: ApprovalEvidence = {
             approvedByActorId: command.context.actorId,
-            approverAssignments: [assignment],
+
             approvedAt: timestamp,
             approvalReference: command.approvalReference,
             reason: command.context.reason ?? "approved",
@@ -977,6 +973,7 @@ export class UnitCommitmentService {
             "RESERVATION",
             command.requestedDurationHours,
             command.approvalEvidence ?? null,
+            command.approverAuthorizationContext ?? null,
           );
           const nextExpiry = new Date(
             timestamp.getTime() + durationHours * 60 * 60 * 1000,
@@ -1242,6 +1239,7 @@ export class UnitCommitmentService {
             command.context,
             command.staffUserId,
             actualBranch,
+            command.staffPlacementEvidence,
           );
           this.assertTourWindowAvailable(
             state,
@@ -1676,6 +1674,7 @@ export class UnitCommitmentService {
     type: UnitCommitment["type"],
     requestedHours: number,
     approvalEvidence: ApprovalEvidence | null,
+    approverAuthorizationContext: UnitCommandContext["authorizationContext"] | null | undefined,
   ): number {
     if (!Number.isFinite(requestedHours) || requestedHours <= 0) {
       throw new UnitCommitmentError(
@@ -1704,6 +1703,7 @@ export class UnitCommitmentService {
         unit,
         type === "HOLD" ? "UNIT_HOLD_OVERRIDE" : "RESERVATION_APPROVE",
         approvalEvidence,
+        approverAuthorizationContext,
       );
     }
     return requestedHours;
@@ -1714,6 +1714,7 @@ export class UnitCommitmentService {
     unit: UnitInventoryRecord,
     permission: Exec006PermissionKey,
     approvalEvidence: ApprovalEvidence | null,
+    approverAuthorizationContext: UnitCommandContext["authorizationContext"] | null | undefined,
   ): void {
     if (!approvalEvidence) {
       throw new UnitCommitmentError(
@@ -1731,6 +1732,13 @@ export class UnitCommitmentService {
         "Approval evidence is incomplete",
       );
     }
+    if (!approverAuthorizationContext) {
+      throw new UnitCommitmentError(
+        "APPROVAL_DENIED",
+        "Canonical approver authorization context is required",
+      );
+    }
+
     if (approvalEvidence.approvedByActorId === context.actorId) {
       throw new UnitCommitmentError(
         "SELF_APPROVAL_DENIED",
@@ -1739,7 +1747,8 @@ export class UnitCommitmentService {
     }
     assertUnitCommitmentAuthority(context, permission, unitResource(unit), {
       actorId: approvalEvidence.approvedByActorId,
-      assignments: approvalEvidence.approverAssignments,
+      authorizationContext:
+        approverAuthorizationContext ?? undefined,
     });
   }
 
@@ -1779,7 +1788,7 @@ export class UnitCommitmentService {
   private recordCommitmentTransition(
     state: UnitCommitmentState,
     context: UnitCommandContext,
-    assignment: OrganizationScopeAssignment,
+    assignment: UnitAuthorityEvidence,
     action: string,
     previousState: UnitCommitment | null,
     nextState: UnitCommitment,
@@ -1830,7 +1839,7 @@ export class UnitCommitmentService {
   private recordTourTransition(
     state: UnitCommitmentState,
     context: UnitCommandContext,
-    assignment: OrganizationScopeAssignment,
+    assignment: UnitAuthorityEvidence,
     action: string,
     previousState: TourAppointment | null,
     nextState: TourAppointment,
