@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { EXEC_003_DATABASE_ROLES } from "@/lib/auth/exec-003-permission-assignments";
 import { runWithExec003CookiePermission } from "@/lib/auth/exec-003-shared-guard";
 import { signContract } from "@/lib/domain/transaction-spine";
+import {
+  ContractSignatureRequiredError,
+  assertContractSignedForInvoice,
+} from "@/lib/domain/transaction-spine/create-invoice";
 
 export async function GET(
   request: NextRequest,
@@ -66,6 +70,7 @@ export async function POST(
     async (session) => {
       try {
         const { id } = await params;
+        await assertContractSignedForInvoice(session.tenantId, id);
         const result = await signContract({
           tenantId: session.tenantId,
           userId: session.userId,
@@ -80,6 +85,16 @@ export async function POST(
           },
         });
       } catch (error: unknown) {
+        if (error instanceof ContractSignatureRequiredError) {
+          return NextResponse.json(
+            {
+              success: false,
+              code: error.code,
+              error: "يجب توقيع العقد أولًا عبر مسار التوقيع الرسمي قبل إصدار فاتورة البيع.",
+            },
+            { status: 409 },
+          );
+        }
         const message =
           error instanceof Error ? error.message : "تعذر إصدار فاتورة البيع.";
         return NextResponse.json(

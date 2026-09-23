@@ -2,7 +2,37 @@ import { prisma } from "@/lib/prisma";
 import { assertTenantOwnership } from "./validate-tenant";
 import { calculateVat } from "@/lib/vat/engine";
 import { signContract } from "./sign-contract";
+import { CONTRACT_STATUS } from "./constants";
 import type { CreateInvoiceInput } from "./types";
+
+export const CONTRACT_SIGNATURE_REQUIRED = "CONTRACT_SIGNATURE_REQUIRED";
+
+export class ContractSignatureRequiredError extends Error {
+  public readonly code = CONTRACT_SIGNATURE_REQUIRED;
+  constructor() {
+    super(CONTRACT_SIGNATURE_REQUIRED);
+    this.name = "ContractSignatureRequiredError";
+  }
+}
+
+/**
+ * Sale invoicing never signs a contract. The contract must already be signed
+ * through the explicit signing route (which requires signature evidence);
+ * signContract is then only an idempotent financial-activation read-back.
+ */
+export async function assertContractSignedForInvoice(
+  tenantId: string,
+  contractId: string,
+): Promise<void> {
+  const contract = await prisma.contract.findFirst({
+    where: { id: contractId, tenantId },
+    select: { status: true, signedAt: true },
+  });
+  if (!contract) throw new Error("Contract not found in this tenant.");
+  if (contract.status !== CONTRACT_STATUS.SIGNED || !contract.signedAt) {
+    throw new ContractSignatureRequiredError();
+  }
+}
 
 export async function createInvoice(input: CreateInvoiceInput) {
   const {
@@ -19,6 +49,7 @@ export async function createInvoice(input: CreateInvoiceInput) {
 
   if (type === "SALE") {
     if (!contractId) throw new Error("Sale invoice requires a contract.");
+    await assertContractSignedForInvoice(tenantId, contractId);
     const result = await signContract({ tenantId, userId, contractId });
     return result.invoice;
   }
