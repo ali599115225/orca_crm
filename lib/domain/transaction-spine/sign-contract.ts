@@ -24,7 +24,121 @@ import {
   ensureDefaultPaymentPlanInTx,
   parsePaymentSchedule,
 } from "./payment-plan";
-import type { SignContractInput } from "./types";
+import {
+  canonicalSha256,
+  persistSignedOperationalSnapshotInTx,
+} from "./signed-contract-snapshot";
+import type { ContractSignatureEvidence, SignContractInput } from "./types";
+
+export const SIGNATURE_EVIDENCE_REQUIRED = "SIGNATURE_EVIDENCE_REQUIRED";
+export const SIGNATURE_EVIDENCE_INVALID = "SIGNATURE_EVIDENCE_INVALID";
+
+export class ContractSignatureEvidenceError extends Error {
+  constructor(public readonly code: string) {
+    super(code);
+    this.name = "ContractSignatureEvidenceError";
+  }
+}
+
+export interface NormalizedSignatureEvidence {
+  method: string;
+  signerName: string;
+  capturedAt: Date;
+  signerReference?: string;
+  attributes?: Record<string, unknown>;
+}
+
+const SENSITIVE_EVIDENCE_KEY =
+  /pass(word)?|secret|token|api[-_]?key|credential|private[-_]?key/i;
+
+function containsSensitiveKey(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(containsSensitiveKey);
+  if (value && typeof value === "object" && !(value instanceof Date)) {
+    return Object.entries(value as Record<string, unknown>).some(
+      ([key, nested]) => SENSITIVE_EVIDENCE_KEY.test(key) || containsSensitiveKey(nested),
+    );
+  }
+  return false;
+}
+
+function requiredText(value: unknown, maxLength: number): string {
+  if (typeof value !== "string") {
+    throw new ContractSignatureEvidenceError(SIGNATURE_EVIDENCE_INVALID);
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > maxLength) {
+    throw new ContractSignatureEvidenceError(SIGNATURE_EVIDENCE_INVALID);
+  }
+  return trimmed;
+}
+
+/**
+ * Validates provider-neutral signature evidence. Missing evidence fails with
+ * SIGNATURE_EVIDENCE_REQUIRED; malformed or secret-bearing evidence fails with
+ * SIGNATURE_EVIDENCE_INVALID.
+ */
+export function normalizeSignatureEvidence(
+  evidence: ContractSignatureEvidence | null | undefined,
+): NormalizedSignatureEvidence {
+  if (evidence === null || evidence === undefined) {
+    throw new ContractSignatureEvidenceError(SIGNATURE_EVIDENCE_REQUIRED);
+  }
+  if (typeof evidence !== "object" || Array.isArray(evidence)) {
+    throw new ContractSignatureEvidenceError(SIGNATURE_EVIDENCE_INVALID);
+  }
+
+  const method = requiredText(evidence.method, 64).toUpperCase();
+  const signerName = requiredText(evidence.signerName, 200);
+  const capturedAt =
+    evidence.capturedAt instanceof Date
+      ? evidence.capturedAt
+      : typeof evidence.capturedAt === "string"
+        ? new Date(evidence.capturedAt)
+        : new Date(Number.NaN);
+  if (Number.isNaN(capturedAt.getTime()) || capturedAt.getTime() > Date.now() + 300_000) {
+    throw new ContractSignatureEvidenceError(SIGNATURE_EVIDENCE_INVALID);
+  }
+
+  const signerReference =
+    evidence.signerReference === undefined
+      ? undefined
+      : requiredText(evidence.signerReference, 200);
+
+  let attributes: Record<string, unknown> | undefined;
+  if (evidence.attributes !== undefined) {
+    if (
+      !evidence.attributes ||
+      typeof evidence.attributes !== "object" ||
+      Array.isArray(evidence.attributes)
+    ) {
+      throw new ContractSignatureEvidenceError(SIGNATURE_EVIDENCE_INVALID);
+    }
+    attributes = evidence.attributes;
+  }
+
+  if (containsSensitiveKey(evidence)) {
+    throw new ContractSignatureEvidenceError(SIGNATURE_EVIDENCE_INVALID);
+  }
+
+  return { method, signerName, capturedAt, signerReference, attributes };
+}
+
+/** SHA-256 over the canonical representation of the normalized evidence. */
+export function computeSignatureEvidenceHash(
+  evidence: NormalizedSignatureEvidence,
+): string {
+  try {
+    return canonicalSha256({
+      method: evidence.method,
+      signerName: evidence.signerName,
+      capturedAt: evidence.capturedAt,
+      signerReference: evidence.signerReference,
+      attributes: evidence.attributes,
+    });
+  } catch {
+    throw new ContractSignatureEvidenceError(SIGNATURE_EVIDENCE_INVALID);
+  }
+}
 
 function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
@@ -269,6 +383,14 @@ export async function signContract(input: SignContractInput) {
     throw new Error("Contract signing date is invalid.");
   }
 
+  const normalizedEvidence =
+    input.signatureEvidence === undefined
+      ? null
+      : normalizeSignatureEvidence(input.signatureEvidence);
+  const signatureEvidenceHash = normalizedEvidence
+    ? computeSignatureEvidenceHash(normalizedEvidence)
+    : null;
+
   const cutoverContract = await prisma.contract.findFirst({
     where: { id: contractId, tenantId },
     select: { spineVersion: true, legacyFinancial: true },
@@ -295,6 +417,17 @@ export async function signContract(input: SignContractInput) {
         include: {
           paymentPlan: true,
           offer: { include: { opportunity: true } },
+          unit: {
+            select: { unitNumber: true, type: true, area: true, city: true, district: true },
+          },
+          tenant: {
+            select: {
+              companyName: true,
+              vatNumber: true,
+              commercialRegistry: true,
+              nationalAddress: true,
+            },
+          },
         },
       });
       if (!contract) throw new Error("Contract not found.");
@@ -314,6 +447,9 @@ export async function signContract(input: SignContractInput) {
         contract.reservationExpiresAt < new Date()
       ) {
         throw new Error("Contract reservation has expired.");
+      }
+      if (!alreadySigned && !signatureEvidenceHash) {
+        throw new ContractSignatureEvidenceError(SIGNATURE_EVIDENCE_REQUIRED);
       }
 
       const paymentPlan =
@@ -446,6 +582,25 @@ export async function signContract(input: SignContractInput) {
         });
       }
 
+      let signedSnapshotId: string | null = null;
+      if (!alreadySigned) {
+        const activePaymentPlan = await tx.paymentPlan.findFirst({
+          where: { id: paymentPlan.id, tenantId },
+        });
+        const { snapshot } = await persistSignedOperationalSnapshotInTx(
+          tx,
+          {
+            contract: { ...signedContract, unit: contract.unit, tenant: contract.tenant },
+            paymentPlan: activePaymentPlan,
+            installments: financials.installments,
+            invoice: financials.invoice,
+            signatureEvidenceHash: signatureEvidenceHash as string,
+          },
+          userId,
+        );
+        signedSnapshotId = snapshot.id;
+      }
+
       if (!alreadySigned) {
         await tx.auditLog.create({
           data: {
@@ -457,6 +612,9 @@ export async function signContract(input: SignContractInput) {
             details: JSON.stringify({
               contractId: contract.id,
               signedAt,
+              signatureEvidenceHash,
+              signatureMethod: normalizedEvidence?.method,
+              signedSnapshotId,
               invoiceId: financials.invoice.id,
               paymentPlanId: paymentPlan.id,
               installmentCount: financials.installments.length,
@@ -484,6 +642,7 @@ export async function signContract(input: SignContractInput) {
         paymentPlan,
         invoice: financials.invoice,
         installments: financials.installments,
+        signatureEvidenceHash: alreadySigned ? null : signatureEvidenceHash,
         idempotent: alreadySigned,
       };
     },

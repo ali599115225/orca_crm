@@ -95,33 +95,70 @@ model ContractDraft {
   @@map("contract_drafts")
 }
 
+// SIGNED_OPERATIONAL snapshots are written by the transaction-spine signing flow
+// and carry contractId + contractVersion + signedAt + signatureEvidenceHash
+// instead of draftId/templateVersionId (enforced by a database CHECK constraint).
 model ContractSnapshot {
-  id                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId            String                  @map("tenant_id") @db.Uuid
-  draftId             String                  @map("draft_id") @db.Uuid
-  draft               ContractDraft           @relation(fields: [tenantId, draftId], references: [tenantId, id], onDelete: Restrict)
-  contractId          String?                 @map("contract_id") @db.Uuid
-  templateVersionId   String                  @map("template_version_id") @db.Uuid
-  templateVersion     ContractTemplateVersion @relation(fields: [tenantId, templateVersionId], references: [tenantId, id], onDelete: Restrict)
-  snapshotType        String                  @default("ISSUED") @map("snapshot_type")
-  renderedContent     String                  @map("rendered_content") @db.Text
-  structuredFacts     Json                    @map("structured_facts")
-  clauseSnapshot      Json                    @map("clause_snapshot")
-  paymentPlanSnapshot Json?                   @map("payment_plan_snapshot")
-  approvalSnapshot    Json                    @map("approval_snapshot")
-  digest              String                  @db.VarChar(64)
-  createdBy           String?                 @map("created_by") @db.Uuid
-  issuedAt            DateTime                @default(now()) @map("issued_at") @db.Timestamptz
-  signedAt            DateTime?               @map("signed_at") @db.Timestamptz
-  sourceAmendments    ContractAmendment[]     @relation("AmendmentSourceSnapshot")
-  resultingAmendment  ContractAmendment?      @relation("AmendmentResultSnapshot")
+  id                    String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId              String                   @map("tenant_id") @db.Uuid
+  draftId               String?                  @map("draft_id") @db.Uuid
+  draft                 ContractDraft?           @relation(fields: [tenantId, draftId], references: [tenantId, id], onDelete: Restrict)
+  contractId            String?                  @map("contract_id") @db.Uuid
+  contract              Contract?                @relation(fields: [tenantId, contractId], references: [tenantId, id], onDelete: Restrict)
+  contractVersion       Int?                     @map("contract_version")
+  signatureEvidenceHash String?                  @map("signature_evidence_hash") @db.VarChar(64)
+  templateVersionId     String?                  @map("template_version_id") @db.Uuid
+  templateVersion       ContractTemplateVersion? @relation(fields: [tenantId, templateVersionId], references: [tenantId, id], onDelete: Restrict)
+  snapshotType          String                   @default("ISSUED") @map("snapshot_type")
+  renderedContent       String                   @map("rendered_content") @db.Text
+  structuredFacts       Json                     @map("structured_facts")
+  clauseSnapshot        Json                     @map("clause_snapshot")
+  paymentPlanSnapshot   Json?                    @map("payment_plan_snapshot")
+  approvalSnapshot      Json                     @map("approval_snapshot")
+  digest                String                   @db.VarChar(64)
+  createdBy             String?                  @map("created_by") @db.Uuid
+  issuedAt              DateTime                 @default(now()) @map("issued_at") @db.Timestamptz
+  signedAt              DateTime?                @map("signed_at") @db.Timestamptz
+  sourceAmendments      ContractAmendment[]      @relation("AmendmentSourceSnapshot")
+  resultingAmendment    ContractAmendment?       @relation("AmendmentResultSnapshot")
+  deliveries            ContractDelivery[]
 
   @@unique([tenantId, id], map: "uq_contract_snapshots_tenant_id")
   @@unique([tenantId, draftId, snapshotType], map: "uq_contract_snapshots_tenant_draft_type")
+  @@unique([tenantId, contractId, snapshotType, contractVersion], map: "uq_contract_snapshots_tenant_contract_type_version")
   @@index([tenantId, contractId, issuedAt], map: "idx_contract_snapshots_tenant_contract_issued")
   @@index([tenantId, digest], map: "idx_contract_snapshots_tenant_digest")
   @@index([tenantId, draftId], map: "idx_contract_snapshots_tenant_draft")
   @@map("contract_snapshots")
+}
+
+// Durable delivery state for a contract document. Not a provider integration:
+// provider/providerReference are opaque metadata recorded by future senders.
+model ContractDelivery {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String            @map("tenant_id") @db.Uuid
+  contractId        String            @map("contract_id") @db.Uuid
+  contract          Contract          @relation(fields: [tenantId, contractId], references: [tenantId, id], onDelete: Restrict)
+  documentId        String?           @map("document_id") @db.Uuid
+  document          Document?         @relation(fields: [tenantId, documentId], references: [tenantId, id], onDelete: Restrict)
+  snapshotId        String?           @map("snapshot_id") @db.Uuid
+  snapshot          ContractSnapshot? @relation(fields: [tenantId, snapshotId], references: [tenantId, id], onDelete: Restrict)
+  recipient         String
+  channel           String
+  provider          String?
+  providerReference String?           @map("provider_reference")
+  status            String            @default("PENDING")
+  errorMessage      String?           @map("error_message") @db.Text
+  sentAt            DateTime?         @map("sent_at") @db.Timestamptz
+  failedAt          DateTime?         @map("failed_at") @db.Timestamptz
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([tenantId, contractId, createdAt], map: "idx_contract_deliveries_tenant_contract_created")
+  @@index([tenantId, status, createdAt], map: "idx_contract_deliveries_tenant_status_created")
+  @@index([tenantId, documentId], map: "idx_contract_deliveries_tenant_document")
+  @@index([tenantId, snapshotId], map: "idx_contract_deliveries_tenant_snapshot")
+  @@map("contract_deliveries")
 }
 
 model ContractApproval {

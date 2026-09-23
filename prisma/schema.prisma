@@ -440,7 +440,11 @@ model Contract {
   invoices             Invoice[]
   paymentPlan          PaymentPlan?
   dealPassport         DealPassport?
+  snapshots            ContractSnapshot[]
+  documents            Document[]
+  deliveries           ContractDelivery[]
 
+  @@unique([tenantId, id], map: "uq_contracts_tenant_id")
   @@index([unitId], map: "idx_contracts_unit_id")
   @@index([tenantId], map: "idx_contracts_tenant_id")
   @@index([tenantId, status], map: "idx_contracts_tenant_status")
@@ -2271,9 +2275,14 @@ model Document {
   size           Int
   content        Bytes
   checksumSha256 String   @map("checksum_sha256")
+  contractId     String?  @map("contract_id") @db.Uuid
+  contract       Contract? @relation(fields: [tenantId, contractId], references: [tenantId, id], onDelete: Restrict)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  deliveries     ContractDelivery[]
 
+  @@unique([tenantId, id], map: "uq_documents_tenant_id")
+  @@index([tenantId, contractId], map: "idx_documents_tenant_contract")
   @@index([tenantId, createdAt], map: "idx_documents_tenant_created_at")
   @@index([tenantId, type, status], map: "idx_documents_tenant_type_status")
   @@index([tenantId, ownerName], map: "idx_documents_tenant_owner_name")

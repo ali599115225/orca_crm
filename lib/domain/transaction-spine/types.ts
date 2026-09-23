@@ -91,6 +91,19 @@ export interface ConfigurePaymentPlanInput {
   }>;
 }
 
+/**
+ * Generic, provider-neutral evidence captured when a contract is first signed.
+ * Only its SHA-256 hash and the signing method are persisted; the raw
+ * evidence is never stored.
+ */
+export interface ContractSignatureEvidence {
+  method: string;
+  signerName: string;
+  capturedAt: Date | string;
+  signerReference?: string;
+  attributes?: Record<string, unknown>;
+}
+
 export interface SignContractInput {
   tenantId: string;
   userId: string;
@@ -98,6 +111,8 @@ export interface SignContractInput {
   correlationId?: string;
   contractId: string;
   signedAt?: Date;
+  /** Required for the first signing; ignored for an already-signed retry. */
+  signatureEvidence?: ContractSignatureEvidence;
 }
 
 export interface CancelContractInput {
