@@ -146,6 +146,17 @@ export async function PUT(request: NextRequest) {
       const financialRef =
         typeof body.financialRef === "string" ? body.financialRef.trim() : undefined;
 
+      if (status && status.toLowerCase() !== "active") {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "تغييرات دورة عقد الإيجار النهائية تمر عبر مسارات renewal/terminate/closure المخصصة",
+          },
+          { status: 409 },
+        );
+      }
+
       if (!id) {
         return NextResponse.json(
           { success: false, error: "معرّف العقد (id) مطلوب" },
@@ -155,13 +166,26 @@ export async function PUT(request: NextRequest) {
 
       const existing = await prisma.rentalLease.findFirst({
         where: { id, tenantId: session.tenantId },
-        select: { id: true },
+        select: { id: true, status: true },
       });
 
       if (!existing) {
         return NextResponse.json(
           { success: false, error: "العقد غير موجود" },
           { status: 404 },
+        );
+      }
+
+      if (
+        status &&
+        existing.status.toLowerCase() !== "active"
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "لا يمكن إعادة فتح عقد دخل حالة دورة نهائية عبر هذا المسار",
+          },
+          { status: 409 },
         );
       }
 

@@ -13,6 +13,12 @@ import {
   seedChartOfAccounts,
 } from '@/lib/accounting';
 import {
+  PaymentAllocationError,
+  parseOptionalPaymentAmount,
+  paymentAmountsEqual,
+  resolvePaymentAllocationMinor,
+} from '@/lib/payments/payment-allocation-contract';
+import {
   forbiddenResponse,
   hasDatabaseRole,
   requireAuth,
@@ -134,11 +140,18 @@ async function findExistingPayment(
   }
 
   if (transaction.status === 'FAILED') {
-    return { state: 'failed' as const, transactionId: transaction.id };
+    return {
+      state: 'failed' as const,
+      transactionId: transaction.id,
+      amount: Number(transaction.amount),
+    };
   }
 
   if (transaction.status !== 'COMPLETED') {
-    return { state: 'pending' as const };
+    return {
+      state: 'pending' as const,
+      amount: Number(transaction.amount),
+    };
   }
 
   const receipt = await prisma.receipt.findFirst({
@@ -154,7 +167,7 @@ async function findExistingPayment(
   });
 
   if (!receipt) {
-    return { state: 'pending' as const };
+    return { state: 'pending' as const, amount: Number(transaction.amount) };
   }
 
   return {
@@ -222,6 +235,23 @@ export async function POST(
     );
   }
 
+  let requestedAmount: number | null;
+  try {
+    requestedAmount = parseOptionalPaymentAmount(
+      typeof body === 'object' && body !== null
+        ? (body as Record<string, unknown>).amount
+        : undefined
+    );
+  } catch (error) {
+    if (error instanceof PaymentAllocationError) {
+      return errorResponse(
+        ErrorCode.VALIDATION_ERROR,
+        'manual payment amount is invalid'
+      );
+    }
+    throw error;
+  }
+
   const tenantId = session.tenantId;
   const providerReference = buildProviderReference(
     tenantId,
@@ -242,6 +272,15 @@ export async function POST(
     );
 
     if (existing?.state === 'completed') {
+      if (
+        requestedAmount !== null &&
+        !paymentAmountsEqual(existing.amount, requestedAmount)
+      ) {
+        return errorResponse(
+          ErrorCode.CONFLICT,
+          'manual payment idempotency key was reused with a different amount'
+        );
+      }
       return successResponse(
         existing.receipt,
         id,
@@ -252,9 +291,29 @@ export async function POST(
     }
 
     if (existing?.state === 'pending') {
+      if (
+        requestedAmount !== null &&
+        !paymentAmountsEqual(existing.amount, requestedAmount)
+      ) {
+        return errorResponse(
+          ErrorCode.CONFLICT,
+          'manual payment idempotency key was reused with a different amount'
+        );
+      }
       return errorResponse(
         ErrorCode.CONFLICT,
         'manual payment request is already in progress'
+      );
+    }
+
+    if (
+      existing?.state === 'failed' &&
+      requestedAmount !== null &&
+      !paymentAmountsEqual(existing.amount, requestedAmount)
+    ) {
+      return errorResponse(
+        ErrorCode.CONFLICT,
+        'manual payment retry must preserve the original amount'
       );
     }
 
@@ -315,7 +374,6 @@ export async function POST(
       const invoiceTotalMinor = Math.round(invoiceTotal * 100);
       const paidBeforeMinor = Math.round(paidBefore * 100);
       const remainingMinor = invoiceTotalMinor - paidBeforeMinor;
-      const invoiceAmount = remainingMinor / 100;
       if (!Number.isFinite(remainingMinor) || remainingMinor <= 0) {
         throw new PaymentRouteError(
           ErrorCode.CONFLICT,
@@ -323,6 +381,28 @@ export async function POST(
           'invoice has no remaining balance'
         );
       }
+
+      let requestedMinor: number;
+      try {
+        requestedMinor = resolvePaymentAllocationMinor({
+          requestedAmount,
+          retryAmount:
+            existing?.state === 'failed' ? existing.amount : null,
+          remainingMinor,
+        });
+      } catch (error) {
+        if (error instanceof PaymentAllocationError) {
+          const isValidation = error.code === 'PAYMENT_AMOUNT_INVALID';
+          throw new PaymentRouteError(
+            isValidation ? ErrorCode.VALIDATION_ERROR : ErrorCode.CONFLICT,
+            isValidation ? 400 : 409,
+            error.code
+          );
+        }
+        throw error;
+      }
+
+      const invoiceAmount = requestedMinor / 100;
 
       const unpaidInstallments = await tx.installment.findMany({
         where: {
@@ -347,7 +427,7 @@ export async function POST(
         provider: MANUAL_PROVIDER,
         providerReference,
         idempotencyKey: providerReference,
-        expectedAmountMinor: remainingMinor,
+        expectedAmountMinor: requestedMinor,
         expectedCurrency: 'SAR',
         failureReason: null,
         lastError: null,
@@ -388,7 +468,7 @@ export async function POST(
 
       return {
         invoiceAmount,
-        amountMinorUnits: remainingMinor,
+        amountMinorUnits: requestedMinor,
         paymentTransaction,
         unpaidInstallments,
       };
