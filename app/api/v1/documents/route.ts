@@ -165,6 +165,20 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        const contractId = String(formData.get("contractId") || "").trim();
+        if ((rawType === "CONTRACT" && !contractId) || (contractId && rawType !== "CONTRACT")) {
+          return NextResponse.json({ success: false, code: "DOCUMENT_CONTRACT_REQUIRED" }, { status: 400 });
+        }
+        if (contractId) {
+          const contract = await prisma.contract.findFirst({
+            where: { id: contractId, tenantId: access.tenantId },
+            select: { id: true },
+          });
+          if (!contract) {
+            return NextResponse.json({ success: false, code: "CONTRACT_NOT_FOUND" }, { status: 404 });
+          }
+        }
+
         const inspected = await inspectDocumentFile(fileValue);
         const requestedName = sanitizeDocumentName(
           String(formData.get("name") || inspected.name),
@@ -183,6 +197,7 @@ export async function POST(request: NextRequest) {
         const created = await prisma.document.create({
           data: {
             tenantId: access.tenantId,
+            contractId: contractId || null,
             ownerId: access.userId,
             ownerName: access.name,
             name: requestedName,
