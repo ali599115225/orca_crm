@@ -4,7 +4,8 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
 }
 
 // --- ENUMS ---
@@ -445,6 +446,7 @@ model Contract {
   deliveries           ContractDelivery[]
   signatories          ContractSignatory[]
   drafts               ContractDraft[]
+  amendments           ContractAmendment[]
 
   @@unique([tenantId, id], map: "uq_contracts_tenant_id")
   @@index([unitId], map: "idx_contracts_unit_id")

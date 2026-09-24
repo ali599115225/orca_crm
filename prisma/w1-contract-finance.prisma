@@ -128,8 +128,8 @@ model ContractSnapshot {
   deliveries            ContractDelivery[]
 
   @@unique([tenantId, id], map: "uq_contract_snapshots_tenant_id")
-  @@unique([tenantId, draftId, snapshotType], map: "uq_contract_snapshots_tenant_draft_type")
-  @@unique([tenantId, contractId, snapshotType, contractVersion], map: "uq_contract_snapshots_tenant_contract_type_version")
+  @@unique([tenantId, draftId, snapshotType], map: "uq_contract_snapshots_tenant_draft_type", where: { snapshotType: "ISSUED" })
+  @@unique([tenantId, contractId, snapshotType, contractVersion], map: "uq_contract_snapshots_tenant_contract_type_version", where: { snapshotType: "SIGNED_OPERATIONAL" })
   @@index([tenantId, contractId, issuedAt], map: "idx_contract_snapshots_tenant_contract_issued")
   @@index([tenantId, digest], map: "idx_contract_snapshots_tenant_digest")
   @@index([tenantId, draftId], map: "idx_contract_snapshots_tenant_draft")
@@ -188,6 +188,8 @@ model ContractAmendment {
   id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId            String            @map("tenant_id") @db.Uuid
   contractId          String            @map("contract_id") @db.Uuid
+  contract            Contract          @relation(fields: [tenantId, contractId], references: [tenantId, id], onDelete: Restrict)
+  sourceContractVersion Int             @map("source_contract_version")
   sourceSnapshotId    String            @map("source_snapshot_id") @db.Uuid
   sourceSnapshot      ContractSnapshot  @relation("AmendmentSourceSnapshot", fields: [tenantId, sourceSnapshotId], references: [tenantId, id], onDelete: Restrict)
   resultingSnapshotId String?           @map("resulting_snapshot_id") @db.Uuid
