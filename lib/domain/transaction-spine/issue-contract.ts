@@ -61,6 +61,23 @@ export async function _createContractInTx(
     },
   });
 
+  // Default single-sign compatibility (design-freeze item 12/13): every
+  // newly-issued operational Contract gets exactly one required BUYER
+  // signatory at this shared creation boundary, so both issuance paths
+  // (issueContract, acceptOfferAndCreateContract) provision it identically
+  // without duplicating this logic. The configured set may be replaced
+  // wholesale via PUT /contracts/{id}/signatories before the first signature.
+  await tx.contractSignatory.create({
+    data: {
+      tenantId: data.tenantId,
+      contractId: contract.id,
+      role: "BUYER",
+      required: true,
+      status: "PENDING",
+      signerReference: data.leadId ?? null,
+    },
+  });
+
   await tx.unit.update({
     where: { id: data.unitId },
     data: { status: UNIT_STATUS.RESERVED },

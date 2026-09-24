@@ -115,6 +115,38 @@ export interface SignContractInput {
   signatureEvidence?: ContractSignatureEvidence;
 }
 
+/**
+ * Canonical per-signatory signing input. The authoritative signer identity is
+ * ContractSignatory.id (signatoryId); signedAt is never client-controlled.
+ */
+export interface SignContractSignatoryInput {
+  tenantId: string;
+  userId: string;
+  actorId?: string;
+  correlationId?: string;
+  contractId: string;
+  signatoryId: string;
+  signatureEvidence: ContractSignatureEvidence;
+}
+
+/** One entry of the wire-level signatory configuration body (item 8). */
+export interface ConfigureContractSignatoryEntry {
+  role: string;
+  required: boolean;
+  signerReference?: string | null;
+}
+
+/**
+ * Full-set replacement input for PUT /contracts/{id}/signatories. The client
+ * never supplies id/status/signedAt/evidence hash/tenantId/contractId.
+ */
+export interface ConfigureContractSignatoriesInput {
+  tenantId: string;
+  userId: string;
+  contractId: string;
+  signatories: ConfigureContractSignatoryEntry[];
+}
+
 export interface CancelContractInput {
   tenantId: string;
   userId: string;

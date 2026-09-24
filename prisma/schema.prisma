@@ -443,6 +443,8 @@ model Contract {
   snapshots            ContractSnapshot[]
   documents            Document[]
   deliveries           ContractDelivery[]
+  signatories          ContractSignatory[]
+  drafts               ContractDraft[]
 
   @@unique([tenantId, id], map: "uq_contracts_tenant_id")
   @@index([unitId], map: "idx_contracts_unit_id")

@@ -139,6 +139,23 @@ export interface SignedOperationalSnapshotSource {
     totalAmount: unknown;
   } | null;
   signatureEvidenceHash: string;
+  /**
+   * Multi-sign only: the deterministic, sorted set of every required
+   * ContractSignatory that was SIGNED at finalization. Absent/undefined for
+   * the legacy single-sign path, which keeps its prior digest computation
+   * unchanged. When present, signatureEvidenceHash above must be derived from
+   * this set (never a single signer's hash) so the digest binds the complete
+   * required-signature set rather than the last signer alone.
+   */
+  requiredSignatureSet?: RequiredSignatureSetEntry[] | null;
+}
+
+export interface RequiredSignatureSetEntry {
+  signatoryId: string;
+  role: string;
+  required: boolean;
+  signatureEvidenceHash: string | null;
+  signedAt: string | null;
 }
 
 export interface SignedOperationalSnapshotRecord {
@@ -163,7 +180,7 @@ export interface SignedOperationalSnapshotRecord {
 export function buildSignedOperationalSnapshot(
   source: SignedOperationalSnapshotSource,
 ): SignedOperationalSnapshotRecord {
-  const { contract, paymentPlan, installments, invoice, signatureEvidenceHash } = source;
+  const { contract, paymentPlan, installments, invoice, signatureEvidenceHash, requiredSignatureSet } = source;
   if (!contract.signedAt || !SHA256_HEX.test(signatureEvidenceHash)) {
     throw new SignedContractSnapshotError(SIGNED_SNAPSHOT_INCOMPLETE);
   }
@@ -190,6 +207,7 @@ export function buildSignedOperationalSnapshot(
       vatType: contract.vatType,
       vatRate: textOrNull(contract.vatRate),
       signatureEvidenceHash,
+      requiredSignatureSet: requiredSignatureSet ?? undefined,
     },
     unit: contract.unit
       ? {

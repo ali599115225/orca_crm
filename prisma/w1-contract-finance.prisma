@@ -74,6 +74,7 @@ model ContractDraft {
   templateVersionId   String                  @map("template_version_id") @db.Uuid
   templateVersion     ContractTemplateVersion @relation(fields: [tenantId, templateVersionId], references: [tenantId, id], onDelete: Restrict)
   contractId          String?                 @map("contract_id") @db.Uuid
+  contract            Contract?               @relation(fields: [tenantId, contractId], references: [tenantId, id], onDelete: Restrict)
   financeCaseId       String?                 @map("finance_case_id") @db.Uuid
   financeCase         FinanceCase?            @relation(fields: [tenantId, financeCaseId], references: [tenantId, id], onDelete: Restrict)
   title               String
@@ -89,8 +90,11 @@ model ContractDraft {
   snapshots           ContractSnapshot[]
 
   @@unique([tenantId, id], map: "uq_contract_drafts_tenant_id")
+  // contractId stays nullable: multiple pre-issuance drafts (contractId = NULL)
+  // remain unlimited (Postgres treats NULLs as distinct for uniqueness), but a
+  // draft bound to an operational Contract is now canonically exactly one.
+  @@unique([tenantId, contractId], map: "uq_contract_drafts_tenant_contract")
   @@index([tenantId, status], map: "idx_contract_drafts_tenant_status")
-  @@index([tenantId, contractId], map: "idx_contract_drafts_tenant_contract")
   @@index([tenantId, financeCaseId], map: "idx_contract_drafts_tenant_finance_case")
   @@map("contract_drafts")
 }
@@ -203,6 +207,29 @@ model ContractAmendment {
   @@index([tenantId, contractId, status], map: "idx_contract_amendments_tenant_contract_status")
   @@index([tenantId, sourceSnapshotId], map: "idx_contract_amendments_tenant_source_snapshot")
   @@map("contract_amendments")
+}
+
+// Multi-signatory persistence for the transaction-spine signing flow.
+// Real tenant-scoped relation to Contract (same pattern as ContractSnapshot /
+// ContractDelivery above): fields [tenantId, contractId] -> references
+// [tenantId, id], onDelete Restrict.
+model ContractSignatory {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId              String    @map("tenant_id") @db.Uuid
+  contractId            String    @map("contract_id") @db.Uuid
+  contract              Contract  @relation(fields: [tenantId, contractId], references: [tenantId, id], onDelete: Restrict)
+  role                  String
+  required              Boolean   @default(true)
+  status                String    @default("PENDING")
+  signerReference       String?   @map("signer_reference")
+  signatureEvidenceHash String?   @map("signature_evidence_hash") @db.VarChar(64)
+  signedAt              DateTime? @map("signed_at") @db.Timestamptz
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, id], map: "uq_contract_signatories_tenant_id")
+  @@index([tenantId, contractId, status], map: "idx_contract_signatories_tenant_contract_status")
+  @@map("contract_signatories")
 }
 
 model FinanceCase {

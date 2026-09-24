@@ -190,6 +190,9 @@ export async function decideContractApproval(input: DecideContractApprovalInput)
       if (approval.status !== "PENDING" || approval.draft.status !== "APPROVAL_PENDING") {
         throw new W1ContractLifecycleError("W1_APPROVAL_DECISION_INVALID_STATE");
       }
+      if (approval.requestedBy && approval.requestedBy === input.decidedBy) {
+        throw new W1ContractLifecycleError("W1_APPROVAL_SELF_APPROVAL_REJECTED");
+      }
 
       const preservedApprovalEvidence: Prisma.InputJsonValue = {
         request: {
@@ -228,6 +231,49 @@ export async function decideContractApproval(input: DecideContractApprovalInput)
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
   );
+}
+
+/**
+ * Canonical signing approval boundary (design-freeze rule 11): proves, inside
+ * the signing transaction, that an approved draft canonically links to this
+ * operational contract before a final signing transition may occur. Reuses
+ * ContractDraft.contractId as the sole linkage (no Contract.approvedDraftId,
+ * no second approval model) and the existing ISSUED ContractSnapshot as the
+ * canonical approved snapshot proof.
+ */
+export async function assertContractApprovalBoundaryInTx(
+  tx: {
+    contractDraft: { findFirst: (args: any) => Promise<any> };
+    contractSnapshot: { findFirst: (args: any) => Promise<any> };
+  },
+  tenantId: string,
+  contractId: string,
+): Promise<void> {
+  const draft = await tx.contractDraft.findFirst({
+    where: { tenantId, contractId, status: "APPROVED" },
+    select: {
+      id: true,
+      contractId: true,
+      approvals: { select: { status: true } },
+    },
+  });
+  if (!draft || draft.contractId !== contractId) {
+    throw new W1ContractLifecycleError("W1_APPROVAL_BOUNDARY_NOT_ESTABLISHED");
+  }
+  if (
+    draft.approvals.length === 0 ||
+    draft.approvals.some((approval: { status: string }) => approval.status !== "APPROVED")
+  ) {
+    throw new W1ContractLifecycleError("W1_APPROVAL_BOUNDARY_LIFECYCLE_INCOMPLETE");
+  }
+
+  const approvedSnapshot = await tx.contractSnapshot.findFirst({
+    where: { tenantId, draftId: draft.id, snapshotType: "ISSUED" },
+    select: { id: true },
+  });
+  if (!approvedSnapshot) {
+    throw new W1ContractLifecycleError("W1_APPROVAL_BOUNDARY_SNAPSHOT_MISSING");
+  }
 }
 
 export async function finalizeContractDraftApproval(
