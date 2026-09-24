@@ -210,6 +210,47 @@ export interface UpdateTourStatusInput {
   status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_SHOW" | "FOLLOW_UP";
 }
 
+/**
+ * One durable schedule-proposal line in an amendment DRAFT's changesJson.
+ * installmentId anchors the proposal to a real, existing Installment.id —
+ * the proposal is never a free-standing array, it is a bijection over the
+ * contract's currently-eligible (future, unpaid, non-terminal) installments.
+ */
+export interface AmendmentScheduleProposalItem {
+  installmentId: string;
+  installmentNumber: number;
+  amountSar: number;
+  /** Normalized YYYY-MM-DD, matching Installment.dueDate's @db.Date column. */
+  dueDate: string;
+}
+
+/**
+ * The only F3-2 change representation: a zero-net-delta reschedule of the
+ * contract's eligible (future, unpaid, non-terminal) installments. No
+ * monetary-delta field exists here by design — non-zero amount changes
+ * remain blocked until a canonical financial-adjustment primitive exists.
+ */
+export interface AmendmentChangeSet {
+  proposedSchedule: AmendmentScheduleProposalItem[];
+}
+
+/**
+ * DRAFT-only. No approval/apply/financial mutation occurs here. The client
+ * never supplies id/status/sourceContractVersion/sourceSnapshotId — those
+ * are always server-derived inside the create transaction.
+ */
+export interface CreateAmendmentDraftInput {
+  tenantId: string;
+  userId: string;
+  actorId?: string;
+  correlationId?: string;
+  contractId: string;
+  title: string;
+  reason?: string;
+  changesJson: AmendmentChangeSet;
+  idempotencyKey: string;
+}
+
 export interface CreateOpportunityInput {
   tenantId: string;
   userId: string;
