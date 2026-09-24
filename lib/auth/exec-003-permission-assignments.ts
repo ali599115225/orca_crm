@@ -21,6 +21,7 @@ export const EXEC_003_PERMISSION_KEYS = [
   "contracts.sign.execute",
   "contracts.signatories.configure",
   "contracts.amendment.draft_create",
+  "contracts.amendment.approve",
   "invoices.paylink.create",
   "leads.webhook.ingest",
   "leases.invoices.create",
@@ -607,6 +608,21 @@ export const EXEC_003_PERMISSION_ASSIGNMENTS = [
       databaseOperation(
         "POST",
         "contracts.amendment.draft_create",
+        CONTRACT_WRITE_ROLES,
+        "runWithExec003DatabasePermission(CONTRACT_WRITE_ROLES)",
+      ),
+    ],
+  },
+  {
+    contractId: "EXEC-003-C28",
+    priority: "P0_SECURITY_CRITICAL_SURFACE",
+    kind: "API",
+    routeOrContract: "/api/v1/contracts/[id]/amendments/[amendmentId]/approve",
+    source: "app/api/v1/contracts/[id]/amendments/[amendmentId]/approve/route.ts",
+    operations: [
+      databaseOperation(
+        "POST",
+        "contracts.amendment.approve",
         CONTRACT_WRITE_ROLES,
         "runWithExec003DatabasePermission(CONTRACT_WRITE_ROLES)",
       ),

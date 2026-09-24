@@ -251,6 +251,21 @@ export interface CreateAmendmentDraftInput {
   idempotencyKey: string;
 }
 
+/**
+ * DRAFT -> APPROVED transition only. No apply, no financial mutation, no
+ * AMENDMENT_RESULT snapshot. The client never supplies status/approvedBy/
+ * approvedAt/tenantId — those are always server-derived.
+ */
+export interface ApproveAmendmentInput {
+  tenantId: string;
+  userId: string;
+  actorId?: string;
+  correlationId?: string;
+  contractId: string;
+  amendmentId: string;
+  idempotencyKey: string;
+}
+
 export interface CreateOpportunityInput {
   tenantId: string;
   userId: string;
