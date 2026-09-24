@@ -17,7 +17,9 @@ function hasDealEventModels(tx: any): boolean {
   );
 }
 
-function statusForEvent(eventType: DealEventType): DealPassportStatus {
+function statusForEvent(
+  eventType: DealEventType,
+): DealPassportStatus | null {
   if (eventType === "tour.scheduled") return "TOUR_SCHEDULED";
   if (eventType === "offer.created") return "OFFERED";
   if (eventType === "offer.accepted") return "OFFER_ACCEPTED";
@@ -32,7 +34,7 @@ function statusForEvent(eventType: DealEventType): DealPassportStatus {
     return "EARLY_SETTLED";
   }
   if (eventType === "contract.cancelled") return "CANCELLED";
-  return "OPEN";
+  return null;
 }
 
 export async function appendDealEventInTx(
@@ -104,7 +106,10 @@ export async function appendDealEventInTx(
     data: {
       version: { increment: 1 },
       lastSequence: { increment: 1 },
-      status: projection.status || statusForEvent(input.eventType),
+      status:
+        projection.status ??
+        statusForEvent(input.eventType) ??
+        currentPassport.status,
       ...(projection.opportunityId !== undefined
         ? { opportunityId: projection.opportunityId }
         : {}),

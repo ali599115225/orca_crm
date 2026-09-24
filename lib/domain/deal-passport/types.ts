@@ -11,7 +11,18 @@ export type DealEventType =
   | "payment.completed"
   | "payment_plan.restructured"
   | "payment_plan.early_settled"
-  | "contract.cancelled";
+  | "contract.cancelled"
+  | "contract.approval.requested"
+  | "contract.approval.approved"
+  | "contract.snapshot.created"
+  | "contract.document.generated"
+  | "contract.document.sent"
+  | "invoice.issued"
+  | "signatory.signed"
+  | "installment.overdue"
+  | "amendment.created"
+  | "amendment.approved"
+  | "amendment.applied";
 
 export type DealPassportStatus =
   | "OPEN"
@@ -37,7 +48,13 @@ export type DealEntityType =
   | "contract"
   | "payment_plan"
   | "invoice"
-  | "payment";
+  | "payment"
+  | "approval"
+  | "snapshot"
+  | "document"
+  | "signatory"
+  | "installment"
+  | "amendment";
 
 export type DealActorType = "USER" | "SYSTEM" | "PROVIDER" | "BACKFILL";
 

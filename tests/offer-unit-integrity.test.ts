@@ -385,6 +385,17 @@ describe("Offer Unit Integrity", () => {
       contract: {
         create: vi.fn().mockResolvedValue(contract),
       },
+      contractSignatory: {
+        create: vi.fn().mockResolvedValue({
+          id: "signatory-1",
+          tenantId: "tenant-1",
+          contractId: "contract-1",
+          role: "BUYER",
+          required: true,
+          status: "PENDING",
+          signerReference: "lead-1",
+        }),
+      },
       paymentPlan: {
         findFirst: vi.fn().mockImplementation(async () => {
           // Stateful: return null before create, return plan after create
@@ -643,6 +654,17 @@ describe("Offer Unit Integrity", () => {
         },
         contract: {
           create: vi.fn().mockResolvedValue(contract),
+        },
+        contractSignatory: {
+          create: vi.fn().mockResolvedValue({
+            id: "signatory-1",
+            tenantId: "tenant-1",
+            contractId: "contract-1",
+            role: "BUYER",
+            required: true,
+            status: "PENDING",
+            signerReference: "lead-1",
+          }),
         },
         paymentPlan: {
           findFirst: vi.fn().mockImplementation(async () =>
