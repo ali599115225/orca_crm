@@ -266,6 +266,32 @@ export interface ApproveAmendmentInput {
   idempotencyKey: string;
 }
 
+/**
+ * APPROVED -> APPLIED transition only. Financial mutation and AMENDMENT_RESULT
+ * snapshot occur here inside one Serializable transaction. The client never
+ * supplies status/resultingSnapshotId/appliedAt/contractVersion/tenantId —
+ * those are always server-derived.
+ */
+export interface ApplyAmendmentInput {
+  tenantId: string;
+  userId: string;
+  actorId?: string;
+  correlationId?: string;
+  contractId: string;
+  amendmentId: string;
+  idempotencyKey: string;
+}
+
+export interface AmendmentResultApprovalSnapshot {
+  amendmentId: string;
+  sourceSnapshotId: string;
+  sourceContractVersion: number;
+  approvedBy: string;
+  approvedAt: string;
+  appliedBy: string;
+  appliedAt: string;
+}
+
 export interface CreateOpportunityInput {
   tenantId: string;
   userId: string;
