@@ -44,6 +44,7 @@ export const EXEC_003_PERMISSION_KEYS = [
   "invoices.pdf.read",
   "invoices.qr.read",
   "rentals.contracts.read",
+  "contracts.read",
 ] as const;
 
 export type Exec003PermissionKey = (typeof EXEC_003_PERMISSION_KEYS)[number];
@@ -625,6 +626,21 @@ export const EXEC_003_PERMISSION_ASSIGNMENTS = [
         "contracts.amendment.approve",
         CONTRACT_WRITE_ROLES,
         "runWithExec003DatabasePermission(CONTRACT_WRITE_ROLES)",
+      ),
+    ],
+  },
+  {
+    contractId: "EXEC-003-C29",
+    priority: "P1_SENSITIVE_READ_SURFACE",
+    kind: "API",
+    routeOrContract: "/api/v1/contracts/[id]/timeline",
+    source: "app/api/v1/contracts/[id]/timeline/route.ts",
+    operations: [
+      databaseOperation(
+        "GET",
+        "contracts.read",
+        ALL_TENANT_ROLES,
+        "runWithExec003DatabasePermission(ALL_TENANT_ROLES)",
       ),
     ],
   },
