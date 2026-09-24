@@ -295,6 +295,96 @@ describe("Feature 3 — createAmendmentDraft", () => {
     ).rejects.toMatchObject({ code: AMENDMENT_PROPOSAL_FOREIGN_INSTALLMENT });
   });
 
+  it("8b. a future PROCESSING installment with paid=0 is NOT eligible (allowlist, not a blocklist)", async () => {
+    const processingInst = installment({
+      id: "inst-processing",
+      installmentNumber: 1,
+      amountSar: 2000,
+      paymentStatus: "Processing",
+    });
+    state.contract = baseContract({
+      invoices: [{ ...baseContract().invoices[0], installments: [processingInst] }],
+    });
+    await expect(
+      createAmendmentDraft(
+        baseInput({
+          changesJson: {
+            proposedSchedule: [
+              { installmentId: "inst-processing", installmentNumber: 1, amountSar: 2000, dueDate: "2026-11-01" },
+            ],
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: AMENDMENT_PROPOSAL_FOREIGN_INSTALLMENT });
+  });
+
+  it("8c. a future OVERDUE installment with paid=0 is NOT eligible", async () => {
+    const overdueInst = installment({
+      id: "inst-overdue",
+      installmentNumber: 1,
+      amountSar: 2000,
+      paymentStatus: "Overdue",
+    });
+    state.contract = baseContract({
+      invoices: [{ ...baseContract().invoices[0], installments: [overdueInst] }],
+    });
+    await expect(
+      createAmendmentDraft(
+        baseInput({
+          changesJson: {
+            proposedSchedule: [
+              { installmentId: "inst-overdue", installmentNumber: 1, amountSar: 2000, dueDate: "2026-11-01" },
+            ],
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: AMENDMENT_PROPOSAL_FOREIGN_INSTALLMENT });
+  });
+
+  it("8d. a future PARTIAL installment with paid=0 (status only, no actual payment) remains eligible", async () => {
+    const partialInst = installment({
+      id: "inst-partial",
+      installmentNumber: 1,
+      amountSar: 2000,
+      paymentStatus: "Partial",
+    });
+    state.contract = baseContract({
+      invoices: [{ ...baseContract().invoices[0], installments: [partialInst] }],
+    });
+    const result = await createAmendmentDraft(
+      baseInput({
+        changesJson: {
+          proposedSchedule: [
+            { installmentId: "inst-partial", installmentNumber: 1, amountSar: 2000, dueDate: "2026-11-01" },
+          ],
+        },
+      }),
+    );
+    expect(result.idempotent).toBe(false);
+  });
+
+  it("8e. a future PENDING installment with paid=0 remains eligible", async () => {
+    const pendingInst = installment({
+      id: "inst-pending",
+      installmentNumber: 1,
+      amountSar: 2000,
+      paymentStatus: "Pending",
+    });
+    state.contract = baseContract({
+      invoices: [{ ...baseContract().invoices[0], installments: [pendingInst] }],
+    });
+    const result = await createAmendmentDraft(
+      baseInput({
+        changesJson: {
+          proposedSchedule: [
+            { installmentId: "inst-pending", installmentNumber: 1, amountSar: 2000, dueDate: "2026-11-01" },
+          ],
+        },
+      }),
+    );
+    expect(result.idempotent).toBe(false);
+  });
+
   it("9. a partially/fully paid installment is locked, not a proposal target (foreign)", async () => {
     const paidInst = installment({
       id: "inst-paid",

@@ -143,8 +143,13 @@ function isEligibleInstallment(installment: any, now: Date): boolean {
   return (
     dueDate.getTime() > now.getTime() &&
     paid === 0 &&
-    installment.paymentStatus !== INSTALLMENT_STATUS.PAID &&
-    installment.paymentStatus !== INSTALLMENT_STATUS.CANCELLED
+    // Allowlist, not a blocklist: only PENDING/PARTIAL are eligible targets.
+    // PROCESSING, OVERDUE, PAID, CANCELLED, and any unrecognized status are
+    // all rejected — a schedule-only amendment must never touch a row that
+    // is already mid-collection (PROCESSING), already past due (OVERDUE),
+    // or in a terminal state.
+    (installment.paymentStatus === INSTALLMENT_STATUS.PENDING ||
+      installment.paymentStatus === INSTALLMENT_STATUS.PARTIAL)
   );
 }
 
