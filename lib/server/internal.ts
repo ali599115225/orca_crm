@@ -5,6 +5,7 @@
 
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { markSaleInstallmentsOverdue } from "@/lib/domain/transaction-spine/overdue-authority";
 import {
   LEGACY_SAAS_OUT_OF_SCOPE,
   ORCA_PLATFORM_MODEL,
@@ -53,6 +54,10 @@ export async function runInstallmentAgentInternal(tenantId: string) {
 
   try {
     const today = new Date();
+    const overdue = await markSaleInstallmentsOverdue({
+      tenantId,
+      asOf: today,
+    });
     const threeDaysFromNow = new Date(today);
     threeDaysFromNow.setDate(today.getDate() + 3);
 
@@ -78,14 +83,23 @@ export async function runInstallmentAgentInternal(tenantId: string) {
     });
 
     if (upcomingInstallments.length === 0) {
-      return { success: true, message: "لا توجد أقساط مستحقة خلال الأيام الثلاثة القادمة." };
+      return {
+        success: true,
+        processedCount: 0,
+        overdueProcessedCount: overdue.processedCount,
+        message: "لا توجد أقساط مستحقة خلال الأيام الثلاثة القادمة.",
+      };
     }
 
     for (const inst of upcomingInstallments) {
       console.log("[SANAD] Installment reminder checked");
     }
 
-    return { success: true, processedCount: upcomingInstallments.length };
+    return {
+      success: true,
+      processedCount: upcomingInstallments.length,
+      overdueProcessedCount: overdue.processedCount,
+    };
   } catch (error: any) {
     console.error("خطأ الوكيل سند - الأقساط:", error);
     return { success: false, error: error.message };
