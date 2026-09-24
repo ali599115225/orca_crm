@@ -15,62 +15,24 @@ export async function GET(request: NextRequest) {
     }
     const companyId = session.tenantId as string;
 
-    let project = await prisma.project.findFirst({
+    const project = await prisma.project.findFirst({
       where: { tenantId: companyId },
     });
 
     if (!project) {
-      project = await prisma.project.create({
-        data: {
-          tenantId: companyId,
-          name: "برج النخبة السكني",
-          city: "الرياض",
-          status: "UNDER_CONSTRUCTION",
-        },
+      return NextResponse.json({
+        success: true,
+        data: [],
       });
     }
 
-    let units = await prisma.unit.findMany({
+    const units = await prisma.unit.findMany({
       where: { projectId: project.id },
       orderBy: [
         { floorPosition: "asc" },
         { unitNumber: "asc" },
       ],
     });
-
-    if (units.length === 0) {
-      const unitsData = [];
-      for (let i = 0; i < 64; i++) {
-        const floor = Math.floor(i / 8) + 1;
-        const unitNum = `${floor}${((i % 8) + 1).toString().padStart(2, "0")}`;
-        
-        let status = "Available";
-        if (i % 3 === 0) status = "Sold";
-        else if (i % 7 === 0) status = "Reserved";
-
-        const price = 2200000 + (i % 6) * 450000;
-
-        unitsData.push({
-          projectId: project.id,
-          unitNumber: unitNum,
-          floorPosition: floor,
-          priceSar: price,
-          status: status,
-        });
-      }
-
-      await prisma.unit.createMany({
-        data: unitsData.map(u => ({ ...u, tenantId: companyId })),
-      });
-
-      units = await prisma.unit.findMany({
-        where: { projectId: project.id },
-        orderBy: [
-          { floorPosition: "asc" },
-          { unitNumber: "asc" },
-        ],
-      });
-    }
 
     return NextResponse.json({
       success: true,
@@ -80,7 +42,7 @@ export async function GET(request: NextRequest) {
         floorPosition: u.floorPosition,
         priceSar: Number(u.priceSar),
         status: u.status,
-        area: 160 + (Number(u.unitNumber) % 5) * 35,
+        area: u.area,
       })),
     });
 

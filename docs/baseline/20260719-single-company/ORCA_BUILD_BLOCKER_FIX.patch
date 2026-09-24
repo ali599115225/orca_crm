@@ -1,0 +1,17 @@
+diff --git a/components/features/ContractWizard.tsx b/components/features/ContractWizard.tsx
+--- a/components/features/ContractWizard.tsx
++++ b/components/features/ContractWizard.tsx
+@@ -592,7 +592,7 @@
+                   }}
+                   disabled={isSubmitting}
+                   isEmpty={clients.length === 0}
+-                  emptyStateLabel={t("contractWizard.clientEmpty")}
++                  emptyLabel={t("contractWizard.clientEmpty")}
+                   options={clientOptions.filter((o) => o.value !== "")}
+@@ -620,7 +620,7 @@
+                     onChange={handlePropertyChange}
+                     disabled={isSubmitting}
+                     isEmpty={properties.length === 0}
+-                    emptyStateLabel={t("contractWizard.propertyEmpty")}
++                    emptyLabel={t("contractWizard.propertyEmpty")}
+                     options={propertyOptions.filter((o) => o.value !== "")}

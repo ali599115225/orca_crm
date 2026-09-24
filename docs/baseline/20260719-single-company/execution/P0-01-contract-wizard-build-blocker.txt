@@ -1,0 +1,15 @@
+ORCA P0-01 CONTRACT WIZARD BUILD BLOCKER
+Timestamp: 2026-07-19T02:27:55
+Repository: C:\Users\ali59\Desktop\REDC-orca-central-baseline
+Branch: work/orca-central-baseline-execution-20260719
+Target: components/features/ContractWizard.tsx
+Change: emptyStateLabel -> emptyLabel
+Occurrences changed: 2
+git diff --check exit: 0
+npx tsc --noEmit exit: 1
+[41m                                                                               [0m
+[41m[37m                This is not the tsc command you are looking for                [0m
+[41m                                                                               [0m
+To get access to the TypeScript compiler, [34mtsc[0m, from the command line either:
+- Use [1mnpm install typescript[0m to first add TypeScript to your project [1mbefore[0m using npx
+- Use [1myarn[0m to avoid accidentally running code from un-installed packages

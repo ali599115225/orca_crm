@@ -41,6 +41,8 @@ lighthouse-report/
 
 # مخرجات التشغيل والتشخيص المحلية
 logs/
+!/app/api/v1/agents/\[id\]/logs/
+!/app/api/v1/agents/\[id\]/logs/route.ts
 *.log
 /report.json
 /summary.json

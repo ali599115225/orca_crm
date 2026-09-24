@@ -1,0 +1,35 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": false
+  },
+  "crons": [
+    {
+      "path": "/api/cron/sentinel",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/zatca",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/installments",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/retention",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/realtime-retention",
+      "schedule": "17 3 * * *"
+    },
+    {
+      "path": "/api/cron/sentinel-heartbeats",
+      "schedule": "0 9 * * *"
+    }
+  ],
+  "buildCommand": "prisma generate && next build",
+  "installCommand": "npm install",
+  "framework": "nextjs"
+}
