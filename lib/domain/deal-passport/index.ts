@@ -21,4 +21,3 @@ export type {
   ResolveDealInput,
   ResolveDealResult,
 } from "./types";
-
