@@ -519,6 +519,40 @@ async function finalizeContractSigningInTx(tx: any, ctx: FinalizeContractSigning
     contractSignedEventId = contractSignedEvent.event?.id || null;
   }
 
+  if (deal.passport && financials.invoiceCreated) {
+    await appendDealEventInTx(tx, {
+      tenantId,
+      dealId: deal.passport.id,
+      eventType: "invoice.issued",
+      idempotencyKey: `invoice.issued:${financials.invoice.id}`,
+      causationId: contractSignedEventId,
+      actorId: eventActorId,
+      correlationId,
+      entityType: "invoice",
+      entityId: financials.invoice.id,
+      beforeState: {
+        invoiceExists: false,
+      },
+      afterState: {
+        invoiceExists: true,
+        invoiceId: financials.invoice.id,
+        invoiceNumber: financials.invoice.invoiceNumber,
+        status: financials.invoice.status,
+      },
+      payload: {
+        invoiceId: financials.invoice.id,
+        invoiceNumber: financials.invoice.invoiceNumber,
+        invoicePrefix: financials.invoice.invoicePrefix,
+        type: financials.invoice.type,
+        totalAmount: Number(financials.invoice.totalAmount),
+        contractId: contract.id,
+      },
+      projection: {
+        contractId: contract.id,
+      },
+    });
+  }
+
   if (deal.passport) {
     await appendDealEventInTx(tx, {
       tenantId,
@@ -661,11 +695,51 @@ async function signSignatoryAndMaybeFinalizeInTx(
       throw new ContractSignatoryError(CONTRACT_SIGNATORY_EVIDENCE_CONFLICT);
     }
   } else {
+    const previousStatus = signatory.status;
     await assertContractApprovalBoundaryInTx(tx, env.tenantId, contract.id);
     await tx.contractSignatory.update({
       where: { id: signatory.id },
       data: { status: "SIGNED", signatureEvidenceHash, signedAt },
     });
+
+    const deal = await resolveDealInTx(tx, {
+      tenantId: env.tenantId,
+      opportunityId: contract.offer?.opportunity?.id || null,
+      contractId: contract.id,
+      actorId: env.eventActorId,
+      correlationId: env.correlationId,
+    });
+
+    if (deal?.passport) {
+      await appendDealEventInTx(tx, {
+        tenantId: env.tenantId,
+        dealId: deal.passport.id,
+        eventType: "signatory.signed",
+        idempotencyKey: `signatory.signed:${signatory.id}`,
+        correlationId: env.correlationId,
+        causationId: deal.passport.lastEventId || null,
+        actorId: env.eventActorId,
+        entityType: "signatory",
+        entityId: signatory.id,
+        beforeState: {
+          status: previousStatus,
+        },
+        afterState: {
+          status: "SIGNED",
+          signatureEvidenceHash,
+        },
+        payload: {
+          signatoryId: signatory.id,
+          contractId: contract.id,
+          role: signatory.role,
+          signerReference: signatory.signerReference ?? null,
+          signedAt: signedAt.toISOString(),
+        },
+        projection: {
+          contractId: contract.id,
+        },
+      });
+    }
   }
 
   const requiredRows = await tx.contractSignatory.findMany({

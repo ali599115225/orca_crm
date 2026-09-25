@@ -14,6 +14,7 @@ export type DealEventType =
   | "contract.cancelled"
   | "contract.approval.requested"
   | "contract.approval.approved"
+  | "contract.approval.rejected"
   | "contract.snapshot.created"
   | "contract.document.generated"
   | "contract.document.sent"

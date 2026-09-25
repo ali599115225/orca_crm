@@ -12,6 +12,11 @@ import {
   persistCanonicalIssuedSnapshotWithTx,
   W1SnapshotIntegrityError,
 } from "./contract-snapshot-service";
+import {
+  appendDealEventInTx,
+  ensureDealCorrelationId,
+  resolveDealInTx,
+} from "@/lib/domain/deal-passport";
 
 export type CanonicalContractSnapshotIssuanceInput = {
   tenantId: string;
@@ -65,7 +70,16 @@ export async function issueCanonicalApprovedContractSnapshot(
         attemptedAssembly = assembly;
         attemptedRenderedContent = renderedContent;
 
-        return await persistCanonicalIssuedSnapshotWithTx(tx, {
+        const existingSnapshot = await tx.contractSnapshot.findFirst({
+          where: {
+            tenantId: input.tenantId,
+            draftId: input.draftId,
+            snapshotType: "ISSUED",
+          },
+          select: { id: true },
+        });
+
+        const snapshot = await persistCanonicalIssuedSnapshotWithTx(tx, {
           tenantId: input.tenantId,
           draftId: input.draftId,
           templateVersionId: assembly.templateVersionId,
@@ -77,6 +91,47 @@ export async function issueCanonicalApprovedContractSnapshot(
           approvalSnapshot: assembly.approvalSnapshot,
           createdBy: input.createdBy ?? null,
         });
+
+        if (!existingSnapshot && snapshot.contractId) {
+          const correlationId =
+            ensureDealCorrelationId(undefined, "contract-snapshot");
+          const deal = await resolveDealInTx(tx, {
+            tenantId: input.tenantId,
+            contractId: snapshot.contractId,
+            actorId: input.createdBy ?? null,
+            correlationId,
+          });
+          if (deal.passport) {
+            await appendDealEventInTx(tx, {
+              tenantId: input.tenantId,
+              dealId: deal.passport.id,
+              eventType: "contract.snapshot.created",
+              idempotencyKey: `contract.snapshot.created:${snapshot.id}`,
+              correlationId,
+              causationId: deal.passport.lastEventId || null,
+              actorId: input.createdBy ?? null,
+              entityType: "snapshot",
+              entityId: snapshot.id,
+              beforeState: null,
+              afterState: {
+                snapshotType: "ISSUED",
+                digest: snapshot.digest,
+              },
+              payload: {
+                snapshotId: snapshot.id,
+                draftId: snapshot.draftId,
+                contractId: snapshot.contractId,
+                templateVersionId: snapshot.templateVersionId,
+                digest: snapshot.digest,
+              },
+              projection: {
+                contractId: snapshot.contractId,
+              },
+            });
+          }
+        }
+
+        return snapshot;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );

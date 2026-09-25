@@ -2,6 +2,11 @@ import "server-only";
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  appendDealEventInTx,
+  ensureDealCorrelationId,
+  resolveDealInTx,
+} from "@/lib/domain/deal-passport";
 
 export class W1ContractLifecycleError extends Error {
   constructor(public readonly code: string) {
@@ -130,7 +135,7 @@ export async function requestContractApproval(input: RequestContractApprovalInpu
     async (tx) => {
       const draft = await tx.contractDraft.findFirst({
         where: { id: input.draftId, tenantId: input.tenantId },
-        select: { id: true, status: true },
+        select: { id: true, status: true, contractId: true },
       });
       if (!draft) {
         throw new W1ContractLifecycleError("W1_DRAFT_NOT_FOUND_FOR_TENANT");
@@ -158,6 +163,49 @@ export async function requestContractApproval(input: RequestContractApprovalInpu
         });
       }
 
+      if (draft.contractId !== null) {
+        const correlationId =
+          ensureDealCorrelationId(undefined, "contract-approval");
+
+        const deal = await resolveDealInTx(tx, {
+          tenantId: input.tenantId,
+          contractId: draft.contractId,
+          actorId: input.requestedBy,
+          correlationId,
+        });
+
+        if (deal.passport) {
+          await appendDealEventInTx(tx, {
+            tenantId: input.tenantId,
+            dealId: deal.passport.id,
+            eventType: "contract.approval.requested",
+            idempotencyKey: `contract.approval.requested:${approval.id}`,
+            correlationId,
+            causationId: deal.passport.lastEventId || null,
+            actorType: "USER",
+            actorId: input.requestedBy,
+            entityType: "approval",
+            entityId: approval.id,
+            beforeState: {
+              draftStatus: draft.status,
+            },
+            afterState: {
+              draftStatus: "APPROVAL_PENDING",
+              approvalStatus: "PENDING",
+            },
+            payload: {
+              draftId: draft.id,
+              approvalId: approval.id,
+              riskTier: approval.riskTier,
+              reason: approval.reason ?? null,
+            },
+            projection: {
+              contractId: draft.contractId,
+            },
+          });
+        }
+      }
+
       return approval;
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -181,7 +229,7 @@ export async function decideContractApproval(input: DecideContractApprovalInput)
           evidenceJson: true,
           requestedBy: true,
           requestedAt: true,
-          draft: { select: { status: true } },
+          draft: { select: { status: true, contractId: true } },
         },
       });
       if (!approval) {
@@ -225,6 +273,62 @@ export async function decideContractApproval(input: DecideContractApprovalInput)
           where: { id: approval.draftId },
           data: { status: "REJECTED", updatedBy: input.decidedBy },
         });
+      }
+
+      if (approval.draft.contractId !== null) {
+        const correlationId =
+          ensureDealCorrelationId(undefined, "contract-approval");
+
+        const deal = await resolveDealInTx(tx, {
+          tenantId: input.tenantId,
+          contractId: approval.draft.contractId,
+          actorId: input.decidedBy,
+          correlationId,
+        });
+
+        if (deal.passport) {
+          await appendDealEventInTx(tx, {
+            tenantId: input.tenantId,
+            dealId: deal.passport.id,
+            eventType:
+              input.decision === "APPROVED"
+                ? "contract.approval.approved"
+                : "contract.approval.rejected",
+            idempotencyKey:
+              input.decision === "APPROVED"
+                ? `contract.approval.approved:${approval.id}`
+                : `contract.approval.rejected:${approval.id}`,
+            correlationId,
+            causationId: deal.passport.lastEventId || null,
+            actorType: "USER",
+            actorId: input.decidedBy,
+            entityType: "approval",
+            entityId: approval.id,
+            beforeState: {
+              approvalStatus: "PENDING",
+              draftStatus: approval.draft.status,
+            },
+            afterState:
+              input.decision === "APPROVED"
+                ? {
+                    approvalStatus: "APPROVED",
+                    draftStatus: approval.draft.status,
+                  }
+                : {
+                    approvalStatus: "REJECTED",
+                    draftStatus: "REJECTED",
+                  },
+            payload: {
+              approvalId: approval.id,
+              draftId: approval.draftId,
+              decision: input.decision,
+              reason: input.reason ?? null,
+            },
+            projection: {
+              contractId: approval.draft.contractId,
+            },
+          });
+        }
       }
 
       return decided;

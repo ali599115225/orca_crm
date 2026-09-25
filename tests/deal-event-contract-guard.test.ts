@@ -14,6 +14,7 @@ import type {
 const frozenEventTypes = [
   "contract.approval.requested",
   "contract.approval.approved",
+  "contract.approval.rejected",
   "contract.snapshot.created",
   "contract.document.generated",
   "contract.document.sent",
@@ -143,7 +144,7 @@ function baseInput(
 
 describe("F4-B1 canonical DealEvent contract guard", () => {
   it("contains the frozen canonical event/entity contract", () => {
-    expect(frozenEventTypes).toHaveLength(11);
+    expect(frozenEventTypes).toHaveLength(12);
     expect(frozenEntityTypes).toHaveLength(7);
   });
 
