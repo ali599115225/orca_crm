@@ -5,6 +5,18 @@ export default function ComingSoonLanding() {
       aria-labelledby="coming-soon-title"
       className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-[var(--nc-bg)] px-6 py-16 text-center text-[var(--nc-text-primary)]"
     >
+      <a
+        href="https://www.sideprojectors.com/project/110763/orca-real-estate-revenue-os"
+        aria-label="ORCA Real Estate Revenue OS is for sale at SideProjectors"
+        className="fixed right-5 top-[-5px] z-[1000]"
+      >
+        <img
+          src="https://www.sideprojectors.com/img/badges/badge_2_red.png"
+          alt="ORCA Real Estate Revenue OS is for sale at SideProjectors"
+          className="border-0"
+        />
+      </a>
+
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_22%,var(--nc-accent-soft),transparent_34%),linear-gradient(180deg,var(--nc-surface-soft),transparent_56%)]" />
         <div className="absolute left-1/2 top-1/2 h-[min(58rem,92vw)] w-[min(58rem,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[var(--nc-accent-border)] opacity-40" />
