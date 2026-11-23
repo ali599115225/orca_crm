@@ -184,5 +184,5 @@ jobs:
 
       - name: Upload final evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with: { name: exec-007-final-validation-evidence, path: evidence/, if-no-files-found: error, retention-days: 14 }

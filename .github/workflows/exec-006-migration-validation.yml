@@ -284,7 +284,7 @@ jobs:
 
       - name: Upload disposable validation evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: exec-006-postgres-validation-evidence
           path: /tmp/exec006-postgres-result.txt
